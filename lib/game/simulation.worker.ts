@@ -54,7 +54,7 @@ function commanders() {
       if (u.servicing || u.emergency || missionAsset(u.role) || u.carrier || state.units.some(c=>c.hp>0&&c.transport?.passengers?.includes(u.id)) || state.units.some(j=>j.hp>0&&j.construction?.builder===u.id) || ['COMMAND', 'PILOT', 'LOGISTICS'].includes(u.role)) continue
       if (isVehicle(u.role) && u.fuel < missionFuel(u, p.target)) { u.path = []; u.mission = 'HOLD'; u.serviceStatus = 'INSUFFICIENT MISSION FUEL RESERVE'; continue }
       u.serviceStatus = undefined
-      if (u.role === 'JET' || u.role === 'ATTACK_HELI') { if(u.airPhase === 'attack') { u.mission = 'CAS'; u.target = p.target.id; route(u,p.target) } continue }
+      if (u.role === 'CAS_FIGHTER' || u.role === 'JET' || u.role === 'ATTACK_HELI') { if(u.airPhase === 'attack') { u.mission = 'CAS'; u.target = p.target.id; route(u,p.target) } continue }
       if (u.role === 'RECON_UAV') { u.mission = 'RECON'; u.target = 'Enemy MOB'; route(u, BASES[p.side === 'BLU' ? 'RED' : 'BLU']); continue }
       if (u.ammo < 12 || u.hp < 22) { u.mission = 'RESUPPLY'; u.target = 'MOB'; route(u, BASES[p.side]); continue }
       const sign = p.side === 'BLU' ? -1 : 1
@@ -136,7 +136,7 @@ function tick() {
     if (isAir(u.role)) {
       if (u.fuel <= 0 || (u.serviceStatus === 'INSUFFICIENT MISSION FUEL RESERVE' && (u.altitude || 0) <= .5)) continue
       const target=u.path[0]||state.objectives[Math.floor(state.objectives.length / 2)];u.mission=u.role==='RECON_UAV'?'RECON':'CAS';const angle=Math.atan2(target.x-u.x,target.y-u.y),delta=Math.atan2(Math.sin(angle-u.heading),Math.cos(angle-u.heading));u.heading+=Math.max(-.035,Math.min(.035,delta));
-      const speed=CATALOG[u.role].speed*(u.role==='ATTACK_HELI'&&distance(u,target)<350?.15:1);u.engine=true;u.x+=Math.sin(u.heading)*speed*.05;u.y+=Math.cos(u.heading)*speed*.05;u.altitude=Math.min(u.role==='JET'?230:95,(u.altitude||0)+.5)
+      const speed=CATALOG[u.role].speed*(u.role==='ATTACK_HELI'&&distance(u,target)<350?.15:1);u.engine=true;u.x+=Math.sin(u.heading)*speed*.05;u.y+=Math.cos(u.heading)*speed*.05;u.altitude=Math.min(u.role==='JET'?230:u.role==='CAS_FIGHTER'?140:95,(u.altitude||0)+.5)
       if(Math.abs(u.x)>18000||Math.abs(u.y)>35000)u.path=[AIRBASES[u.side]];continue
     }
     if (u.path.length) travel(u,u.path.at(-1)!,nav,state.time,CATALOG[u.role].speed*(u.hp<30?.65:1),0)

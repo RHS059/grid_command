@@ -20,7 +20,7 @@ export function resolveCombat(state:BattleState,v:Visibility,random:()=>number,n
     }
     const active=u.soldiers?.filter(s=>s.status==='active'&&!s.rescue&&s.action!=='throw')||[],soldier=active.length?active[Math.floor(state.time/w.cooldown)%active.length]:undefined;if(!isVehicle(u.role)&&!soldier)continue
     const enemy=target.soldiers?.find(s=>s.status==='active'),origin=eye(u,v,soldier),start={...origin},aim=eye(target,v,enemy),heading=Math.atan2(aim.x-origin.x,aim.y-origin.y)
-    if(u.role==='JET'&&Math.abs(Math.atan2(Math.sin(heading-u.heading),Math.cos(heading-u.heading)))>.65)continue
+    if((u.role==='JET'||u.role==='CAS_FIGHTER')&&Math.abs(Math.atan2(Math.sin(heading-u.heading),Math.cos(heading-u.heading)))>.65)continue
     if(soldier){start.z-=soldier.stance==='stand'?.35:soldier.stance==='crouch'?.15:.1;start.x+=Math.sin(heading)*.85+Math.cos(heading)*.17;start.y+=Math.cos(heading)*.85-Math.sin(heading)*.17}else start.z-=.15
     aim.z-=.25
     if(v.ray(origin,start).kind!=='clear'||v.ray(start,aim,state.smokes,state.time).kind!=='clear')continue

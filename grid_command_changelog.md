@@ -4,3 +4,15 @@
   - Rebuilt the troop carrier as an open utility vehicle with a roll cage and visible seating.
   - Updated model viewer materials for the low poly art style while retaining animation and instancing.
   - Switched production builds to Webpack to bundle the simulation worker for GitHub Pages.
+
+- v2.0.2
+  - Added CAS_FIGHTER, a separate two-seat propeller aircraft based on the first two references, with wing guns, tandem canopy, five-blade propeller and external fuel tanks. No anti-tank missiles or explosive gun splash.
+  - CAS guns can engage every ground unit role, including armored vehicles. Tank damage is 10% of the same gun hit against other ground targets after range falloff; ordinary bullets still cannot damage armor. CAS does not target aircraft.
+  - Added CAS purchasing, airfield spawning and servicing, commander tasking, forward firing arc, model catalog entry and aircraft UI identification. Initial balance: 8,000 SP, 85 m/s, 140 m flight altitude, 1,200 m gun range, 6 base damage and 0.2-second firing cooldown.
+  - Rebuilt the strike fighter with a faceted pointed fuselage, tandem canopy, swept wings, paired intakes and exhausts, and twin vertical tails based on the third reference.
+  - Rebuilt the transport helicopter with a faceted glazed cabin, four-blade main rotor, tail rotor, twin engine housings and external tanks based on the fourth reference. Existing troop capacity is preserved.
+  - Rebuilt the heavy lift helicopter as the sixth reference's angular cargo airframe with a high wing, two wingtip rotors, twin fins and cargo bay. Existing 1,800-unit lift capacity and sling cargo behavior are preserved.
+  - Rebuilt the attack helicopter from the same heavy-lift airframe, adding an independently aimed turret beneath the cockpit. Existing attack-helicopter weapon behavior is preserved.
+  - Rebuilt the supply truck as the fifth reference's eight-wheel cab-over carrier with split windshield, mirrors, tanks and ribbed cargo container. Existing cargo and trailer capacities are preserved.
+  - Baked stationary aircraft and truck details by material while retaining separate rotor, turret and trailer groups. Updated model-design.md with these reference recipes.
+  - Submitted for owner confirmation without running tests, builds or model renders, as requested.

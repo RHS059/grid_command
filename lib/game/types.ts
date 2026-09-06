@@ -15,7 +15,7 @@ export interface Depot { airfield: Stock; pending: Stock; mob: Stock }
 export interface Missile { id: number; source: string; target: string; due: number; damage: number }
 export interface Casualty { id: string; side: Side; role: Role; soldier?: Soldier; x: number; y: number; heading: number; time: number; observed: Side[]; altitude: number }
 export type Perspective = Side | 'OBS'
-export type Role = 'RIFLE' | 'SCOUT' | 'MG' | 'AT' | 'MORTAR' | 'ENGINEER' | 'MEDIC' | 'LOGISTICS' | 'TANK' | 'PILOT' | 'COMMAND' | 'TRUCK' | 'RECON_UAV' | 'APC' | 'CANNON_APC' | 'IFV' | 'JET' | 'ATTACK_HELI' | 'FORKLIFT' | 'CARGO_PLANE' | 'UAV_JAMMER' | 'AA_TEAM' | 'TRANSPORT_HELI' | 'HEAVY_LIFT_HELI' | 'TROOP_TRUCK'
+export type Role = 'RIFLE' | 'SCOUT' | 'MG' | 'AT' | 'MORTAR' | 'ENGINEER' | 'MEDIC' | 'LOGISTICS' | 'TANK' | 'PILOT' | 'COMMAND' | 'TRUCK' | 'RECON_UAV' | 'APC' | 'CANNON_APC' | 'IFV' | 'CAS_FIGHTER' | 'JET' | 'ATTACK_HELI' | 'FORKLIFT' | 'CARGO_PLANE' | 'UAV_JAMMER' | 'AA_TEAM' | 'TRANSPORT_HELI' | 'HEAVY_LIFT_HELI' | 'TROOP_TRUCK'
 export type Point = { x: number; y: number }
 export type Vec3 = Point & { z: number }
 export type Stance = 'stand' | 'crouch' | 'prone'
@@ -26,7 +26,7 @@ export interface TerrainGrid { x: number; y: number; step: number; width: number
 export interface GeometryPacket { sector?: string; evict?: string; features: GeometryFeature[]; terrain: TerrainGrid; version: number; complete: boolean }
 export interface ShotEvent { id: number; time: number; unit: string; soldier?: string; side: Side; weapon: string; start: Vec3; end: Vec3; speed: number; size: number; blast: number; sound: string; spotted: boolean }
 export interface Smoke extends Vec3 { id: number; side: Side; time: number; expires: number; from: Vec3 }
-export const isAir = (r: Role) => ['RECON_UAV', 'JET', 'ATTACK_HELI', 'CARGO_PLANE', 'TRANSPORT_HELI', 'HEAVY_LIFT_HELI'].includes(r)
+export const isAir = (r: Role) => ['RECON_UAV', 'CAS_FIGHTER', 'JET', 'ATTACK_HELI', 'CARGO_PLANE', 'TRANSPORT_HELI', 'HEAVY_LIFT_HELI'].includes(r)
 export const isVehicle = (r: Role) => ['TANK', 'APC', 'CANNON_APC', 'IFV', 'TRUCK', 'TROOP_TRUCK', 'FORKLIFT', 'UAV_JAMMER'].includes(r) || isAir(r)
 export const isArmored = (r: Role) => ['TANK', 'APC', 'CANNON_APC', 'IFV'].includes(r)
 export const troopSeats = (r: Role) => r === 'TRANSPORT_HELI' ? 24 : r === 'TROOP_TRUCK' ? 6 : 0
@@ -65,12 +65,13 @@ export const CATALOG: Record<Role, { members: number; speed: number; range: numb
   COMMAND: { members: 1, speed: 0, range: 220, power: 1, cost: 0 }, TRUCK: { members: 1, speed: 12, range: 0, power: 0, cost: 350 },
   CANNON_APC: { members: 3, speed: 10, range: 1100, power: 14, cost: 5000 },
   IFV: { members: 3, speed: 10, range: 1300, power: 18, cost: 6000 },
+  CAS_FIGHTER: { members: 2, speed: 85, range: 1200, power: 12, cost: 8000 },
   JET: { members: 1, speed: 110, range: 1800, power: 28, cost: 16000 },
   ATTACK_HELI: { members: 2, speed: 28, range: 1500, power: 24, cost: 10000 },
   RECON_UAV: { members: 1, speed: 24, range: 950, power: 0, cost: 500 }, APC: { members: 3, speed: 10, range: 420, power: 11, cost: 4000 },
 }
 export function prepareUnit(u: Unit) {
-  u.aim = u.heading; u.cooldown = 0; u.suppression = 0; u.smoke = 2; u.airPhase = 'attack'; u.altitude = u.role === 'JET' ? 230 : isAir(u.role) ? 95 : 0
+  u.aim = u.heading; u.cooldown = 0; u.suppression = 0; u.smoke = 2; u.airPhase = 'attack'; u.altitude = u.role === 'JET' ? 230 : u.role === 'CAS_FIGHTER' ? 140 : isAir(u.role) ? 95 : 0
   u.soldiers = isVehicle(u.role) ? [] : Array.from({ length: u.maxMembers }, (_, i) => ({ id: `${u.id}:${i}`, x: u.x + (i % 3 - 1) * 2.5, y: u.y - Math.floor(i / 3) * 3, status: 'active', stance: 'stand', action: 'idle', heading: u.heading, aim: u.heading, shotAt: -10, since: 0 }))
 }
 export function lngLat(p: Point): [number, number] { return fromPoint(p) }

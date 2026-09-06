@@ -1,4 +1,5 @@
 import * as T from 'three'
+import { createReferenceAircraft } from './reference-aircraft'
 import { SIDE_COLOR, type Role, type Side } from './types'
 
 export function disposeModel(root: T.Object3D) {
@@ -8,6 +9,7 @@ export function disposeModel(root: T.Object3D) {
 }
 
 export function createAircraft(role: Role, side: Side) {
+  if (['CAS_FIGHTER','JET','TRANSPORT_HELI','HEAVY_LIFT_HELI','ATTACK_HELI'].includes(role)) return createReferenceAircraft(role, side)
   const root = new T.Group(); root.name = role
   const body = new T.MeshStandardMaterial({ color: '#65716a', roughness: .62, metalness: .3 })
   const dark = new T.MeshStandardMaterial({ color: '#18222b', roughness: .7, metalness: .35 })
@@ -100,7 +102,7 @@ export function animateAircraft(root: T.Object3D, time: number) {
   const main = root.getObjectByName('main-rotor'), tail = root.getObjectByName('tail-rotor'), prop = root.getObjectByName('propeller')
   if (main) main.rotation.z = time * 35
   if (tail) tail.rotation.x = time * 48
-  if (prop) prop.rotation.y = time * 45
+  if (prop) { if (root.name === 'CAS_FIGHTER') prop.rotation.z = time * 45; else prop.rotation.y = time * 45 }
   const rear=root.getObjectByName('rear-rotor');if(rear)rear.rotation.z=-time*35
   for(const x of [-9,-4,4,9]){const p=root.getObjectByName(`propeller-${x}`);if(p)p.rotation.y=time*40}
 }

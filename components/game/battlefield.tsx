@@ -152,7 +152,7 @@ export function Battlefield(props: Props) {
           liveIds.add(u.id)
           let marker = markers.get(u.id)
           if (!marker) {
-            const el = document.createElement('button'); const symbol = document.createElement('span'); symbol.className = 'marker-box'; symbol.textContent = ['TANK','APC','CANNON_APC','IFV'].includes(u.role) ? '▱' : u.role === 'TRUCK' ? '=' : u.role === 'COMMAND' ? '★' : ['RECON_UAV','JET','ATTACK_HELI'].includes(u.role) ? '⌁' : u.role === 'MEDIC' ? '+' : '×'
+            const el = document.createElement('button'); const symbol = document.createElement('span'); symbol.className = 'marker-box'; symbol.textContent = ['TANK','APC','CANNON_APC','IFV'].includes(u.role) ? '▱' : u.role === 'TRUCK' ? '=' : u.role === 'COMMAND' ? '★' : ['RECON_UAV','CAS_FIGHTER','JET','ATTACK_HELI'].includes(u.role) ? '⌁' : u.role === 'MEDIC' ? '+' : '×'
             const health = document.createElement('span'); health.className = 'marker-health'; health.append(document.createElement('i')); const label = document.createElement('span'); label.className = 'marker-name'; label.textContent = u.name
             el.append(symbol, health, label); el.onclick = e => { e.stopPropagation(); latest.current.onSelect(u.id) }
             marker = new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -10] }).setLngLat(ll).addTo(map); markers.set(u.id, marker)

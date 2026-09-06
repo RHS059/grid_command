@@ -39,7 +39,7 @@ export function followSubject(state: BattleState, selected: string | null) {
 
 export function chaseView(unit: Unit, point: Point, heading: number, scale: number, ground: (p: Point) => number) {
   const air = isAir(unit.role), vehicle = isVehicle(unit.role)
-  const distance = (air ? unit.role === 'CARGO_PLANE' ? 110 : unit.role === 'JET' ? 65 : 40 : vehicle ? 15 : 6) * scale
+  const distance = (air ? unit.role === 'CARGO_PLANE' ? 110 : (unit.role === 'JET' || unit.role === 'CAS_FIGHTER') ? 65 : 40 : vehicle ? 15 : 6) * scale
   const shoulder = vehicle ? 0 : 1.1 * scale
   const target = { x: point.x + Math.sin(heading) * (vehicle ? 2 : 1), y: point.y + Math.cos(heading) * (vehicle ? 2 : 1) }
   const from = { x: point.x - Math.sin(heading) * distance + Math.cos(heading) * shoulder, y: point.y - Math.cos(heading) * distance - Math.sin(heading) * shoulder }

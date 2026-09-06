@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { AIRFIELD_TIERS, BASES, stockTotal, type BattleState, type Perspective, type Role, type Side, type Unit } from '@/lib/game/types'
 
 export function UnitIcon({ role }: { role: Role }) {
-  const Icon = ['TANK', 'APC', 'CANNON_APC', 'IFV'].includes(role) ? Shield : ['TRUCK','LOGISTICS','FORKLIFT','TROOP_TRUCK'].includes(role) ? Truck : role === 'MEDIC' ? ShieldPlus : ['RECON_UAV', 'PILOT', 'JET', 'ATTACK_HELI', 'CARGO_PLANE', 'TRANSPORT_HELI', 'HEAVY_LIFT_HELI'].includes(role) ? Plane : role === 'COMMAND' ? Flag : role === 'UAV_JAMMER' ? Radio : ['MORTAR','AT','AA_TEAM'].includes(role) ? Target : role === 'SCOUT' ? Navigation : Users
+  const Icon = ['TANK', 'APC', 'CANNON_APC', 'IFV'].includes(role) ? Shield : ['TRUCK','LOGISTICS','FORKLIFT','TROOP_TRUCK'].includes(role) ? Truck : role === 'MEDIC' ? ShieldPlus : ['RECON_UAV', 'PILOT', 'CAS_FIGHTER','JET', 'ATTACK_HELI', 'CARGO_PLANE', 'TRANSPORT_HELI', 'HEAVY_LIFT_HELI'].includes(role) ? Plane : role === 'COMMAND' ? Flag : role === 'UAV_JAMMER' ? Radio : ['MORTAR','AT','AA_TEAM'].includes(role) ? Target : role === 'SCOUT' ? Navigation : Users
   return <Icon size={16} strokeWidth={1.6} />
 }
 function ForceCard({ side, state, focus }: { side: Side; state: BattleState; focus: (p: { x: number; y: number }) => void }) {

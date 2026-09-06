@@ -149,3 +149,21 @@ Generate geometry once and reuse it. Keep geometry attributes compatible before 
 When handing off a new model, describe its silhouette, palette, relative dimensions, separate moving parts, and the files changed. Update this guide if the owner changes the art direction.
 
 The owner currently prefers changes committed to GitHub for manual visual confirmation. Do not delay delivery for an unsolicited rendering or testing cycle. Manual review should consider front, side, rear, and three-quarter silhouettes; ground contact; equipment intersections; relevant animated poses; and readability at game distance. State honestly what has and has not been checked.
+
+
+## Aircraft and logistics reference update (v2.0.2)
+
+The reference-driven aircraft now live in lib/game/reference-aircraft.ts and are selected through createAircraft. The cargo plane and reconnaissance UAV retain their existing constructors. Keep this mapping when continuing the art:
+
+| Role | Reference and construction recipe |
+| --- | --- |
+| CAS_FIGHTER | First two images: a Super Tucano-like propeller attack aircraft. Build a slim olive fuselage tapering into a single tail, a raised two-seat canopy with transverse frames, low straight tapered wings, five nose propeller blades, wing guns, side exhausts, tricycle gear and external fuel tanks. Simplify the photographic surfaces into flat polygons. Fuel tanks are not missiles. |
+| JET | Third image: gray twin-engine strike fighter. Use a long pointed nose, narrow tandem canopy, broad swept wings, paired rectangular intakes, two exhausts, twin vertical fins and separate rear stabilizers. Keep the surfaces visibly faceted. |
+| TRANSPORT_HELI | Fourth image: conventional military transport helicopter. Use a broad angular cabin, segmented sloping windshield, sliding door outlines, dark side windows, two upper engine housings, four main rotor blades, long tapering tail boom, tail rotor and external side tanks. |
+| TRUCK | Fifth image: eight-wheel cab-over container carrier. Put the short sloping cab ahead of four axles, use two large windshield panels, side mirrors and steps, and place a tall ribbed rectangular container behind the cab. Include fuel tanks, spare tire and restrained lights. Preserve independently visible cargo trailers. |
+| HEAVY_LIFT_HELI | Sixth image: futuristic wingtip-rotor cargo aircraft. Build a pale angular cabin with a dark sloping nose, high transverse wing, a large nacelle and three-blade rotor at each wingtip, a low cargo bay and twin rear fins. These replace the earlier tandem fore-and-aft rotors. Retain the named sling-cargo group for existing logistics behavior. |
+| ATTACK_HELI | Reuse the heavy-lift airframe and add a dark compact turret beneath the cockpit, with forward barrels and a small sensor face. Keep the chin-turret pivot separate so it can aim independently of heading. |
+
+All new aircraft use longitudinal clipped cross sections, extruded wings and fins, polygonal rods, muted materials and merged stationary geometry. Preserve main-rotor, rear-rotor, tail-rotor, propeller and chin-turret group names where applicable. Wingtip rotors are currently modeled in vertical-lift orientation; no new tilt-transition flight simulation is introduced.
+
+CAS is a separate gameplay role from JET. Its guns have no anti-tank missiles, target ground unit roles only, and apply a 0.1 damage multiplier specifically against TANK after normal range falloff. Other bullets retain the existing armor immunity rules. Art changes for the other aircraft and truck do not change their gameplay capacities or weapons. These models are submitted for manual confirmation, without an automated test or visual render pass.

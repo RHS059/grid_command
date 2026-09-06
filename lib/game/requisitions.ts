@@ -25,7 +25,7 @@ export function nextPurchase(state: BattleState, side: Side, pending: Requisitio
   } else if (count(['RIFLE']) < 6) role = 'RIFLE'
   else if (count(['MG']) < 1) role = 'MG'
   else if (count(['AA_TEAM']) < 1) role = 'AA_TEAM'
-  else role = (['APC', 'TRANSPORT_HELI', 'TANK', 'ATTACK_HELI', 'JET', 'IFV', 'HEAVY_LIFT_HELI'] as Role[]).find(r => count([r]) === 0)
+  else role = (['APC', 'TRANSPORT_HELI', 'TANK', 'CAS_FIGHTER', 'ATTACK_HELI', 'JET', 'IFV', 'HEAVY_LIFT_HELI'] as Role[]).find(r => count([r]) === 0)
   if (!role || f.queue >= 4) return null
   if (f.sp < CATALOG[role].cost + 200) { f.purchase = `Saving for ${role.replaceAll('_', ' ')} · ${CATALOG[role].cost.toLocaleString()} SP + 200 reserve`; return null }
   return role
