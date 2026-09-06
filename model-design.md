@@ -167,3 +167,13 @@ The reference-driven aircraft now live in lib/game/reference-aircraft.ts and are
 All new aircraft use longitudinal clipped cross sections, extruded wings and fins, polygonal rods, muted materials and merged stationary geometry. Preserve main-rotor, rear-rotor, tail-rotor, propeller and chin-turret group names where applicable. Wingtip rotors are currently modeled in vertical-lift orientation; no new tilt-transition flight simulation is introduced.
 
 CAS is a separate gameplay role from JET. Its guns have no anti-tank missiles, target ground unit roles only, and apply a 0.1 damage multiplier specifically against TANK after normal range falloff. Other bullets retain the existing armor immunity rules. Art changes for the other aircraft and truck do not change their gameplay capacities or weapons. These models are submitted for manual confirmation, without an automated test or visual render pass.
+
+## VTOL animation and visible carrier occupants (v2.0.3)
+
+The earlier fixed wingtip-rotor orientation is superseded. Place each nacelle and rotor under its own named left-tilt or right-tilt group, pivoted at the wingtip. Keep rotor spin on the child main-rotor/rear-rotor groups. Project actual world displacement onto the aircraft's forward heading to obtain signed speed. Zero forward speed gives upright rotors; forward speed tilts toward positive local Y using negative X rotation; reverse speed tilts backward. Limit tilt to 81 degrees. Do not infer travel from engine state alone, because hovering engines also run.
+
+Keep chin-turret separate. Its local Z rotation is aircraft heading minus world aim, matching the tank aiming convention. Update aim while acquiring a target, including between shots. The model viewer demonstrates turret traverse and forward/reverse nacelle motion when animation is enabled.
+
+lib/game/carrier-occupants.ts reuses the soldier part geometry to bake two seated variants. The driver occupies the front left seat; six passenger positions occupy the three rear rows, leaving the front right seat unused. Bend thighs forward and shins down, and position the driver's hands on the steering wheel. Merge each seated figure, share passenger geometry and materials, and retain named occupant meshes for visibility updates. Show only actually boarded active soldiers, excluding troops already disembarked and squads merely reserved for pickup.
+
+Below 30% health, a surviving driver exits onto valid nearby ground as one dismounted PILOT-role crew member. Evacuate passengers and release reservations. Mark the vehicle crewBailed, keep it immobile and abandoned, and leave it targetable without recreating crew through health-derived member counts. The six-passenger capacity is unchanged.

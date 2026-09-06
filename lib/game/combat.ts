@@ -6,11 +6,14 @@ export function bodyHeight(s?:Soldier){return s?.stance==='prone'?.42:s?.stance=
 export function eye(u:Unit,v:Visibility,s?:Soldier):Vec3 {const p=s||u;return {x:p.x,y:p.y,z:v.height(p)+(u.altitude||0)+(isVehicle(u.role)?2:bodyHeight(s))}}
 export function canSee(a:Unit,b:Unit,v:Visibility,state:BattleState){if(a.carrier||b.carrier||a.role==='UAV_JAMMER'||jammed(a,b,state))return false;const range=weaponFor(a.role)?.range||950;if(Math.hypot(a.x-b.x,a.y-b.y)>range+80)return false;const sa=a.soldiers?.find(s=>s.status==='active'),sb=b.soldiers?.find(s=>s.status==='active');return v.ray(eye(a,v,sa),eye(b,v,sb),state.smokes,state.time).kind==='clear'}
 export function resolveCombat(state:BattleState,v:Visibility,random:()=>number,nextId:()=>number){
-  const living=state.units.filter(u=>u.hp>0&&!u.carrier&&(u.members>0||u.role==='UAV_JAMMER')),hits=new Map<string,{amount:number;soldier?:string}>()
+  const living=state.units.filter(u=>u.hp>0&&!u.carrier&&(u.members>0||isVehicle(u.role))),hits=new Map<string,{amount:number;soldier?:string}>()
   for(const missile of state.missiles)if(missile.due<=state.time){const target=living.find(u=>u.id===missile.target);if(target)hits.set(target.id,{amount:(hits.get(target.id)?.amount||0)+missile.damage})}
   state.missiles=state.missiles.filter(m=>m.due>state.time)
-  for(const u of living){u.firing=false;const w=weaponFor(u.role);if(!w||u.external||u.servicing||u.emergency||u.ammo<(w.id==='aa'?25:w.armor?2:.3)||(u.cooldown||0)>state.time||u.airPhase==='return'||u.airPhase==='rearm')continue
+  for(const u of living){u.firing=false;const w=weaponFor(u.role);if(!w||u.external||u.servicing||u.emergency||u.ammo<(w.id==='aa'?25:w.armor?2:.3)||u.airPhase==='return'||u.airPhase==='rearm')continue
+    if((u.cooldown||0)>state.time&&u.role!=='ATTACK_HELI')continue
     const targets=living.filter(e=>e.side!==u.side&&eligible(w,e)&&Math.hypot(e.x-u.x,e.y-u.y)<=w.range&&canSee(u,e,v,state)).sort((a,b)=>Math.hypot(a.x-u.x,a.y-u.y)-Math.hypot(b.x-u.x,b.y-u.y));const target=targets[0];if(!target){u.lock=undefined;continue}
+    u.aim=Math.atan2(target.x-u.x,target.y-u.y)
+    if((u.cooldown||0)>state.time)continue
     if(w.id==='aa'){
       if((u.suppression||0)>.5){u.lock=undefined;continue}
       if(u.lock?.target!==target.id){u.lock={target:target.id,since:state.time};continue}
@@ -36,7 +39,7 @@ export function resolveCombat(state:BattleState,v:Visibility,random:()=>number,n
     if(w.blast)for(const e of living){if(e.id===victim?.id)continue;const c=eye(e,v),dist=Math.hypot(c.x-hit.point.x,c.y-hit.point.y,c.z-hit.point.z);if(dist<w.blast&&v.ray({...hit.point,z:hit.point.z+.15},c).kind==='clear')damage(e,damageFor(w,e,d)*(1-dist/w.blast)*.5)}
     target.suppression=Math.min(1,(target.suppression||0)+.05)
   }
-  for(const [id,h] of hits){const u=living.find(e=>e.id===id)!;const before=u.members;u.hp=Math.max(0,u.hp-h.amount);const expected=u.hp>0?Math.ceil(u.maxMembers*u.hp/100):0
+  for(const [id,h] of hits){const u=living.find(e=>e.id===id)!;const before=u.members;u.hp=Math.max(0,u.hp-h.amount);const expected=u.hp>0&&!u.crewBailed?Math.ceil(u.maxMembers*u.hp/100):0
     if(u.soldiers?.length){const active=u.soldiers.filter(s=>s.status==='active').sort((a,b)=>Number(b.id===h.soldier)-Number(a.id===h.soldier));for(let i=0;i<Math.max(0,active.length-expected);i++){active[i].status=random()<.6?'downed':'dead';active[i].since=state.time;active[i].rescue=undefined;active[i].action='idle'}u.members=u.soldiers.filter(s=>s.status==='active').length}else u.members=expected
     state.forces[u.side].casualties+=Math.max(0,before-u.members);if(u.hp<=0)u.path=[]
   }

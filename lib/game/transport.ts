@@ -8,7 +8,7 @@ export const activeTroops = (squad: Unit) => squad.soldiers?.filter(s => s.statu
 export function assignTransports(state: BattleState) {
   const reserved = new Set(state.units.filter(c => c.hp > 0).flatMap(c => c.transport?.passengers || []))
   const eligible = state.units.filter(s => s.hp > 0 && !isVehicle(s.role) && !s.carrier && !reserved.has(s.id) && !['COMMAND', 'PILOT', 'LOGISTICS'].includes(s.role) && activeTroops(s) > 0)
-  const available = state.units.filter(c => c.hp > 0 && !c.external && !c.servicing && !c.emergency && troopSeats(c.role) && (!c.transport || c.transport.phase === 'available'))
+  const available = state.units.filter(c => c.hp > 0 && !c.crewBailed && !c.external && !c.servicing && !c.emergency && troopSeats(c.role) && (!c.transport || c.transport.phase === 'available'))
     .sort((a, b) => Number(b.role === 'TRANSPORT_HELI') - Number(a.role === 'TRANSPORT_HELI'))
   for (const carrier of available) {
     const seats = troopSeats(carrier.role)
@@ -32,7 +32,7 @@ export function assignTransports(state: BattleState) {
 }
 export function updateTransports(state: BattleState, nav: Navigation) {
   for (const u of state.units) {
-    if (!troopSeats(u.role) || u.hp <= 0 || u.servicing || u.emergency) continue
+    if (!troopSeats(u.role) || u.hp <= 0 || u.crewBailed || u.servicing || u.emergency) continue
     const m = u.transport
     if (!m || m.phase === 'available') { u.mission = u.role === 'TRANSPORT_HELI' ? 'WAITING FOR 12–24 TROOPS' : 'AVAILABLE'; continue }
     const helicopter = u.role === 'TRANSPORT_HELI'

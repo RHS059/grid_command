@@ -1,8 +1,24 @@
-import { isAir, isVehicle, type BattleState, type Unit, type Side } from './types'
+import { createUnit, isAir, isVehicle, type BattleState, type Unit, type Side } from './types'
 import { Navigation } from './navigation'
 import { Visibility } from './visibility'
 import { distance } from './movement'
 export function recordCasualties(state:BattleState,nav:Navigation,v:Visibility,random:()=>number){
+  // Evacuate the living driver before an already damaged carrier is destroyed.
+  for(const carrier of [...state.units]){
+    if(carrier.role!=='TROOP_TRUCK'||carrier.hp<=0||carrier.hp>=30||carrier.crewBailed||carrier.members<=0)continue
+    const exit=nav.nearest({x:carrier.x-Math.cos(carrier.heading)*4,y:carrier.y+Math.sin(carrier.heading)*4})
+    if(!nav.covered(exit)||!nav.clear(exit,exit))continue
+    carrier.crewBailed=true;carrier.members=0;carrier.path=[];carrier.engine=false;carrier.servicing=false;carrier.mission='ABANDONED';carrier.serviceStatus='DRIVER BAILED OUT'
+    const driver=createUnit(carrier.side,'PILOT',`${carrier.id}-driver`,exit)
+    driver.name=`${carrier.name} driver`;driver.maxMembers=1;driver.members=1;driver.soldiers=driver.soldiers?.slice(0,1);driver.mission='BAILED OUT';driver.heading=carrier.heading
+    for(const soldier of driver.soldiers||[])Object.assign(soldier,exit,{heading:carrier.heading,aim:carrier.heading})
+    state.units.push(driver)
+    for(const squad of state.units.filter(s=>s.carrier===carrier.id||carrier.transport?.passengers?.includes(s.id))){
+      if(squad.carrier===carrier.id){squad.carrier=undefined;Object.assign(squad,exit);for(const soldier of squad.soldiers||[]){if(!soldier.disembarked)Object.assign(soldier,exit);soldier.disembarked=undefined}}
+      squad.path=[];squad.mission='HOLD'
+    }
+    if(carrier.transport){carrier.transport.passengers=[];carrier.transport.phase='abandoned'}
+  }
   for(const carrier of state.units){if(carrier.hp>0||carrier.lossProcessed)continue;carrier.lossProcessed=true;carrier.destroyedAt=state.time;carrier.path=[];carrier.firing=false
     for(const squad of state.units.filter(u=>u.carrier===carrier.id)){
       squad.carrier=undefined;squad.path=[];const before=squad.members

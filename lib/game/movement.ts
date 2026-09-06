@@ -2,7 +2,7 @@ import { CATALOG, isAir, isVehicle, type Point, type Unit } from './types'
 import { Navigation } from './navigation'
 export const distance = (a:Point,b:Point) => Math.hypot(a.x-b.x,a.y-b.y)
 export function travel(u:Unit,to:Point,nav:Navigation,time:number,speed=CATALOG[u.role].speed,altitude=80){
-  if(u.hp<=0||u.emergency)return false
+  if(u.hp<=0||u.crewBailed||u.emergency)return false
   if(isVehicle(u.role)&&u.fuel<=0){u.travelStatus='OUT OF FUEL';return false}
   if(isVehicle(u.role))u.engine=true
   const air=isAir(u.role),d=distance(u,to)

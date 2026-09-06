@@ -74,8 +74,10 @@ export function createReferenceAircraft(role: Role, side: Side) {
     wing([[-2.8,-4.5],[2.8,-4.5],[2.7,-5.4],[-2.7,-5.4]],3.2)
     for(const s of [-1,1]){
       fin([[-5.5,3.2],[-5.2,4.6],[-4.65,4.7],[-3.9,3.2]],s*1.5)
-      hull([{y:-1.8,w:.45,h:.7},{y:-1,w:.85,h:1.55},{y:.6,w:.85,h:1.5},{y:1.05,w:.45,h:.7}],4, dark,s*5.1)
-      rotor(s<0?'main-rotor':'rear-rotor',s*5.1,-.15,5,3.3,3)
+      const nacelle=hull([{y:-1.8,w:.45,h:.7},{y:-1,w:.85,h:1.55},{y:.6,w:.85,h:1.5},{y:1.05,w:.45,h:.7}],4, dark,s*5.1)
+      const blades=rotor(s<0?'main-rotor':'rear-rotor',s*5.1,-.15,5,3.3,3)
+      const tilt=new T.Group();tilt.name=s<0?'left-tilt':'right-tilt';tilt.position.set(s*5.1,-.15,4);root.add(tilt)
+      nacelle.geometry.translate(-s*5.1,.15,-4);tilt.add(nacelle);blades.position.set(0,0,1);tilt.add(blades)
       box(.025,3.35,1.7,s*1.335,-.3,2.35,dark)
       box(.045,3.4,.1,s*1.36,-.3,1.45,metal);box(.045,3.4,.1,s*1.36,-.3,3.25,metal)
       for(const y of [-1.35,-.3,.75]){box(.06,.82,.65,s*1.355,y,1.83,body);box(.07,.08,.67,s*1.4,y,1.83,metal)}

@@ -98,7 +98,21 @@ export function createAircraft(role: Role, side: Side) {
   return root
 }
 
-export function animateAircraft(root: T.Object3D, time: number) {
+export function animateAircraft(root: T.Object3D, time: number, motion?: { x:number; y:number; heading:number; aim?:number; time:number; active:boolean }) {
+  if(root.name==='HEAVY_LIFT_HELI'||root.name==='ATTACK_HELI'){
+    const old=root.userData.flightSample as {x:number;y:number;time:number}|undefined
+    if(motion){
+      if(!old||motion.time<old.time)root.userData.forwardSpeed=0
+      else if(motion.time>old.time){const dt=motion.time-old.time;root.userData.forwardSpeed=dt<=1?((motion.x-old.x)*Math.sin(motion.heading)+(motion.y-old.y)*Math.cos(motion.heading))/dt:0}
+      if(!old||motion.time!==old.time)root.userData.flightSample={x:motion.x,y:motion.y,time:motion.time}
+    }
+    const forward=motion?(motion.active?root.userData.forwardSpeed||0:0):Math.sin(time*.4)*35
+    // Negative X tilts the +Z rotor axis toward the aircraft's +Y nose.
+    const pitch=-Math.max(-1,Math.min(1,forward/35))*Math.PI*.45
+    for(const name of ['left-tilt','right-tilt']){const pivot=root.getObjectByName(name);if(pivot)pivot.rotation.x=pitch}
+    const turret=root.getObjectByName('chin-turret')
+    if(turret)turret.rotation.z=motion?motion.heading-(motion.aim??motion.heading):Math.sin(time*.5)*Math.PI
+  }
   const main = root.getObjectByName('main-rotor'), tail = root.getObjectByName('tail-rotor'), prop = root.getObjectByName('propeller')
   if (main) main.rotation.z = time * 35
   if (tail) tail.rotation.x = time * 48

@@ -16,3 +16,10 @@
   - Rebuilt the supply truck as the fifth reference's eight-wheel cab-over carrier with split windshield, mirrors, tanks and ribbed cargo container. Existing cargo and trailer capacities are preserved.
   - Baked stationary aircraft and truck details by material while retaining separate rotor, turret and trailer groups. Updated model-design.md with these reference recipes.
   - Submitted for owner confirmation without running tests, builds or model renders, as requested.
+
+- v2.0.3
+  - Heavy lift and attack VTOL nacelles tilt with signed forward speed: upward at hover, forward during forward travel, and backward during reverse travel. Rotor spin remains independent of nacelle tilt.
+  - Attack helicopter chin turret tracks ground/world aim independently of aircraft heading and updates between shots. Model lab animation demonstrates turret rotation and forward/reverse nacelle tilt.
+  - Light troop carrier now displays a seated driver with bent knees and hands at the steering wheel, plus up to six seated passengers drawn from actually boarded active troops. Passengers disappear from their seats as they disembark.
+  - A living troop carrier driver bails out below 30% vehicle health when a valid ground exit is available, becoming one surviving dismounted crew member. Boarded troops evacuate and pickup reservations are released. The vehicle remains abandoned and targetable, with no automatic driving or servicing after crew exit. Bailout does not count surviving crew as casualties or duplicate them.
+  - Updated model-design.md. No tests, builds or visual renders run; submitted for manual confirmation.

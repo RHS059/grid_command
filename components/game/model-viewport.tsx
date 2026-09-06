@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import * as T from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { addCarrierOccupants } from '@/lib/game/carrier-occupants'
 import { SoldierBatch, vehicleGeometry } from '@/lib/game/unit-models'
 import { createAircraft, animateAircraft, disposeModel } from '@/lib/game/aircraft-models'
 import { createSupportModel, isSupportModel, animateSupport } from '@/lib/game/support-models'
@@ -33,7 +34,7 @@ export function ModelViewport(props: Props) {
     else if (isSupportModel(id)) object = createSupportModel(id, props.side)
     else if (isVehicle(id)) { object = new T.Mesh(vehicleGeometry(id, props.side), material); if (id !== 'TRUCK') { const attachment = new T.Mesh(vehicleGeometry(id, props.side, true), material); attachment.name = 'turret'; object.add(attachment) } }
     else batch = new SoldierBatch(scene, props.side, material)
-    if (object) scene.add(object)
+    if (object) { if(id==='TROOP_TRUCK')addCarrierOccupants(object,props.side);scene.add(object) }
     const bounds = object ? new T.Box3().setFromObject(object) : new T.Box3(new T.Vector3(-1, -1, 0), new T.Vector3(1.5, 1, 2.1))
     const size = bounds.getSize(new T.Vector3()), center = bounds.getCenter(new T.Vector3()), radius = size.length() / 2
     const grid = new T.GridHelper(radius * 5, 30, '#34473f', '#18222b'); grid.rotation.x = Math.PI / 2; grid.position.z = bounds.min.z - .04; scene.add(grid)
