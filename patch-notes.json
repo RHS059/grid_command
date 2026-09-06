@@ -1,0 +1,88 @@
+{
+  "version": "0.6.0",
+  "airfield_assault_update": {
+    "changes": [
+      "Commanders prioritize airfield upgrades after three rifle squads and two troop trucks. Tier 2 costs 600 SP / 60 seconds; tier 3 costs 1,200 SP / 90 seconds, with a 200 SP reserve. Starting depots remain empty.",
+      "Tier 1: one strip, one forklift, existing single delivery truck. Tier 2: one strip, two forklifts, two trucks. Tier 3: two separate strips, four forklifts, four trucks with two visible 900-unit trailers each (2,700 units per truck).",
+      "Supplies and SP income scale 1x/2x/4x. Scheduled waves deliver 3,300/6,600/13,200 resource units; tier 3 receives two concurrent 6,600-unit aircraft. Inventory moves through actual unloading, forklift handling and truck delivery.",
+      "Transport helicopters have 24 troop seats, excluding crew. Rifle squads now have four members, so six fit aboard. Assault flights require at least 12 active troops, touchdown at zero altitude and sequential unloading at one soldier per simulation second. Embarked troops never capture or contest; capture eligibility begins after unloading is complete.",
+      "All vehicle engine fuel burn doubled. Refueling and rearming rates divided by three, including infantry depot rearming. Vehicle empty-to-full service takes 60 seconds with adequate stock; repair speed is unchanged.",
+      "Logistics UI shows current tier, construction countdown, equipment capacity, income and tier costs. Models gain the second landing strip and mission-dependent double trailers."
+    ],
+    "validation": "80 tests pass, including worker-driven autonomous tier upgrades, independent cargo landings, manifest conservation, sequential helicopter unloading and capture exclusion. TypeScript and production build pass. Browser verification: desktop 1561x1150 dark and mobile 390x844; both commanders reached tier 3 naturally, second runway and tier logistics rendered, capacity disclosure opened, mobile panel had no horizontal overflow. Helicopter unloading timing is regression-tested, not certified by an end-to-end browser sortie. Software WebGL remains slow; physical-GPU performance is not certified. Earlier sustainment_update validation describes version 0.5 only."
+  },
+  "sustainment_update": {
+    "changes": [
+      "Commander-only starts: one COMMAND and 2,000 SP per side, with empty depots. Autonomous requisitions prioritize infantry and transport, then save for heavy assets.",
+      "External scheduled cargo flights, airfield handling and onward MOB convoys work without owned logistics assets. Location-specific fuel, ammunition and repair stocks track manifests and consumption.",
+      "Vehicles arrive empty and receive supplies only from the correct stocked facility. Engines consume fuel; weapon shots require sufficient ammunition; repairs consume materials. Ground vehicles service at MOBs and landed aircraft at airfields.",
+      "Only active infantry and actual active passengers in landed or low-hover transport helicopters can capture or contest. Other aircraft and vehicle crews never contribute.",
+      "Shared display poses and frame-driven rear chase cameras track infantry, vehicles and aircraft. Embarked selections follow their carrier; Overview and manual camera controls release follow.",
+      "Corrected MapLibre 4 target-relative elevation handling for models, terrain geometry and the follow camera. Zoom stays within the supported terrain range; mobile details remain scrollable."
+    ],
+    "validation": {
+      "tests": "66 regression tests passed; TypeScript and production build passed on 2026-09-06.",
+      "browser": "Desktop 1561x1150 dark and mobile 390x844 inspected. Rear infantry framing, roster selection, pause, overview and logistics UI checked. Camera math regressions pass. Browser-only jet tracking was exercised during development, but the final high-speed browser rerun was inconclusive because of delayed rendering and fixture state updates; it is not certified at all speeds.",
+      "limits": "Software-rendered WebGL was slow and browser automation intermittently timed out. Physical-GPU FPS and long-session stability are not certified. Map geometry needs external tiles; unknown routes wait rather than teleport. No FOB construction, vehicle bays or damageable facilities. MapLibre 4.7.1 elevation-freeze workaround is version-specific."
+    }
+  },
+  "historical_sections_notice": "model_update, implemented, not_implemented and previous_0_2_validation below describe the earlier 0.3 and 0.2 baselines. The 0.5 sustainment_update supersedes their starting allocations, aircraft rearming, capture coverage, physical logistics and snapshot interpolation descriptions.",
+  "date": "2026-09-06",
+  "model_update": {
+    "changes": [
+      "All objectives A-E start neutral on initial load and restart; normal troop-based capture remains unchanged.",
+      "In-game Battlefield / Model Preview tabs with all 18 catalog roles and MOB/airfield compounds. Category filtering, BLU/RED liveries, orbit/zoom, reset framing, rotation, articulated personnel controls and aircraft animations. The same browser remains available at /lab.",
+      "Distinct smooth-surface helicopter, jet and UAV factories shared with production rendering: shaped airframes, cockpit glazing, engines, weapons, landing gear, animated rotors and UAV propeller.",
+      "Detailed wheeled supply truck and role-specific medic, engineer, logistics, pilot, command and scout equipment; existing tank identity retained.",
+      "Both teams now have visible MOB and airfield compounds at existing simulation anchors. Headquarters, communications, barriers and supplies; runway, taxiway, hangars, control tower, helipads and fuel tanks.",
+      "Compound foundations use level raised platforms over sampled terrain to avoid surface clipping. Overlapping map-building visuals are excluded; simulation collision geometry is unchanged.",
+      "Tab changes preserve the simulation and battlefield camera; hidden map redraws stop and preview resources are disposed when inactive."
+    ],
+    "validation": {
+      "tests": "27 tests pass, including neutral initialization across seeds and restart, complete catalog coverage, both liveries, finite geometry, distinct animated aircraft parts and non-accumulating terrain alignment.",
+      "build": "pnpm exec tsc --noEmit and pnpm build passed on 2026-09-06.",
+      "browser": "WebGL-enabled desktop 1561x1150 dark and mobile 390x844. All 20 model selections exercised; aircraft and compound screenshots inspected. Final checks confirmed both base models on the map, all five neutral objective indicators after restart, model livery and animation controls, and no mobile horizontal overflow. Repeated tab switching preserved the paused simulation time, seed and camera with one preview canvas.",
+      "limits": "Compounds are visual scenery, not damageable facilities or new gameplay obstacles. Raised foundations can be prominent on sloped terrain. No new flight-operation or victory mechanics. Headless SwiftShader is slow on the full map; physical-GPU performance and long-session resource stability remain unverified."
+    }
+  },
+  "baseline": "New Next.js browser implementation from GRID_COMMAND_MASTER_HANDOFF_V37. The v37 executable ZIP was not supplied. This is not a v37 source patch or a claim of feature parity.",
+  "implemented": [
+    "Real San Diego OpenFreeMap geography, MapLibre 4.7.1, Terrarium DEM terrain, building extrusions and water",
+    "Bounded camera-independent geometry preload, building-prism and terrain visibility rays, courtyard holes, first-hit obstruction, explicit geometry readiness, and cached geometry reuse on restart",
+    "600 m rifle and 800 m MG engagement limits with distance-dependent spread; shooter-specific visibility and muzzle clearance; mortar acquisition requires sight and its arc is checked",
+    "Weapon-specific armor damage: rifles, MGs, MG APCs and mortars cannot damage armored hulls; AT, tanks, IFVs, cannon APCs, jets and attack helicopters can",
+    "Symmetric IFV, cannon APC, CAS jet and attack-helicopter allocations, catalog/UI support, requisitions and simplified aircraft return/rearm behavior",
+    "Instanced low-poly articulated infantry with independent aiming, bent knees, equipped silhouettes, stance changes, recoil, casualty poses, cover, smoke and bounded rescue behavior",
+    "Active-soldier personnel accounting; dead bodies expire after 120 simulation seconds and have a global 256-body cap; downed soldiers remain rescuable for up to 75 seconds",
+    "Authoritative shot events drive team-colored traveling projectiles and explosive spherical effects; Three.js uses MapLibre's shared depth buffer for building occlusion",
+    "Validated 18-preset procedural Web Audio bank, live _sfx.json replacement, preview/reset/download, volume/mute, browser-local bank settings, distance/pan, voice caps and engine-loop recreation",
+    "Observer and side perspectives, follow, pause/step, speed controls, separate opt-in speech radio, restart, graphics controls and responsive panels",
+    "Fixed 20 Hz worker, simultaneous commander planning and damage, objectives A-E, six-active-body capture minimum, commander loss and territorial victory",
+    "Unit animation inspection at /lab and deterministic production-raycaster/shared-depth-renderer fixture at /range",
+    "Renderer disposal is idempotent and releases its development reference without losing MapLibre's GL context; all ground vehicle classes consume fuel while moving"
+  ],
+  "not_implemented": [
+    "Screen-space reflections and SSAO",
+    "Full v37 four-ply adversarial planner, dynamic hierarchy and persistent navigation learning",
+    "Full physical cargo assembly, animated cargo flights, operational facility gates, construction, damageable buildings and garrisons",
+    "Detailed aircraft physics, transport/bomber gameplay and neural TTS",
+    "Full previous/current snapshot position interpolation: visual event and animation clocks interpolate, while unit positions update at worker cadence",
+    "Physical-GPU 60 FPS validation, long-session resource soak testing and bit-identical reproduction of the original unavailable sound synthesizer"
+  ],
+  "audio_semantics": {
+    "envelope": "Attack and decay reach output and output*sustain; non-looping sounds hold until max(duration, attack+decay), then release. Looping sounds sustain until faded out.",
+    "oscillators": "Enabled waves use freq*ratio, cent detune, and endRatio pitch ramps for non-looping sounds.",
+    "noise_and_filter": "Shared white noise is low-pass filtered by noiseFreq, then mixed through the preset filter, normalized soft distortion and envelope.",
+    "repeat_and_speed": "Repeat uses sinusoidal amplitude modulation. Normalized speed interpolates pitch/filter/repeat multipliers from 1 to the specified maximum, including maxima below 1. Runtime vehicle speed input currently uses movement-state approximation.",
+    "output": "Preset outputs above 1 are retained; master gain and a compressor bound the mixed output. Sound-bank replacement fades existing voices and recreates loops on subsequent updates."
+  },
+  "previous_0_2_validation": {
+    "production_build": "Passed pnpm build on 2026-09-05; routes /, /lab and /range generated",
+    "types": "Passed pnpm exec tsc --noEmit",
+    "regression_tests": "22 passing tests covering visibility, muzzle obstruction, range, armor whitelist, first-body hits, smoke, casualty/rescue lifecycle, animation transforms, vehicle geometry, sound validation and event deduplication, navigation, worker determinism, capture, aircraft rearm and restart geometry",
+    "browser": "WebGL-enabled agent-browser with SwiftShader. Desktop 1561x1150 dark: real battlefield and range checked; wall blocks all shots and removal permits reciprocal fire and damage. Mobile 390x844: scrollable graphics/sound dialog, import of all 18 supplied presets, preview control, reset and mute checked. Audio UI success is not an acoustic fidelity assessment.",
+    "web_vitals": "Development / at 1561x1150: TTFB 97.1 ms, FCP 1872 ms, LCP 3456 ms, hydration 124.7 ms; reported layout-shift entries sum to approximately 0.0011. INP not collected. These are headless lab readings with external map/DEM loading, not production field data; LCP remains above the good threshold.",
+    "performance": "ANGLE Vulkan SwiftShader (Subzero), software graphics. One 40-unit battlefield snapshot at 77.15 simulation seconds reported workerMs 0.3, 48 Three.js draw calls, 46872 triangles and 56 geometries. These are point-in-time renderer-only counts, not total MapLibre costs or a stability benchmark. Range snapshots showed 6-7 FPS; the full map was substantially slower. Physical-GPU 60 FPS is unverified."
+  },
+  "runtime": "Next.js 16 / React 19. Battles are session-only; validated sound settings persist in this browser. Map geometry requires internet access. Prefer the v0 GitHub integration or shadcn project installation workflow for development. The downloadable source archive includes modules, tests, sample sound bank and these notes, but no credentials, dependency tree or build output."
+}
