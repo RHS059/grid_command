@@ -14,7 +14,7 @@ export const MODEL_NOTES: Partial<Record<ModelId, string>> = {
   AA_TEAM: 'Shoulder-fired air-defense launcher with radio support. Air-only targeting, 2.5-second acquisition and four missiles before resupply.',
   TRANSPORT_HELI: '24 troop seats: six four-person rifle squads, plus two crew. Requires at least 12 active troops for an assault sortie. Lands fully, unloads one soldier per second, then released infantry can capture; the helicopter itself never captures.',
   HEAVY_LIFT_HELI: 'Distinct tandem rotors and sling cargo. Transfers up to 1,800 supply units at 65 m/s.',
-  TROOP_TRUCK: 'Four-wheel utility carrier with enclosed cab and troop seating. Six passengers; 24 m/s on validated ground routes.',
+  TROOP_TRUCK: 'Open four-wheel utility carrier with roll cage, angular hood and troop seating. Six passengers; 24 m/s on validated ground routes.',
   APC: 'Eight-wheel armored troop hull, rear ramp and compact machine-gun station.',
   IFV: 'Tracked fighting vehicle with sloped glacis, autocannon turret and twin missile fittings.',
   ATTACK_HELI: 'Tandem cockpit, four-blade main rotor, tail rotor, chin-mounted cannon, sensor turret and wing-mounted ordnance.',

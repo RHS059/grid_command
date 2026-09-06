@@ -25,7 +25,7 @@ export function ModelViewport(props: Props) {
     const sky = new T.HemisphereLight('#dbe7ef', '#172432', 2.8); sky.position.set(0, 0, 1); scene.add(sky)
     const sun = new T.DirectionalLight('#dbe7ef', 3.2); sun.position.set(-30, 30, 60); scene.add(sun)
     const fill = new T.DirectionalLight('#a4afb4', 1.4); fill.position.set(30, -20, 20); scene.add(fill)
-    const material = new T.MeshStandardMaterial({ vertexColors: true, roughness: .7, metalness: .15 })
+    const material = new T.MeshStandardMaterial({ vertexColors: true, roughness: .85, metalness: .08, flatShading: true })
     let object: T.Object3D | null = null, batch: SoldierBatch | null = null
     const id = props.model
     if (id === 'MOB' || id === 'AIRFIELD') object = createBase(id, props.side)

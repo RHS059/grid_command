@@ -1,1 +1,6 @@
-
+- v2.0.1
+  - Reworked infantry with faceted uniforms, tapered limbs, fitted armor, helmets, equipment, and detailed rifles and machine guns.
+  - Replaced armored vehicle boxes with sloped hulls, detailed turrets, wheels, and tracks.
+  - Rebuilt the troop carrier as an open utility vehicle with a roll cage and visible seating.
+  - Updated model viewer materials for the low poly art style while retaining animation and instancing.
+  - Switched production builds to Webpack to bundle the simulation worker for GitHub Pages.

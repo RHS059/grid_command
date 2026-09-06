@@ -1,9 +1,11 @@
 import * as T from 'three'
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
+import { shell, rod } from './model-geometry'
 import { SIDE_COLOR, type Role, type Side, type MissionState } from './types'
 export const isSupportModel=(role:Role)=>['FORKLIFT','TRUCK','TROOP_TRUCK','UAV_JAMMER'].includes(role)
 export function createSupportModel(role:Role,side:Side){
   const root=new T.Group();root.name=role
-  const body=new T.MeshStandardMaterial({color:'#65716a',roughness:.8}),dark=new T.MeshStandardMaterial({color:'#18222b',roughness:.7}),metal=new T.MeshStandardMaterial({color:'#a4afb4',metalness:.65,roughness:.4}),glass=new T.MeshStandardMaterial({color:'#293e4c',metalness:.6,roughness:.15}),mark=new T.MeshStandardMaterial({color:SIDE_COLOR[side]})
+  const body=new T.MeshStandardMaterial({color:'#73765a',roughness:.9,flatShading:true}),dark=new T.MeshStandardMaterial({color:'#262c29',roughness:.9,flatShading:true}),metal=new T.MeshStandardMaterial({color:'#565f51',metalness:.15,roughness:.8,flatShading:true}),glass=new T.MeshStandardMaterial({color:'#293e4c',metalness:.6,roughness:.15}),mark=new T.MeshStandardMaterial({color:SIDE_COLOR[side]})
   root.userData.materials=[body,dark,metal,glass,mark]
   const b=(w:number,d:number,h:number,x:number,y:number,z:number,m=body,parent:T.Object3D=root)=>{const o=new T.Mesh(new T.BoxGeometry(w,d,h),m);o.position.set(x,y,z);parent.add(o);return o}
   const wheel=(x:number,y:number,z:number,r=.48)=>{const o=new T.Mesh(new T.CylinderGeometry(r,r,.3,16),dark);o.rotation.z=Math.PI/2;o.position.set(x,y,z);root.add(o);b(.05,.3,.3,x*1.02,y,z,metal)}
@@ -25,11 +27,48 @@ export function createSupportModel(role:Role,side:Side){
       for(const x of [-1.3,1.3])for(const y of [-1.3,1.3]){const tire=new T.Mesh(new T.CylinderGeometry(.5,.5,.3,16),dark);tire.rotation.z=Math.PI/2;tire.position.set(x,y,.5);trailer.add(tire)}
     }
   }else if(role==='TROOP_TRUCK'){
-    b(2.35,4.65,.35,0,0,.7,dark);b(2.3,2.8,1.3,0,-.5,1.45);b(2.3,1.35,.55,0,1.55,1.1);b(2.4,2.9,.12,0,-.5,2.15)
-    b(2,.045,.65,0,1,1.78,glass);b(.09,.07,.72,0,1.03,1.78,dark)
-    for(const x of [-1.15,1.15]){wheel(x,1.45,.49);wheel(x,-1.55,.49);for(const y of [-1.2,.35]){b(.035,1.2,.56,x,y,1.8,glass);b(.05,.24,.06,x*1.01,y,1.38,metal)}b(.06,.6,.22,x,0,1.15,mark)}
-    b(2.45,.25,.25,0,2.35,.65,dark);b(1.2,.06,.35,0,2.25,1,dark);for(const x of [-.88,.88])b(.25,.08,.23,x,2.27,1.05,metal)
-    const spare=new T.Mesh(new T.CylinderGeometry(.48,.48,.25,16),dark);spare.position.set(.5,-2.05,1.45);root.add(spare)
+    const sculpt=(rings:Parameters<typeof shell>[0],m=body)=>{const o=new T.Mesh(shell(rings,'#ffffff'),m);root.add(o);return o}
+    const rail=(a:[number,number,number],end:[number,number,number],r=.04,m=body)=>{const o=new T.Mesh(rod(a,end,r,'#ffffff'),m);root.add(o);return o}
+    b(2.15,4.6,.24,0,0,.66,dark);b(1.9,3.1,.12,0,-.3,.88)
+    sculpt([{z:.83,w:2.05,d:1.3,y:1.6},{z:1.27,w:2.1,d:1.4,y:1.65},{z:1.5,w:1.82,d:1.06,y:1.5}])
+    b(1.25,.045,.27,0,2.35,1.07,dark)
+    for(let i=0;i<5;i++)b(1.18,.025,.022,0,2.38,.96+i*.045,metal)
+    b(2.25,.2,.16,0,2.43,.69,metal)
+    for(const x of [-.84,.84]){
+      b(.28,.05,.09,x,2.3,1.23,glass);b(.11,.04,.065,x,2.47,.72,mark)
+      rail([x*.85,2.47,.66],[x*.85,2.47,.49],.035,metal)
+    }
+    // Open-sided cabin and rear passenger bay, with eight visible seats.
+    for(const x of [-.49,.49])for(const y of [.35,-.55,-1.45,-2.12]){
+      b(.61,.55,.12,x,y,1.02,dark)
+      const back=b(.59,.12,.64,x,y-.24,1.37,dark);back.rotation.x=-.08
+      b(.32,.13,.19,x,y-.27,1.8,dark)
+      b(.035,.028,.5,x+.14,y-.165,1.37,metal)
+    }
+    for(const x of [-1,1]){
+      for(const y of [1.5,-1.7]){
+        wheel(x*1.1,y,.58,.57)
+        const fender=sculpt([{z:1.02,w:.47,d:1.4,y},{z:1.27,w:.5,d:1.25,y},{z:1.35,w:.34,d:.96,y}]);fender.position.x=x
+      }
+      rail([x,.8,.94],[x*.86,.45,2.18]);rail([x*.86,.45,2.18],[x*.86,-2.2,2.18])
+      rail([x,-2.35,.85],[x*.86,-2.2,2.18]);rail([x,-.55,.9],[x*.86,-.55,2.18])
+      rail([x,-2.3,1.05],[x*.86,-1.4,2.18],.035)
+      b(.15,2.8,.11,x,-.45,.8,metal);b(.035,.4,.11,x*1.01,-1.05,.98,mark)
+    }
+    for(const y of [.45,-.55,-2.2])rail([-.86,y,2.18],[.86,y,2.18])
+    const screen=b(1.75,.025,.38,0,.66,1.71,glass);screen.rotation.x=-.27
+    rail([-.91,.79,1.49],[.91,.79,1.49]);rail([0,.79,1.49],[0,.54,1.92],.025)
+    // Instrument binnacle and low-sided rear bed retain the utility silhouette.
+    b(1.73,.26,.16,0,.77,1.4,dark);b(.35,.06,.12,-.46,.61,1.46,glass)
+    const steering=new T.Mesh(new T.TorusGeometry(.15,.018,4,8),dark);steering.position.set(-.49,.39,1.48);steering.rotation.x=.7;root.add(steering)
+    b(1.95,.1,.25,0,-2.52,1.03);b(2.12,.18,.16,0,-2.63,.66,metal)
+    // Bake stationary details into one mesh per material, instead of extra draw calls.
+    const meshes=root.children.filter((o):o is T.Mesh=>o instanceof T.Mesh)
+    for(const material of [body,dark,metal,glass,mark]){
+      const group=meshes.filter(m=>m.material===material);if(!group.length)continue
+      const geometries=group.map(m=>{m.updateMatrix();const g=m.geometry.index?m.geometry.toNonIndexed():m.geometry.clone();g.deleteAttribute('color');g.applyMatrix4(m.matrix);return g})
+      const merged=mergeGeometries(geometries);geometries.forEach(g=>g.dispose());group.forEach(m=>{root.remove(m);m.geometry.dispose()});root.add(new T.Mesh(merged,material))
+    }
   }else{
     b(2,1.6,.2,0,0,.15,metal);b(1.35,1.2,1.4,0,0,.95);b(.8,.04,.4,0,.62,1.2,dark);b(.55,.045,.1,0,.65,1.2,mark)
     for(let i=0;i<6;i++)b(.85,.04,.04,0,-.62,.55+i*.12,dark)

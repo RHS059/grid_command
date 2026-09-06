@@ -3,21 +3,74 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { SIDE_COLOR, isAir, type Role, type Side, type Soldier } from './types'
 import { createSupportModel, isSupportModel } from './support-models'
 import { createAircraft, disposeModel } from './aircraft-models'
+import { shell, profile, rod } from './model-geometry'
+import { armoredGeometry } from './armored-models'
 
-const kit = '#65716a', armor = '#34473f', black = '#18222b', face = '#bba98d'
+const kit = '#68694c', armor = '#30332d', black = '#222524', face = '#b6a084'
+const clothLight = '#7b7b59', clothDark = '#505640', steel = '#454945'
+
 function colored(g:T.BufferGeometry,color:string){const c=new T.Color(color),a=new Float32Array(g.getAttribute('position').count*3);for(let i=0;i<a.length;i+=3){a[i]=c.r;a[i+1]=c.g;a[i+2]=c.b}g.setAttribute('color',new T.BufferAttribute(a,3));return g}
 function block(w:number,d:number,h:number,x=0,y=0,z=0,color=kit){const g=new T.BoxGeometry(w,d,h).toNonIndexed();g.translate(x,y,z);return colored(g,color)}
 function combine(parts:T.BufferGeometry[]){const g=mergeGeometries(parts);parts.forEach(p=>p.dispose());return g}
+/** M4 and belt-fed silhouettes share the rig's forward +Y axis. */
+function weaponGeometry(mg:boolean) {
+  const parts:T.BufferGeometry[]=[]
+  const b=(w:number,d:number,h:number,x:number,y:number,z:number,c=black)=>parts.push(block(w,d,h,x,y,z,c))
+  if(!mg){
+    parts.push(profile([[-.19,-.025],[-.18,.035],[.09,.035],[.12,.005],[.08,-.065],[-.035,-.065],[-.06,-.025]],.065,black))
+    parts.push(profile([[-.22,.02],[-.43,.02],[-.46,-.035],[-.46,-.18],[-.42,-.17],[-.33,-.065],[-.22,-.06]],.06,black))
+    parts.push(profile([[-.15,-.04],[-.085,-.05],[-.14,-.2],[-.21,-.18]],.045,black))
+    parts.push(profile([[.005,-.055],[.075,-.05],[.085,-.16],[.13,-.245],[.055,-.26],[.025,-.17]],.042,steel))
+    b(.075,.26,.075,0,.205,.005);b(.045,.38,.012,0,.08,.052,steel)
+    parts.push(rod([0,.33,.005],[0,.54,.005],.012,black,8));b(.03,.05,.032,0,.55,.005)
+    parts.push(profile([[.325,.015],[.35,.015],[.35,.115],[.33,.115],[.3,.02]],.014,steel))
+    b(.065,.055,.035,0,-.07,.085);parts.push(rod([0,-.11,.105],[0,-.03,.105],.026,black,8))
+    b(.033,.012,.034,0,-.025,.105,'#485650')
+    b(.009,.1,.032,.037,-.035,.008,steel)
+    // Open trigger guard: bars leave actual negative space below the receiver.
+    b(.015,.018,.065,0,-.035,-.08);b(.015,.08,.012,0,-.07,-.115)
+    for(let i=0;i<7;i++){b(.088,.01,.014,0,.095+i*.033,.047,steel);b(.009,.015,.04,.042,.095+i*.033,0);b(.009,.015,.04,-.042,.095+i*.033,0)}
+  }else{
+    b(.09,.39,.105,0,0,0);b(.08,.25,.065,0,.3,-.015);b(.08,.34,.025,0,.025,.065,steel)
+    parts.push(rod([0,.38,.015],[0,.67,.015],.016,steel,8));b(.035,.06,.035,0,.69,.015)
+    parts.push(profile([[-.22,.025],[-.4,-.01],[-.52,.01],[-.53,-.14],[-.43,-.135],[-.34,-.09],[-.22,-.05]],.065,black))
+    parts.push(profile([[-.1,-.04],[-.025,-.04],[-.055,-.21],[-.13,-.19]],.05,black))
+    b(.15,.15,.17,.115,.04,-.115,clothDark);b(.16,.16,.023,.115,.04,-.02,kit)
+    for(let i=0;i<5;i++){b(.025,.075,.02,.045+i*.026,.045,.02,'#b69a4b');b(.01,.082,.023,.045+i*.026,.045,.02,black)}
+    parts.push(rod([0,.48,-.025],[-.095,.57,-.25],.009,steel));parts.push(rod([0,.48,-.025],[.095,.57,-.25],.009,steel))
+    parts.push(rod([.045,.21,.035],[.045,.19,.14],.008,steel));b(.035,.1,.027,.045,.15,.14)
+    b(.012,.025,.09,0,.53,.055);b(.035,.02,.02,0,.53,.1)
+    for(let i=0;i<6;i++)b(.09,.012,.012,0,-.1+i*.047,.087,steel)
+  }
+  return combine(parts)
+}
 export function soldierParts(side:Side){
-  const helmet=colored(new T.IcosahedronGeometry(.24,1),armor);helmet.scale(1,1.15,.85);helmet.translate(0,0,.12)
+  const helmet=shell([{z:.02,w:.34,d:.36},{z:.17,w:.36,d:.37},{z:.27,w:.27,d:.29},{z:.3,w:.13,d:.15}],kit)
+  const limb=(length:number,top:number,bottom:number)=>shell([{z:-length,w:bottom,d:bottom*.95},{z:-length*.52,w:top*.94,d:top},{z:-.025,w:top,d:top*.95},{z:0,w:top*.8,d:top*.8}],kit)
   return {
-    pelvis:block(.39,.25,.2,0,0,0,kit),
-    torso:combine([block(.48,.28,.43,0,0,.17),block(.5,.12,.34,0,.18,.17,armor),block(.46,.13,.3,0,-.17,.16,armor),block(.36,.21,.38,0,-.33,.2,kit),...[-.16,0,.16].map(x=>block(.12,.11,.16,x,.27,.08,kit)),block(.15,.025,.09,0,.249,.32,SIDE_COLOR[side])]),
-    head:combine([block(.28,.27,.24,0,.025,0,face),helmet,block(.22,.045,.075,0,.185,.045,black),block(.31,.035,.025,0,.18,-.06,armor)]),
-    thigh:block(.17,.19,.4,0,0,-.2), shin:combine([block(.145,.16,.37,0,0,-.185),block(.16,.045,.14,0,.1,-.05,armor)]),
-    boot:block(.18,.32,.13,0,.065,-.04,black), arm:block(.14,.16,.28,0,0,-.14),forearm:combine([block(.13,.15,.27,0,0,-.135),block(.12,.14,.1,0,0,-.28,face)]),
-    rifle:combine([block(.065,.43,.08,0,0,0,black),block(.025,.38,.025,0,.35,.025,black),block(.065,.16,.07,0,-.28,-.015,armor),block(.045,.09,.15,0,.025,-.1,black),block(.03,.16,.035,0,.03,.07,black)]),
-    mg:combine([block(.085,.65,.1,0,.03,0,black),block(.035,.44,.035,0,.51,.03,black),block(.11,.18,.14,.1,.02,-.06,armor),block(.07,.22,.085,0,-.4,-.02,black),block(.025,.035,.25,-.07,.58,-.1,black),block(.025,.035,.25,.07,.58,-.1,black)]),
+    pelvis:combine([shell([{z:-.11,w:.34,d:.24},{z:.08,w:.36,d:.25}],kit),block(.38,.26,.045,0,0,.05,armor),block(.07,.025,.045,0,.14,.05,steel)]),
+    torso:combine([
+      shell([{z:-.01,w:.35,d:.24},{z:.16,w:.41,d:.27},{z:.35,w:.47,d:.28},{z:.43,w:.33,d:.23}],kit),
+      shell([{z:.025,w:.36,d:.09,y:.17},{z:.29,w:.42,d:.095,y:.17},{z:.38,w:.27,d:.08,y:.17}],armor),
+      shell([{z:.04,w:.34,d:.09,y:-.17},{z:.31,w:.4,d:.085,y:-.17},{z:.38,w:.26,d:.08,y:-.17}],armor),
+      shell([{z:.02,w:.28,d:.18,y:-.3},{z:.3,w:.32,d:.22,y:-.3},{z:.4,w:.23,d:.16,y:-.28}],clothDark),
+      block(.23,.055,.2,0,-.425,.18,armor),block(.24,.02,.025,0,-.46,.23,black),
+      ...[-.14,.14].flatMap(x=>[block(.06,.34,.035,x,0,.37,armor),block(.045,.018,.3,x*.8,-.42,.19,armor)]),
+      ...[-.12,0,.12].flatMap(x=>[block(.1,.07,.14,x,.24,.115,clothDark),block(.105,.08,.025,x,.24,.19,kit)]),
+      block(.065,.012,.04,0,.225,.315,SIDE_COLOR[side]),block(.055,.07,.14,.24,-.04,.07,clothDark)
+    ]),
+    head:combine([shell([{z:-.1,w:.18,d:.19,y:.025},{z:.02,w:.255,d:.255,y:.025},{z:.14,w:.23,d:.24}],face),helmet,
+      block(.26,.045,.085,0,.165,.055,armor),...[-.066,.066].map(x=>block(.115,.014,.06,x,.194,.06,'#414b49')),
+      shell([{z:-.105,w:.16,d:.08,y:.095},{z:-.045,w:.24,d:.085,y:.12},{z:.015,w:.24,d:.07,y:.13}],black),
+      ...[-.175,.175].map(x=>block(.045,.13,.12,x,-.005,.04,clothDark)),block(.08,.04,.06,0,.184,.19,steel),block(.31,.015,.026,0,-.183,.12,clothDark)
+    ]),
+    thigh:combine([limb(.4,.205,.155),block(.055,.135,.15,.105,-.005,-.16,clothDark),block(.06,.14,.025,.106,-.005,-.09,clothLight)]),
+    shin:combine([limb(.37,.165,.115),shell([{z:-.15,w:.12,d:.04,y:.09},{z:-.04,w:.15,d:.065,y:.105},{z:.015,w:.115,d:.04,y:.09}],armor)]),
+    boot:combine([shell([{z:-.105,w:.16,d:.29,y:.065},{z:-.055,w:.17,d:.3,y:.065},{z:.045,w:.135,d:.21,y:.025},{z:.09,w:.125,d:.145}],black),block(.17,.3,.027,0,.065,-.097,armor)]),
+    arm:combine([limb(.28,.185,.14),block(.03,.09,.13,.09,0,-.1,clothDark),block(.035,.065,.035,.11,0,-.095,SIDE_COLOR[side])]),
+    forearm:combine([limb(.245,.15,.105),block(.115,.12,.045,0,0,-.23,armor),shell([{z:-.335,w:.085,d:.085},{z:-.275,w:.12,d:.1},{z:-.24,w:.105,d:.09}],black),block(.07,.018,.045,0,.055,-.305,face)]),
+    rifle:weaponGeometry(false),
+    mg:weaponGeometry(true),
     medic:combine([block(.43,.22,.36,0,-.48,.2,kit),block(.2,.025,.07,0,-.6,.2,SIDE_COLOR[side]),block(.07,.025,.23,0,-.6,.2,SIDE_COLOR[side])]),
     radio:combine([block(.38,.24,.45,0,-.46,.22,black),block(.025,.025,.7,.14,-.46,.68,black)]),
     engineer:combine([block(.035,.035,.75,.28,-.4,.14,black),block(.18,.05,.23,.28,-.4,-.27,armor),block(.23,.18,.2,-.28,-.3,0,kit)]),
@@ -51,11 +104,7 @@ export class SoldierBatch {
   }
   end(visible:boolean){for(const [key,mesh]of this.parts){mesh.count=visible?this.counts.get(key)||0:0;mesh.instanceMatrix.needsUpdate=true}}
 }
-export function vehicleGeometry(role:Role,side:Side,attachment=false){const c=SIDE_COLOR[side],parts:T.BufferGeometry[]=[];const b=(w:number,d:number,h:number,x=0,y=0,z=0,color=kit)=>parts.push(block(w,d,h,x,y,z,color))
+export function vehicleGeometry(role:Role,side:Side,attachment=false){const parts:T.BufferGeometry[]=[]
   if(isAir(role)||isSupportModel(role)){const model=isAir(role)?createAircraft(role,side):createSupportModel(role,side);model.updateMatrixWorld(true);const source=attachment&&role==='ATTACK_HELI'?model.getObjectByName('main-rotor')!:model;source.traverse(o=>{if(o instanceof T.Mesh){const g=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();g.applyMatrix4(o.matrixWorld);parts.push(colored(g,`#${(o.material as T.MeshStandardMaterial).color.getHexString()}`))}});disposeModel(model);return combine(parts)}
-  if(attachment){if(role==='APC'){b(.85,.85,.3,0,-.3,2.5,armor);b(.08,1.25,.08,0,.4,2.75,black);return combine(parts)}if(role==='IFV'){b(.4,1.6,.4,1.15,-.3,2.7,black);b(.4,1.6,.4,-1.15,-.3,2.7,black)}b(2.1,2.2,.8,0,-.4,2);b(.18,role==='TANK'?4:2.3,.18,0,role==='TANK'?2.4:1.4,2.35,black);b(.6,.7,.15,.55,-.8,2.5,armor);return combine(parts)}
-  if(role==='TRUCK'){b(2.4,6.6,.35,0,0,.85,black);b(2.6,2,1.85,0,2.2,1.85);b(2.65,1.25,.6,0,3.1,1.35);b(2.25,.05,.65,0,3.23,2.1,black);b(.07,1.2,.65,-1.32,2.1,2.1,black);b(.07,1.2,.65,1.32,2.1,2.1,black);b(2.7,3.9,.23,0,-1.2,1.2);b(2.55,3.8,1.6,0,-1.2,2,armor);for(const x of [-1.3,1.3]){for(const y of [-2.3,-.9,2.3]){const wheel=new T.CylinderGeometry(.57,.57,.42,16).toNonIndexed();wheel.rotateZ(Math.PI/2);wheel.translate(x,y,.59);parts.push(colored(wheel,black))}b(.06,.6,.32,x,2.1,1.55,c)}b(2.8,.2,.26,0,3.7,.9,black);for(const x of [-.95,.95])b(.3,.06,.23,x,3.75,1.34,face)}
-  else if(role==='APC'||role==='CANNON_APC'){b(2.75,6.6,1.45,0,0,1.55);b(2.6,1.3,.35,0,2.5,2.35);b(1.5,.08,1.2,0,-3.35,1.55,black);for(const x of [-1.5,1.5]){for(const y of [-2.45,-.85,.85,2.45]){const wheel=new T.CylinderGeometry(.65,.65,.42,16).toNonIndexed();wheel.rotateZ(Math.PI/2);wheel.translate(x,y,.7);parts.push(colored(wheel,black))}b(.06,1.2,.3,x*.93,0,2.1,c)}b(.8,.6,.12,0,-1.8,2.35,armor)}
-  else {b(3,5.5,1.3,0,0,1);if(role==='IFV'){const slope=block(2.85,1.7,.3,0,0,0,armor);slope.rotateX(-.28);slope.translate(0,2.5,1.7);parts.push(slope);b(.3,3.5,.7,-1.65,0,1.4,armor);b(.3,3.5,.7,1.65,0,1.4,armor)}b(.55,5.8,1.1,-1.5,0,.6,black);b(.55,5.8,1.1,1.5,0,.6,black);b(.25,1.6,.1,1.2,1,1.7,c);for(let i=-2;i<=2;i++){b(.15,.65,.65,-1.82,i,.65,armor);b(.15,.65,.65,1.82,i,.65,armor)}}
-  return combine(parts)
+  return armoredGeometry(role,side,attachment)
 }
