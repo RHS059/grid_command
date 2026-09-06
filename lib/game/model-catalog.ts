@@ -9,7 +9,7 @@ export const MODEL_CATALOG = [...Object.keys(CATALOG) as Role[], 'MOB', 'AIRFIEL
 export const modelCategory = (id: ModelId) => id === 'MOB' || id === 'AIRFIELD' ? 'Structures' : isAir(id) ? 'Aircraft' : isVehicle(id) ? 'Vehicles' : 'Personnel'
 export const MODEL_NOTES: Partial<Record<ModelId, string>> = {
   FORKLIFT: 'Articulated forks and visible pallets. Transfers up to 750 supply units between apron and storage. Airfield tiers provide one, two or four forklifts.',
-  CARGO_PLANE: 'Four turboprops and a rear cargo ramp. Tier 1 delivers 3,300 supply units per wave; tier 2 delivers 6,600; tier 3 receives two simultaneous 6,600-unit flights on separate strips.',
+  CARGO_PLANE: 'Pale faceted strategic airlifter with four underwing jet engines, swept high wings, a T-tail, multi-wheel landing gear and a rear cargo ramp. Tier 1 delivers 3,300 supply units per wave; tier 2 delivers 6,600; tier 3 receives two simultaneous 6,600-unit flights on separate strips.',
   UAV_JAMMER: 'Static electronics and antenna array. Blocks hostile UAV reconnaissance within 600 m; 200 SP, 15-second construction, three per side.',
   AA_TEAM: 'Shoulder-fired air-defense launcher with radio support. Air-only targeting, 2.5-second acquisition and four missiles before resupply.',
   TRANSPORT_HELI: '24 troop seats: six four-person rifle squads, plus two crew. Requires at least 12 active troops for an assault sortie. Lands fully, unloads one soldier per second, then released infantry can capture; the helicopter itself never captures.',

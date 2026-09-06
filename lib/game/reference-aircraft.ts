@@ -19,7 +19,46 @@ export function createReferenceAircraft(role: Role, side: Side) {
   const fin=(points:[number,number][],x:number,m:T.Material=body)=>mesh(profile(points,.12,'#ffffff').translate(x,0,0),m)
   const wheel=(x:number,y:number,r=.3)=>{mesh(new T.CylinderGeometry(r,r,.23,12).rotateZ(Math.PI/2).translate(x,y,r),dark);rail([x,y,r],[x,y,1.25],.055)}
   const rotor=(name:string,x:number,y:number,z:number,radius:number,blades:number,vertical=false)=>{const g=new T.Group();g.name=name;g.position.set(x,y,z);root.add(g);box(.38,.38,.18,0,0,0,metal,g);for(let i=0;i<blades;i++){const arm=new T.Group();arm.rotation.z=i*Math.PI*2/blades;g.add(arm);wing([[-.1,.22],[.14,.22],[.24,radius*.88],[.1,radius],[-.12,radius]],0,dark,arm)}if(vertical)g.rotation.x=Math.PI/2;return g}
-  if(cas){
+  if(role==='CARGO_PLANE'){
+    // Strategic airlifter silhouette with the heavy VTOL's pale faceted skin.
+    hull([{y:-14,w:.6,h:.8},{y:-11,w:2.6,h:2.8},{y:-7,w:4.6,h:4.6},{y:7,w:4.8,h:4.8},{y:10,w:4.2,h:4.2},{y:12.3,w:2.8,h:2.8},{y:13.6,w:.8,h:1.2}],3.65)
+    hull([{y:8.7,w:3.1,h:.6},{y:10,w:2.9,h:1.6},{y:11.5,w:1.8,h:.75}],5.05,glass)
+    rail([0,9.5,5.83],[0,11.45,5.32],.065)
+    for(const sign of [-1,1]){
+      rail([sign*1.15,9.6,5.65],[sign*.7,11.3,5.3],.055)
+      wing([[sign*1.8,4.1],[sign*14,-1.9],[sign*14,-3.4],[sign*2,-.7]],5.55)
+      // Thick wing roots and restrained dark control-surface seams.
+      wing([[sign*1.7,3.8],[sign*6.1,1.4],[sign*5.8,-.8],[sign*1.7,-1]],5.38)
+      rail([sign*6.6,-1.25,5.67],[sign*13.2,-3.12,5.67],.02,metal)
+      box(.65,.85,.025,sign*11,-1.85,5.68,mark)
+      for(const [x,y] of [[5,1.7],[9.2,-.25]]){
+        box(.2,1.5,1.1,sign*x,y,4.9)
+        hull([{y:y-2.7,w:.65,h:.65},{y:y-1.8,w:1.18,h:1.22},{y:y+.9,w:1.5,h:1.5},{y:y+1.2,w:1.4,h:1.4}],3.95,body,sign*x)
+        // Open intake lip, recessed fan face, and a stepped dark exhaust.
+        const lip=new T.TorusGeometry(.64,.09,4,12).rotateX(Math.PI/2).translate(sign*x,y+1.22,3.95);mesh(lip,metal)
+        mesh(new T.CircleGeometry(.6,12).rotateX(-Math.PI/2).translate(sign*x,y+1.19,3.95),dark)
+        rail([sign*x,y+.98,3.95],[sign*x,y+1.23,3.95],.15,metal)
+        for(let i=0;i<8;i++){const a=i*Math.PI/4;rail([sign*x+Math.cos(a)*.2,y+1.205,3.95+Math.sin(a)*.2],[sign*x+Math.cos(a+.2)*.51,y+1.205,3.95+Math.sin(a+.2)*.51],.025,metal)}
+        rail([sign*x,y-2.5,3.95],[sign*x,y-2.85,3.95],.32,dark)
+      }
+      hull([{y:-5.8,w:.45,h:.4},{y:-4.6,w:1.1,h:1},{y:1,w:1.1,h:1},{y:2,w:.3,h:.3}],1.8,body,sign*2.2)
+      for(const y of [-4.6,-3.8,-1.2,-.4]){
+        for(const x of [1.88,2.42]){mesh(new T.CylinderGeometry(.46,.46,.23,12).rotateZ(Math.PI/2).translate(sign*x,y,.46),dark)}
+        rail([sign*2.15,y,.6],[sign*2.15,y,1.75],.09,metal)
+      }
+      box(.035,.6,.85,sign*2.28,6.7,3.7,metal);box(.045,.1,.1,sign*2.31,6.9,3.7,dark)
+      box(.045,1.2,.23,sign*2.4,3.3,3.2,mark)
+    }
+    // Tall swept fin and high mounted horizontal stabilizer form the T-tail.
+    fin([[-13.4,4],[-13.3,9.5],[-11.8,9.6],[-9.2,4.6]],0)
+    wing([[-.12,-10.9],[-5.7,-13.1],[-5.5,-14.1],[0,-13.3],[5.5,-14.1],[5.7,-13.1],[.12,-10.9]],9.45)
+    for(const x of [-.32,.32]){mesh(new T.CylinderGeometry(.38,.38,.24,12).rotateZ(Math.PI/2).translate(x,9.2,.38),dark)}
+    rail([0,9.2,.5],[0,9.2,1.9],.1,metal)
+    // Hinge at the ramp's bottom edge, preserved for unloading animation.
+    const ramp=new T.Group();ramp.name='cargo-ramp';ramp.position.set(0,-11.12,1.1);root.add(ramp)
+    box(2.5,.14,2.5,0,0,1.25,metal,ramp);box(2.22,.035,2.23,0,-.09,1.25,dark,ramp)
+    for(let i=0;i<7;i++)box(2.1,.04,.045,0,-.12,.3+i*.31,metal,ramp)
+  }else if(cas){
     hull([{y:-5,w:.16,h:.28},{y:-2.7,w:.48,h:.65},{y:0,w:1.12,h:1.2},{y:2.5,w:1.04,h:1.08},{y:3.7,w:.65,h:.7}],1.55)
     hull([{y:-1.25,w:.5,h:.15},{y:-.65,w:.83,h:.78},{y:1.35,w:.79,h:.85},{y:2.05,w:.5,h:.22}],2.18,glass)
     for(const y of [-.55,1.15]){rail([-.4,y,2.25],[-.25,y,2.61],.035);rail([-.25,y,2.61],[.25,y,2.61],.035);rail([.25,y,2.61],[.4,y,2.25],.035)}

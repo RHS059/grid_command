@@ -23,3 +23,8 @@
   - Light troop carrier now displays a seated driver with bent knees and hands at the steering wheel, plus up to six seated passengers drawn from actually boarded active troops. Passengers disappear from their seats as they disembark.
   - A living troop carrier driver bails out below 30% vehicle health when a valid ground exit is available, becoming one surviving dismounted crew member. Boarded troops evacuate and pickup reservations are released. The vehicle remains abandoned and targetable, with no automatic driving or servicing after crew exit. Bailout does not count surviving crew as casualties or duplicate them.
   - Updated model-design.md. No tests, builds or visual renders run; submitted for manual confirmation.
+
+- v2.0.4
+  - Replaced the cargo plane's turboprop model with a reference-inspired strategic jet airlifter: broad fuselage, swept high wings, four underwing engines, tall T-tail and multi-wheel landing gear.
+  - Applied the heavy lift VTOL's pale faceted bodywork, dark angular cockpit, muted metal details and small team markings. Retained the animated rear cargo ramp and existing cargo missions, speed and capacities.
+  - Updated model-design.md and the model catalog. No tests, builds or visual renders run; submitted for manual review.
