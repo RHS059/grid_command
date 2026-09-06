@@ -28,3 +28,5 @@
   - Replaced the cargo plane's turboprop model with a reference-inspired strategic jet airlifter: broad fuselage, swept high wings, four underwing engines, tall T-tail and multi-wheel landing gear.
   - Applied the heavy lift VTOL's pale faceted bodywork, dark angular cockpit, muted metal details and small team markings. Retained the animated rear cargo ramp and existing cargo missions, speed and capacities.
   - Updated model-design.md and the model catalog. No tests, builds or visual renders run; submitted for manual review.
+
+- Use geometry normals for battlefield vehicle and infantry lighting instead of derivative-based flat shading at large map coordinates, addressing the speckled/grainy surfaces absent from the centered model preview. Apply the same setting to aircraft, support vehicles and seated occupants when their models are created. No tests, builds or renders run; submitted for manual confirmation.
