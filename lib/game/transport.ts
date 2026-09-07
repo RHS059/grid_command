@@ -6,6 +6,10 @@ import { mobHelipad, mobHelipadHold, releaseMobHelipad, reserveMobHelipad } from
 
 export const UNLOAD_INTERVAL = 1
 export const MAX_WALK_DISTANCE = 500
+// APCs and IFVs can carry a squad through explicit Get In orders, but remain
+// maneuver units under autonomous command. Dedicated carriers service the
+// automatic transport pool.
+const automaticCarrier = (unit: Unit) => unit.role === 'TROOP_TRUCK' || unit.role === 'TRANSPORT_HELI'
 export const activeTroops = (squad: Unit) => squad.soldiers?.filter(s => s.status === 'active').length || 0
 export const transportSquad = (squad: Unit) => squad.hp > 0 && !isVehicle(squad.role) && !['COMMAND', 'PILOT', 'LOGISTICS'].includes(squad.role) && activeTroops(squad) > 0
 const intendedMission = (squad: Unit) => !['REPATH', 'WAITING FOR TRANSPORT', 'EMBARKED'].includes(squad.mission) ? squad.mission
@@ -102,7 +106,7 @@ export function assignTransports(state: BattleState, nav?: Navigation) {
     if (squad.path.length || !squad.transportIntent) squad.transportIntent = { destination: { ...destination }, mission: intendedMission(squad), target: squad.target }
     squad.path = []; squad.mission = 'WAITING FOR TRANSPORT'
   }
-  const available = state.units.filter(c => c.hp > 0 && !c.crewBailed && !c.external && !c.servicing && !c.emergency && !c.attachedSquad && troopSeats(c.role) && (!c.transport || c.transport.phase === 'available'))
+  const available = state.units.filter(c => c.hp > 0 && !c.crewBailed && !c.external && !c.servicing && !c.emergency && !c.attachedSquad && automaticCarrier(c) && (!c.transport || c.transport.phase === 'available'))
     .sort((a, b) => Number(b.role === 'TRANSPORT_HELI') - Number(a.role === 'TRANSPORT_HELI') || a.id.localeCompare(b.id))
   for (const carrier of available) {
     const seats = troopSeats(carrier.role)
@@ -128,7 +132,9 @@ export function updateTransports(state: BattleState, nav: Navigation) {
   for (const u of state.units) {
     if (!troopSeats(u.role) || u.hp <= 0 || u.crewBailed || u.servicing || u.emergency) continue
     const m = u.transport
-    if (!m || m.phase === 'available') { u.mission = u.role === 'TRANSPORT_HELI' ? 'WAITING FOR 12–24 TROOPS' : 'AVAILABLE'; continue }
+    if (!m) continue
+    if (m.phase === 'available' && !automaticCarrier(u) && !m.manual && !u.attachedSquad) { u.transport = undefined; continue }
+    if (m.phase === 'available') { u.mission = u.role === 'TRANSPORT_HELI' ? 'WAITING FOR 12–24 TROOPS' : 'AVAILABLE'; continue }
     const helicopter = u.role === 'TRANSPORT_HELI'
     const passengers = state.units.filter(s => m.passengers?.includes(s.id) && s.hp > 0 && s.side === u.side)
     const boarded = passengers.filter(s => s.carrier === u.id), aboard = boarded.reduce((n, s) => n + activeTroops(s), 0)
