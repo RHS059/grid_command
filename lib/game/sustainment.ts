@@ -16,7 +16,9 @@ export const serviceBase = (u: Unit) => isAir(u.role) ? AIRBASES[u.side] : BASES
 export function missionFuel(u: Unit, destination: Point, via?: Point) {
   const route = (via ? distance(u, via) + distance(via, destination) : distance(u, destination)) + distance(destination, serviceBase(u))
   const seconds = route / Math.max(1, CATALOG[u.role].speed) * (isAir(u.role) ? 1.15 : 1.8) + 120
-  return vehicleResources(u.role).burn * seconds + 10
+  // The service system independently recalls vehicles before they consume their
+  // recovery reserve. Keep long theater routes dispatchable from a full tank.
+  return Math.min(90, vehicleResources(u.role).burn * seconds + 10)
 }
 export function transferStock(from: Stock, to: Stock, fraction = 1) {
   for (const key of ['fuel', 'ammo', 'repair'] as const) { const amount = from[key] * Math.max(0, Math.min(1, fraction)); from[key] -= amount; to[key] += amount }
