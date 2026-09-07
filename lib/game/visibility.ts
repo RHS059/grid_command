@@ -31,5 +31,7 @@ export class Visibility {
     for(const s of smokes){const age=time-s.time;if(age<1||time>s.expires)continue;const radius=Math.min(15,(age-1)*5)*Math.min(1,(s.expires-time)/4);const hit=sphereHit(a,b,{...s,z:s.z+5},radius);if(hit!==null&&hit<t){t=hit;kind='smoke'}}
     return {t,point:lerp3(a,b,t),kind}
   }
-  cover(p: Point, enemy: Point): Point | undefined { let best:Point|undefined,score=Infinity;for(const id of this.buckets.get(`${Math.floor(p.x/100)},${Math.floor(p.y/100)}`)||[]){const wall=this.buildings.get(id)!;for(const v of wall.rings[0]){const dx=v.x-enemy.x,dy=v.y-enemy.y,d=Math.hypot(dx,dy)||1,q={x:v.x+dx/d*2,y:v.y+dy/d*2},dist=Math.hypot(q.x-p.x,q.y-p.y);if(dist<45&&dist<score){score=dist;best=q}}}return best }
+  coverPoints(p: Point, enemy: Point, range = 45): Point[] { const points: { point: Point; score: number }[]=[],ids=new Set<string>();for(let bx=Math.floor((p.x-range)/100);bx<=Math.floor((p.x+range)/100);bx++)for(let by=Math.floor((p.y-range)/100);by<=Math.floor((p.y+range)/100);by++)this.buckets.get(`${bx},${by}`)?.forEach(id=>ids.add(id));for(const id of ids){const wall=this.buildings.get(id)!;for(const v of wall.rings[0]){const dx=v.x-enemy.x,dy=v.y-enemy.y,d=Math.hypot(dx,dy)||1,q={x:v.x+dx/d*2,y:v.y+dy/d*2},dist=Math.hypot(q.x-p.x,q.y-p.y);if(dist<=range)points.push({point:q,score:dist})}}return points.sort((a,b)=>a.score-b.score||a.point.x-b.point.x||a.point.y-b.point.y).map(candidate=>candidate.point) }
+  cover(p: Point, enemy: Point): Point | undefined { return this.coverPoints(p,enemy)[0] }
 }
+
