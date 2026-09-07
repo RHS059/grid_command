@@ -29,14 +29,14 @@ export function resolveCombat(state:BattleState,v:Visibility,random:()=>number,n
     if(v.ray(origin,start).kind!=='clear'||v.ray(start,aim,state.smokes,state.time).kind!=='clear')continue
     const d=Math.hypot(aim.x-start.x,aim.y-start.y,aim.z-start.z),scatter=(random()-.5)*(d/w.range)*2.2;const end={x:aim.x+scatter,y:aim.y+(random()-.5)*d/w.range*2,z:aim.z+(random()-.5)*d/w.range*.8}
     let hit=v.ray(start,end,[],state.time),victim:Unit|undefined,hitSoldier:Soldier|undefined
-    for(const e of living){if(e.id===u.id)continue;const bodies=e.soldiers?.filter(s=>s.status!=='dead')||[];for(const s of bodies.length?bodies:[undefined]){const c=eye(e,v,s);c.z-=isVehicle(e.role)?.8:.45;const t=sphereHit(start,end,c,isVehicle(e.role)?2.2:.65);if(t!==null&&t<hit.t){hit={t,point:lerp3(start,end,t),kind:'unit'};victim=e;hitSoldier=s}}}
+    for(const e of living){if(e.id===u.id||e.side===u.side)continue;const bodies=e.soldiers?.filter(s=>s.status!=='dead')||[];for(const s of bodies.length?bodies:[undefined]){const c=eye(e,v,s);c.z-=isVehicle(e.role)?.8:.45;const t=sphereHit(start,end,c,isVehicle(e.role)?2.2:.65);if(t!==null&&t<hit.t){hit={t,point:lerp3(start,end,t),kind:'unit'};victim=e;hitSoldier=s}}}
     // Mortar paths are sampled as an arc; acquisition still requires direct sight.
     if(w.id==='mortar'){let previous=start;for(let i=1;i<=24;i++){const p=lerp3(start,hit.point,i/24);p.z+=Math.sin(i/24*Math.PI)*d*.22;const block=v.ray(previous,p);if(block.kind!=='clear'){hit={t:hit.t,point:block.point,kind:block.kind};victim=undefined;break}previous=p}}
     u.firing=true;u.aim=Math.atan2(aim.x-start.x,aim.y-start.y);u.cooldown=state.time+w.cooldown;u.ammo=Math.max(0,u.ammo-(w.armor?2:.3));if(soldier){soldier.aim=u.aim;soldier.shotAt=state.time;soldier.action=soldier.cover?'peek':'fire'}
     state.shots.push({id:nextId(),time:state.time,unit:u.id,soldier:soldier?.id,side:u.side,weapon:w.id,start,end:hit.point,speed:w.speed,size:w.size,blast:w.blast,sound:w.sound,spotted:u.spotted})
     const damage=(e:Unit,amount:number,s?:Soldier)=>{const old=hits.get(e.id);hits.set(e.id,{amount:(old?.amount||0)+amount,soldier:s?.id||old?.soldier});e.suppression=Math.min(1,(e.suppression||0)+.22)}
     if(victim&&victim.side!==u.side)damage(victim,damageFor(w,victim,d),hitSoldier)
-    if(w.blast)for(const e of living){if(e.id===victim?.id)continue;const c=eye(e,v),dist=Math.hypot(c.x-hit.point.x,c.y-hit.point.y,c.z-hit.point.z);if(dist<w.blast&&v.ray({...hit.point,z:hit.point.z+.15},c).kind==='clear')damage(e,damageFor(w,e,d)*(1-dist/w.blast)*.5)}
+    if(w.blast)for(const e of living){if(e.side===u.side||e.id===victim?.id)continue;const c=eye(e,v),dist=Math.hypot(c.x-hit.point.x,c.y-hit.point.y,c.z-hit.point.z);if(dist<w.blast&&v.ray({...hit.point,z:hit.point.z+.15},c).kind==='clear')damage(e,damageFor(w,e,d)*(1-dist/w.blast)*.5)}
     target.suppression=Math.min(1,(target.suppression||0)+.05)
   }
   for(const [id,h] of hits){const u=living.find(e=>e.id===id)!;const before=u.members;u.hp=Math.max(0,u.hp-h.amount);const expected=u.hp>0&&!u.crewBailed?Math.ceil(u.maxMembers*u.hp/100):0

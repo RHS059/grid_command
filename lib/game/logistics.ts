@@ -83,7 +83,8 @@ export function updateSupplyMissions(state: BattleState, nav: Navigation) {
     if (!u.transport) { const location = distance(u, air) < distance(u, home) ? 'AIRBASE' : 'MOB'; u.transport = { phase: 'waiting', since: state.time, location, home: { ...(location === 'AIRBASE' ? air : home) } }; u.path = [] }
     const m = u.transport, phase = (p: string) => { m.phase = p; m.since = state.time; u.path = [] }, at = (x: number, y: number) => ({ x: air.x + x, y: air.y + y })
     u.mission = m.phase.toUpperCase()
-    if (!['waiting', 'departed'].includes(m.phase)) u.engine = true
+    // Travel turns the engine back on; stationary loading and service phases do not burn fuel.
+    u.engine = false
     if(u.role==='TRUCK'){
       const handled=updateMobTruck(u,state,nav)
       if(handled==='retire')retired.add(u.id)
