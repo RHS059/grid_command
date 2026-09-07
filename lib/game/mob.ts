@@ -1,7 +1,8 @@
-import { BASES, CATALOG, isVehicle, type BattleState, type MissionState, type Point, type Role, type Side } from './types'
+import { BASES, CATALOG, isAir, isVehicle, type BattleState, type MissionState, type Point, type Role, type Side } from './types'
 
 export type MobTier = 1 | 2 | 3
-export interface MobState { tier: MobTier; upgrade?: { tier: MobTier; due: number } }
+export type GaragePhase = 'opening' | 'rollout' | 'closing'
+export interface MobState { tier: MobTier; upgrade?: { tier: MobTier; due: number }; helipad?: { unitId: string }; garage?: { unitId: string; phase: GaragePhase; since: number; staging: Point }; garageSerial?: number }
 export const MOB_TIERS = {
   1: { cranes: 1, troopSpeed: 1, unloadSeconds: 18, vehicleCost: 1, vehicleTime: 1, cost: 0, buildSeconds: 0 },
   2: { cranes: 2, troopSpeed: 1.5, unloadSeconds: 12, vehicleCost: 1, vehicleTime: 1, cost: 4000, buildSeconds: 90 },
@@ -11,10 +12,32 @@ export const CRANE_CYCLE_SECONDS = MOB_TIERS[1].unloadSeconds
 export const CRANE_LATCH = .28
 export const CRANE_RELEASE = .9
 export const MOB_YARD = { halfWidth: 80, minY: -40, maxY: 140 }
+export const MOB_HELIPAD = { x: -55, y: 78, radius: 16, rise: .55 }
+export const MOB_GARAGE = { x: -52, y: -18, width: 38, depth: 32, height: 11, doorWidth: 26, doorHeight: 8, insideY: -18, doorY: -1.8, openSeconds: 2, closeSeconds: 2 }
+export const MOB_GARAGE_STAGING = [
+  { x: -62, y: 28 }, { x: -42, y: 28 },
+  { x: -62, y: 48 }, { x: -42, y: 48 },
+] as const
 export const mobTier = (state: BattleState, side: Side): MobTier => state.mobs?.[side]?.tier ?? 1
 export const mobDock = (slot: number): Point => ({ x: 15 + slot * 7, y: 57 })
 export const mobStorage = (slot: number): Point => ({ x: 15 + slot * 7, y: 16 })
 export const mobWorld = (side: Side, point: Point): Point => ({ x: BASES[side].x + point.x, y: BASES[side].y + point.y })
+export const mobHelipad = (side: Side) => mobWorld(side, MOB_HELIPAD)
+export const onMobHelipad = (side: Side, point: Point) => Math.hypot(point.x - mobHelipad(side).x, point.y - mobHelipad(side).y) <= MOB_HELIPAD.radius
+export const mobHelipadRise = (tier: MobTier) => tier === 3 ? MOB_HELIPAD.rise : .08
+export const mobHelipadHold = (side: Side, id: string) => {
+  const sign = [...id].reduce((n, c) => n + c.charCodeAt(0), 0) % 2 ? 1 : -1
+  return mobWorld(side, { x: MOB_HELIPAD.x + sign * 42, y: MOB_HELIPAD.y + 35 })
+}
+export function reserveMobHelipad(state: BattleState, side: Side, unitId: string) {
+  state.mobs ??= { BLU: { tier: 1 }, RED: { tier: 1 } }
+  const mob = state.mobs[side], holder = mob.helipad && state.units.find(u => u.id === mob.helipad!.unitId && u.hp > 0 && !u.emergency && !u.servicing && ['delivery','lowering','unloading','transit','landing','attached-hold','disembarking'].includes(u.transport?.phase||''))
+  if (!holder) mob.helipad = undefined
+  const occupied = state.units.some(u => u.id !== unitId && isAir(u.role) && onMobHelipad(side, u) && (u.altitude || 0) < 12 && u.hp > 0)
+  if ((mob.helipad && mob.helipad.unitId !== unitId) || occupied) return false
+  mob.helipad = { unitId }; return true
+}
+export function releaseMobHelipad(state: BattleState, side: Side, unitId: string) { const mob=state.mobs?.[side];if(mob?.helipad?.unitId===unitId)mob.helipad=undefined }
 export const discountedMobAsset = (role: Role) => ['TANK', 'TRUCK', 'TROOP_TRUCK', 'ATTACK_HELI', 'TRANSPORT_HELI', 'HEAVY_LIFT_HELI'].includes(role)
 export function requisitionCost(state: BattleState, side: Side, role: Role) {
   return Math.ceil(CATALOG[role].cost * (discountedMobAsset(role) ? MOB_TIERS[mobTier(state, side)].vehicleCost : 1))
