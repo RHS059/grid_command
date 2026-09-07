@@ -174,7 +174,8 @@ export function Battlefield(props: Props) {
             marker = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(lngLat(o)).addTo(map); objectives.set(o.id, marker)
           }
           const el = marker.getElement(); el.className = `maplibregl-marker objective-marker ${map.getZoom()<12?'strategic':''} ${o.owner?.toLowerCase() || ''}`; el.style.zIndex = '2'; el.setAttribute('aria-label', `Objective ${o.id}, ${o.contested ? 'contested' : o.owner || 'neutral'}`)
-          el.querySelector('.objective-label')!.textContent = o.contested ? 'CONTESTED' : o.capturing ? `CAPTURING ${Math.round(o.progress * 100)}%` : o.owner ? `${o.owner} CONTROL` : 'UNCONTROLLED'
+          const facilities=[o.facilities?.helipad&&!o.facilities.helipad.construction&&(o.facilities.helipad.hp>=40?'H':'H×'),o.facilities?.vehicleBay&&!o.facilities.vehicleBay.construction&&(o.facilities.vehicleBay.hp>=40?'V':'V×')].filter(Boolean).join(' / ')
+          el.querySelector('.objective-label')!.textContent = o.contested ? 'CONTESTED' : o.capturing ? `CAPTURING ${Math.round(o.progress * 100)}%` : o.owner ? `${o.owner} CONTROL${facilities?` · ${facilities}`:''}` : 'UNCONTROLLED'
           ;(el.querySelector('.objective-label') as HTMLElement).style.display = map.getZoom()<12 ? 'none' : ''
           marker.setLngLat(lngLat(o))
         }
