@@ -40,6 +40,34 @@ graphics choices without restarting the battle.
 
 Runtime FPS and visual confirmation for this change are left to manual review.
 
+## Sound effects
+
+The repository-root `_sfx.json` is the default procedural sound bank. Open the
+**SFX Designer** tab to audition and edit presets, import another `_sfx.json`
+directly into the running game, or download the active bank. Model Preview can
+play vehicle engines with adjustable speed, listener distance, and angle.
+
+## Blender soldier assets
+
+On-foot personnel use `public/models/soldier.glb`, exported from the editable
+`assets/blender/soldier.blend` source. The shared rig includes separate boots,
+shins, hands and low-poly fingers plus idle, walk, fire, cover, peek, throw,
+drag, crouch, prone, downed and dead animation clips. Role equipment is stored
+as named gear nodes in the same asset and team markings are recolored at load.
+
+Regenerate both files with Blender 4.5 LTS in background mode:
+
+```powershell
+blender --background --python tools/blender/build_soldier.py
+```
+
+The GLB is loaded once and pooled for nearby battlefield personnel and Model
+Preview. The instanced procedural soldier remains as the distant/performance
+LOD and the loading/error fallback.
+
+Scheduled external supply trucks that shuttle from the airfield to the MOB do
+not consume fuel. This exemption does not apply to owned trucks or other units.
+
 ## MOB logistics and upgrades
 
 Supply trucks now arrive with visible containers and queue for the cranes at their
@@ -60,4 +88,3 @@ Living soldiers and vehicles use deterministic local traffic avoidance. Downed
 soldiers remain obstacles while dead casualties do not block movement. Aircraft
 avoid other aircraft when their vertical volumes overlap and pass over ground units
 once they have enough altitude separation.
-

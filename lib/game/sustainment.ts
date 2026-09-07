@@ -114,10 +114,12 @@ export function consumeFuel(state: BattleState, dt = DT) {
   for (const u of state.units) {
     if (!isVehicle(u.role) || u.hp <= 0 || u.role === 'UAV_JAMMER') continue
     u.engine = !!u.engine || (u.altitude || 0) > .5 || (u.firing && !u.servicing)
+    // Scheduled theater trucks are the airfield-to-MOB supply service. They
+    // remain animated but do not consume the supplies they are delivering.
+    if (u.external && u.role === 'TRUCK') continue
     if (u.engine) u.fuel = Math.max(0, u.fuel - vehicleResources(u.role).burn * dt)
     if (u.fuel > 0) continue
     if (u.emergency || (u.altitude || 0) > .5) { u.emergency = true; u.mission = 'EMERGENCY DESCENT'; u.path = []; u.altitude = Math.max(0, (u.altitude || 0) - 12 * dt); if (u.altitude === 0) { if (!u.external) state.forces[u.side].casualties += u.members; u.hp = 0; u.members = 0 } }
     else if (!u.servicing) { u.engine = false; u.travelStatus = 'OUT OF FUEL'; u.path = []; if (u.external) { u.hp = 0; u.members = 0 } }
   }
 }
-
