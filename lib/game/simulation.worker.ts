@@ -1,4 +1,4 @@
-import { startMobUpgrade, requisitionCost, requisitionDelay } from './mob'
+import { MOB_GARAGE, MOB_GARAGE_STAGING, mobWorld, startMobUpgrade, requisitionCost, requisitionDelay } from './mob'
 import { beginTraffic, moveWithTraffic } from './traffic'
 import { initialState, CATALOG, BASES, AIRBASES, type BattleState, type Side, type Unit, type Point, type Role } from './types'
 import { Navigation } from './navigation'
@@ -22,7 +22,7 @@ const nextShot = () => ++shotId
 
 let state = initialState(), nav = new Navigation(), seed = 3701, eventId = 1, serial = 31, ready = false
 const sides: Side[] = ['BLU', 'RED']
-const deliveries: { side: Side; role: Role; due: number }[] = []
+const deliveries: { side: Side; role: Role; due: number; unitId?: string }[] = []
 const seen = new Set<string>()
 const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y)
 const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296 }
@@ -53,7 +53,7 @@ function commanders() {
     const f = state.forces[p.side]; f.action = p.action; f.target = p.target.id; f.tempo = p.tempo; f.cycles++
     let assault = 0
     for (const u of p.own) {
-      if (u.crewBailed || u.servicing || u.emergency || missionAsset(u.role) || u.carrier || u.attachedSquad || (troopSeats(u.role)>0&&u.transport&&!['available','escort'].includes(u.transport.phase)) || state.units.some(c=>c.hp>0&&c.transport?.passengers?.includes(u.id)) || state.units.some(j=>j.hp>0&&j.construction?.builder===u.id) || ['COMMAND', 'PILOT', 'LOGISTICS'].includes(u.role)) continue
+      if (u.crewBailed || u.servicing || u.emergency || u.deployment || missionAsset(u.role) || u.carrier || u.attachedSquad || (troopSeats(u.role)>0&&u.transport&&!['available','escort'].includes(u.transport.phase)) || state.units.some(c=>c.hp>0&&c.transport?.passengers?.includes(u.id)) || state.units.some(j=>j.hp>0&&j.construction?.builder===u.id) || ['COMMAND', 'PILOT', 'LOGISTICS'].includes(u.role)) continue
       if (isVehicle(u.role) && u.fuel < missionFuel(u, p.target)) { u.path = []; u.mission = 'HOLD'; u.serviceStatus = 'INSUFFICIENT MISSION FUEL RESERVE'; continue }
       u.serviceStatus = undefined
       if (u.role === 'CAS_FIGHTER' || u.role === 'JET' || u.role === 'ATTACK_HELI') { if(u.airPhase === 'attack') { u.mission = 'CAS'; u.target = p.target.id; route(u,p.target) } continue }
@@ -74,7 +74,7 @@ function commanders() {
       }
     }
     log(p.side, `${p.side === 'BLU' ? 'SABER' : 'VIPER'} elements, ${p.action.toLowerCase()} objective ${p.target.id}. ${assault} maneuver groups committed. OUT.`)
-    const role = nextPurchase(state, p.side, deliveries)
+    const role = nextPurchase(state, p.side, deliveries.filter(d=>!d.unitId))
     if (role === 'AIRFIELD_UPGRADE') { if (startAirfieldUpgrade(state, p.side)) log(p.side, f.purchase, 'logistics') }
     else if (role === 'MOB_UPGRADE') { if(startMobUpgrade(state,p.side))log(p.side,f.purchase,'logistics') }
     else if (role) { const cost=requisitionCost(state,p.side,role),delay=requisitionDelay(state,p.side,role,Math.ceil((state.time+1)/60)*60+35-state.time); f.sp -= cost; f.queue++; f.purchase = `${role.replaceAll('_', ' ')} · ${cost} SP · ${Math.ceil(delay)}s`; deliveries.push({ side: p.side, role, due: state.time+delay }); log(p.side, `${role.replaceAll('_', ' ')} requisition approved. Assembly queued.`, 'logistics') }
@@ -85,6 +85,35 @@ function spawn(side: Side, role: Role) {
   const p = isAir(role) ? base : nav.nearest(base)
   state.units.push(createUnit(side, role, `${side}-${serial++}`, p))
   log(side, `${role.replaceAll('_', ' ')} assembled at ${isAir(role) ? 'airfield' : 'MOB'}.${isVehicle(role) ? ' Awaiting fuel and ammunition from depot stock.' : ' Ready for orders.'}`, 'logistics')
+}
+function startGarageDeployment(delivery: typeof deliveries[number]) {
+  state.mobs ??= { BLU: { tier: 1 }, RED: { tier: 1 } }
+  const mob=state.mobs[delivery.side]
+  if(mob.garage)return false
+  let serial=mob.garageSerial||0
+  const staging=[...MOB_GARAGE_STAGING.slice(serial%MOB_GARAGE_STAGING.length),...MOB_GARAGE_STAGING.slice(0,serial%MOB_GARAGE_STAGING.length)].find(p=>{
+    const world=mobWorld(delivery.side,p);return !state.units.some(u=>u.hp>0&&isVehicle(u.role)&&distance(u,world)<12)
+  })
+  if(!staging)return false
+  const inside=mobWorld(delivery.side,{x:MOB_GARAGE.x,y:MOB_GARAGE.insideY}),unit=createUnit(delivery.side,delivery.role,`${delivery.side}-garage-${serial++}`,inside)
+  mob.garageSerial=serial;delivery.unitId=unit.id;unit.heading=0;unit.fuel=5;unit.ammo=0;unit.servicing=false;unit.deployment='garage';unit.mission='GARAGE DOOR OPENING';unit.subcommand='MOB COMMISSIONING';unit.path=[]
+  state.units.push(unit);mob.garage={unitId:unit.id,phase:'opening',since:state.time,staging:mobWorld(delivery.side,staging)}
+  return true
+}
+function updateGarageDeployments() {
+  for(const side of sides){
+    state.mobs ??= { BLU: { tier: 1 }, RED: { tier: 1 } }
+    const mob=state.mobs[side],garage=mob.garage
+    if(!garage){const due=deliveries.filter(d=>d.side===side&&!d.unitId&&d.due<=state.time&&isVehicle(d.role)&&!isAir(d.role)).sort((a,b)=>a.due-b.due||a.role.localeCompare(b.role))[0];if(due)startGarageDeployment(due);continue}
+    const unit=state.units.find(u=>u.id===garage.unitId),phase=(name:'opening'|'rollout'|'closing')=>{garage.phase=name;garage.since=state.time}
+    if(!unit||unit.hp<=0||unit.crewBailed||unit.emergency){if(unit)unit.deployment=undefined;const request=deliveries.find(d=>d.unitId===garage.unitId);if(request){deliveries.splice(deliveries.indexOf(request),1);state.forces[side].queue=Math.max(0,state.forces[side].queue-1);log(side,`${request.role.replaceAll('_',' ')} lost during MOB commissioning.`,'logistics')}if(garage.phase!=='closing')phase('closing');if(state.time-garage.since>=MOB_GARAGE.closeSeconds)mob.garage=undefined;continue}
+    unit.path=[]
+    if(garage.phase==='opening'){unit.engine=false;unit.mission='GARAGE DOOR OPENING';if(state.time-garage.since>=MOB_GARAGE.openSeconds)phase('rollout')}
+    else if(garage.phase==='rollout'){
+      unit.mission='ROLLING OUT OF MOB GARAGE';unit.engine=true
+      if(travel(unit,garage.staging,nav,state.time,5,0,2)){unit.deployment=undefined;unit.servicing=true;unit.engine=false;phase('closing');const request=deliveries.find(d=>d.unitId===unit.id);if(request){deliveries.splice(deliveries.indexOf(request),1);state.forces[side].queue=Math.max(0,state.forces[side].queue-1);state.forces[side].delivered++;log(side,`${unit.role.replaceAll('_',' ')} cleared the MOB garage and entered service.`,'logistics')}}
+    }else if(state.time-garage.since>=MOB_GARAGE.closeSeconds)mob.garage=undefined
+  }
 }
 function sense() {
   const living = state.units.filter(u => u.hp > 0 && !u.carrier)
@@ -126,7 +155,8 @@ function logistics() {
   }
 }
 function deliverRequisitions() {
-  for (let i = deliveries.length - 1; i >= 0; i--) if (deliveries[i].due <= state.time) { const d = deliveries[i]; state.forces[d.side].queue--; state.forces[d.side].delivered++; spawn(d.side, d.role); deliveries.splice(i, 1) }
+  for (let i = deliveries.length - 1; i >= 0; i--) if (deliveries[i].due <= state.time && (!isVehicle(deliveries[i].role)||isAir(deliveries[i].role))) { const d = deliveries[i]; state.forces[d.side].queue--; state.forces[d.side].delivered++; spawn(d.side, d.role); deliveries.splice(i, 1) }
+  updateGarageDeployments()
 }
 function tick() {
   state.tick++; state.time = state.tick * .05
@@ -139,7 +169,7 @@ function tick() {
   updateTransports(state,nav)
   updateSupplyMissions(state,nav)
   for (const u of state.units) {
-    if (u.hp <= 0 || u.crewBailed || u.servicing || u.emergency || u.external || u.carrier || u.attachedSquad || (troopSeats(u.role)>0&&u.transport&&u.transport.phase!=='available') || missionAsset(u.role) || u.mission==='WAITING FOR TRANSPORT') continue
+    if (u.hp <= 0 || u.crewBailed || u.servicing || u.emergency || u.deployment || u.external || u.carrier || u.attachedSquad || (troopSeats(u.role)>0&&u.transport&&u.transport.phase!=='available') || missionAsset(u.role) || u.mission==='WAITING FOR TRANSPORT') continue
     if (isAir(u.role)) {
       if (u.fuel <= 0 || (u.serviceStatus === 'INSUFFICIENT MISSION FUEL RESERVE' && (u.altitude || 0) <= .5)) continue
       const target=u.path[0]||state.objectives[Math.floor(state.objectives.length / 2)];u.mission=u.role==='RECON_UAV'?'RECON':'CAS';const angle=Math.atan2(target.x-u.x,target.y-u.y),delta=Math.atan2(Math.sin(angle-u.heading),Math.cos(angle-u.heading));u.heading+=Math.max(-.035,Math.min(.035,delta));
