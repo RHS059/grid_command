@@ -6,6 +6,8 @@ type Mover = (Unit | Soldier)
 type Body = { id: string; mover: Mover; unit: Unit; x: number; y: number; z: number; heading: number; radius: number; front: number; back: number; height: number; airborne: boolean; fixed: boolean; vx: number; vy: number }
 const sessions = new WeakMap<Navigation, Traffic>()
 const CELL = 64, DT = .05
+const LOGISTICS_ROLES = new Set(['CARGO_PLANE','FORKLIFT','HEAVY_LIFT_HELI','TRUCK'])
+const STATIONARY_LOGISTICS_PHASES = new Set(['waiting','loading','unloading','placing','mob-unloading'])
 const length = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y)
 function ground(nav: Navigation, p: Point) {
   const g = (nav.sectors.get(sectorKey(p)) || nav.sectors.get('legacy'))?.terrain
@@ -66,7 +68,7 @@ class Traffic {
       front: vehicle ? shape.front : 0,
       back: vehicle ? shape.back : 0,
       height: vehicle ? air ? 5 : 3 : 1.8, airborne: air && (unit.altitude || 0) > .5,
-      fixed: vehicle ? unit.crewBailed === true || unit.role === 'UAV_JAMMER' || unit.transport?.phase === 'mob-unloading' : (mover as Soldier).status === 'downed',
+      fixed: vehicle ? unit.crewBailed === true || unit.role === 'UAV_JAMMER' || (LOGISTICS_ROLES.has(unit.role) && STATIONARY_LOGISTICS_PHASES.has(unit.transport?.phase || '')) : (mover as Soldier).status === 'downed',
       vx: old ? (mover.x-old.x)/DT : 0, vy: old ? (mover.y-old.y)/DT : 0 }
     this.bodies.set(body.id, body)
     for (const key of this.keys(body)) { if (!this.cells.has(key)) this.cells.set(key,new Set()); this.cells.get(key)!.add(body) }
