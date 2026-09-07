@@ -5,13 +5,13 @@ import { weaponFor, eligible, damageFor } from './weapons'
 export function bodyHeight(s?:Soldier){return s?.stance==='prone'?.42:s?.stance==='crouch'?1.05:1.6}
 export function eye(u:Unit,v:Visibility,s?:Soldier):Vec3 {const p=s||u;return {x:p.x,y:p.y,z:v.height(p)+(u.altitude||0)+(isVehicle(u.role)?2:bodyHeight(s))}}
 export function canSee(a:Unit,b:Unit,v:Visibility,state:BattleState){if(a.carrier||b.carrier||a.role==='UAV_JAMMER'||jammed(a,b,state))return false;const range=weaponFor(a.role)?.range||950;if(Math.hypot(a.x-b.x,a.y-b.y)>range+80)return false;const sa=a.soldiers?.find(s=>s.status==='active'),sb=b.soldiers?.find(s=>s.status==='active');return v.ray(eye(a,v,sa),eye(b,v,sb),state.smokes,state.time).kind==='clear'}
-export function resolveCombat(state:BattleState,v:Visibility,random:()=>number,nextId:()=>number){
+export function resolveCombat(state:BattleState,v:Visibility,random:()=>number,nextId:()=>number,candidates?:(unit:Unit,range:number)=>Unit[]){
   const living=state.units.filter(u=>u.hp>0&&!u.carrier&&(u.members>0||isVehicle(u.role))),hits=new Map<string,{amount:number;soldier?:string}>()
   for(const missile of state.missiles)if(missile.due<=state.time){const target=living.find(u=>u.id===missile.target);if(target)hits.set(target.id,{amount:(hits.get(target.id)?.amount||0)+missile.damage})}
   state.missiles=state.missiles.filter(m=>m.due>state.time)
   for(const u of living){u.firing=false;const w=weaponFor(u.role);if(!w||u.crewBailed||u.external||u.servicing||u.emergency||u.ammo<(w.id==='aa'?25:w.armor?2:.3)||u.airPhase==='return'||u.airPhase==='rearm')continue
     if((u.cooldown||0)>state.time&&u.role!=='ATTACK_HELI')continue
-    const targets=living.filter(e=>e.side!==u.side&&eligible(w,e)&&Math.hypot(e.x-u.x,e.y-u.y)<=w.range&&canSee(u,e,v,state)).sort((a,b)=>Math.hypot(a.x-u.x,a.y-u.y)-Math.hypot(b.x-u.x,b.y-u.y));const target=targets[0];if(!target){u.lock=undefined;continue}
+    const targets=(candidates?candidates(u,w.range):living).filter(e=>e.side!==u.side&&e.hp>0&&!e.carrier&&eligible(w,e)&&Math.hypot(e.x-u.x,e.y-u.y)<=w.range&&canSee(u,e,v,state)).sort((a,b)=>Math.hypot(a.x-u.x,a.y-u.y)-Math.hypot(b.x-u.x,b.y-u.y)||a.id.localeCompare(b.id));const target=targets[0];if(!target){u.lock=undefined;continue}
     u.aim=Math.atan2(target.x-u.x,target.y-u.y)
     if((u.cooldown||0)>state.time)continue
     if(w.id==='aa'){
