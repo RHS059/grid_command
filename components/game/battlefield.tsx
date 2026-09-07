@@ -95,7 +95,8 @@ export function Battlefield(props: Props) {
     map.on('rotate', () => { if (orbiting && latest.current.selected) updateOrbit() })
     map.on('rotateend', () => { if (!orbiting) return; updateOrbit(); orbiting = false })
     let collision: GeometryPacket | null = null
-    const cancelGeometry = loadBattleGeometry(packet => { collision = packet; latest.current.onGeometry(packet) }, text => latest.current.onStatus(text), () => latest.current.stateRef.current)
+    const buildingPackets = new Map<string, GeometryPacket>()
+    const cancelGeometry = loadBattleGeometry(packet => { collision = packet; if(packet.evict)buildingPackets.delete(packet.evict);buildingPackets.set(packet.sector||`legacy-${packet.version}`,packet);renderRef.current?.importBuildings(packet);latest.current.onGeometry(packet) }, text => latest.current.onStatus(text), () => latest.current.stateRef.current)
     const importGeometry = () => { if(collision) latest.current.onGeometry(collision) }
     const focus = (point: { x: number; y: number }, zoom = 16.3) => { releaseFollow(); map.flyTo({ center: lngLat(point), zoom, duration: 1100, essential: false }) }
     latest.current.onReady({ overview: () => { releaseFollow(); map.fitBounds(THEATER_BOUNDS, { padding: {top:map.getContainer().clientWidth<760?115:65,bottom:50,left:35,right:35}, pitch: 0, bearing: 0, duration: 1000 }) }, focus, zoom: delta => { if (latest.current.selected) chaseScale = Math.max(.6, Math.min(6, chaseScale * 2 ** (-delta / 2))); else map.zoomTo(map.getZoom() + delta, { duration: 300 }) }, rotate: () => { releaseFollow(); map.rotateTo(0, { duration: 600 }) }, tilt: () => { releaseFollow(); map.easeTo({ pitch: map.getPitch() > 10 ? 0 : 55, duration: 600 }) }, reimport: () => { imported.clear(); importGeometry() } })
@@ -123,7 +124,7 @@ export function Battlefield(props: Props) {
       if (disposed) return
       setLoading(false); latest.current.onStatus('Geographic renderer online')
       const initialGraphics = latest.current.graphics
-      for (const [id, enabled] of [['buildings-3d', initialGraphics.buildings], ['buildings-3d-detail', initialGraphics.buildings&&initialGraphics.quality==='high'], ['tactical-grid', initialGraphics.grid], ['unit-routes', initialGraphics.routes], ['road-labels', initialGraphics.labels], ['hillshade', initialGraphics.shadows]] as const) map.setLayoutProperty(id, 'visibility', enabled ? 'visible' : 'none')
+      for (const [id, enabled] of [['buildings-3d', false], ['buildings-3d-detail', false], ['tactical-grid', initialGraphics.grid], ['unit-routes', initialGraphics.routes], ['road-labels', initialGraphics.labels], ['hillshade', initialGraphics.shadows]] as const) map.setLayoutProperty(id, 'visibility', enabled ? 'visible' : 'none')
       map.setPixelRatio(Math.min(window.devicePixelRatio, initialGraphics.quality === 'performance' ? 1 : initialGraphics.quality === 'balanced' ? 1.5 : 2))
       if (latest.current.graphics.terrain) map.setTerrain({ source: 'elevation', exaggeration: 1 })
       for (const side of ['BLU', 'RED'] as Side[]) for (const base of [{ ...BASES[side], label: `${side} MOB` }, { ...AIRBASES[side], label: `${side} AIRBASE` }]) {
@@ -136,7 +137,7 @@ export function Battlefield(props: Props) {
         overlayStarted = true
         import('@/lib/game/renderer').then(({ BattlefieldRenderer }) => {
           if (disposed || !canvas.current) return
-          try { renderRef.current = new BattlefieldRenderer(map, canvas.current, () => displayState, () => ({ graphics: latest.current.graphics, perspective: latest.current.perspective, selected: latest.current.selected, active: latest.current.active }), fps => latest.current.onFPS(fps)); latest.current.onStatus('3D renderer online') }
+          try { renderRef.current = new BattlefieldRenderer(map, canvas.current, () => displayState, () => ({ graphics: latest.current.graphics, perspective: latest.current.perspective, selected: latest.current.selected, active: latest.current.active }), fps => latest.current.onFPS(fps));for(const packet of buildingPackets.values())renderRef.current.importBuildings(packet);latest.current.onStatus('3D renderer online') }
           catch { latest.current.onStatus('3D overlay unavailable · tactical map active') }
         }).catch(() => latest.current.onStatus('3D overlay unavailable · tactical map active'))
       }
@@ -200,7 +201,7 @@ export function Battlefield(props: Props) {
     const map = mapRef.current
     if (!map?.getLayer('buildings-3d')) return
     const graphics = effectiveGraphics(props.graphics)
-    for (const [id, enabled] of [['buildings-3d', graphics.buildings], ['buildings-3d-detail', graphics.buildings&&graphics.quality==='high'], ['tactical-grid', graphics.grid], ['unit-routes', graphics.routes], ['road-labels', graphics.labels], ['hillshade', graphics.shadows]] as const) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', enabled ? 'visible' : 'none')
+    for (const [id, enabled] of [['buildings-3d', false], ['buildings-3d-detail', false], ['tactical-grid', graphics.grid], ['unit-routes', graphics.routes], ['road-labels', graphics.labels], ['hillshade', graphics.shadows]] as const) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', enabled ? 'visible' : 'none')
     map.setTerrain(graphics.terrain ? { source: 'elevation', exaggeration: 1 } : null)
     map.setPixelRatio(Math.min(window.devicePixelRatio, graphics.quality === 'performance' ? 1 : graphics.quality === 'balanced' ? 1.5 : 2))
     renderRef.current?.resize()

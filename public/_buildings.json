@@ -1,0 +1,8 @@
+[
+  { "id": "residential-rowhouse", "name": "Residential rowhouse", "type": "residential", "width": 3, "depth": 2, "floors": 2, "seed": 114, "roof": "auto" },
+  { "id": "residential-apartments", "name": "Residential apartments", "type": "residential", "width": 5, "depth": 4, "floors": 6, "seed": 327, "roof": "auto" },
+  { "id": "commercial-office", "name": "Commercial office", "type": "commercial", "width": 6, "depth": 5, "floors": 9, "seed": 518, "roof": "flat" },
+  { "id": "commercial-storefront", "name": "Commercial storefront", "type": "commercial", "width": 5, "depth": 3, "floors": 2, "seed": 729, "roof": "flat" },
+  { "id": "industrial-warehouse", "name": "Industrial warehouse", "type": "industrial", "width": 8, "depth": 5, "floors": 1, "seed": 940, "roof": "gable" },
+  { "id": "industrial-workshop", "name": "Industrial workshop", "type": "industrial", "width": 5, "depth": 4, "floors": 2, "seed": 1251, "roof": "auto" }
+]
