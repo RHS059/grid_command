@@ -13,7 +13,9 @@ export function startAirfieldUpgrade(state: BattleState, side: Side) {
 }
 export function nextPurchase(state: BattleState, side: Side, pending: Requisition[]): Role | 'AIRFIELD_UPGRADE' | 'MOB_UPGRADE' | null {
   const own = state.units.filter(u => u.side === side && u.hp > 0 && !u.external)
-  const count = (roles: Role[]) => own.filter(u => roles.includes(u.role)).length + pending.filter(d => d.side === side && roles.includes(d.role)).length
+  // Depleted squads remain useful, but must not permanently satisfy the force
+  // structure quota after they can no longer provide a capture-sized element.
+  const count = (roles: Role[]) => own.filter(u => roles.includes(u.role)).reduce((n,u)=>n+(u.maxMembers?u.members/u.maxMembers:1),0) + pending.filter(d => d.side === side && roles.includes(d.role)).length
   const field = state.airfields[side], f = state.forces[side]
   let role: Role | undefined
   if (count(['RIFLE']) < 3) role = 'RIFLE'
