@@ -1,7 +1,17 @@
-import type { StyleSpecification } from 'maplibre-gl'
+import type { FilterSpecification, StyleSpecification } from 'maplibre-gl'
 import { JAMMER } from './theater'
-import { lngLat, type BattleState, type Perspective } from './types'
+import { MOB_YARD } from './mob'
+import { AIRBASES, BASES, lngLat, type BattleState, type Perspective } from './types'
 import type { FeatureCollection, Feature, Geometry } from 'geojson'
+
+const rectangle = (x:number,y:number,w:number,h:number) => [[lngLat({x:x-w,y:y-h}),lngLat({x:x+w,y:y-h}),lngLat({x:x+w,y:y+h}),lngLat({x:x-w,y:y+h}),lngLat({x:x-w,y:y-h})]]
+const baseBuildingMask: Feature<Geometry> = { type:'Feature', properties:{}, geometry:{ type:'MultiPolygon', coordinates:[
+  ...Object.values(BASES).map(p=>rectangle(p.x,p.y+(MOB_YARD.maxY+MOB_YARD.minY)/2,MOB_YARD.halfWidth+4,(MOB_YARD.maxY-MOB_YARD.minY)/2+4)),
+  ...Object.values(AIRBASES).map(p=>rectangle(p.x,p.y,88,610)),
+] } }
+const outsideBases = ['!', ['within', baseBuildingMask]] as FilterSpecification
+const prominentBuildings = ['all', outsideBases, ['>=', ['coalesce', ['get', 'render_height'], 6], 12]] as FilterSpecification
+const lowRiseBuildings = ['all', outsideBases, ['<', ['coalesce', ['get', 'render_height'], 6], 12]] as FilterSpecification
 
 export function tacticalStyle(): StyleSpecification {
   return {
@@ -28,8 +38,17 @@ export function tacticalStyle(): StyleSpecification {
       { id: 'road', type: 'line', source: 'openmaptiles', 'source-layer': 'transportation', filter: ['!=', ['get', 'class'], 'path'], paint: { 'line-color': '#405065', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, .5, 16, 7, 20, 58], 'line-opacity': .8 } },
       { id: 'highway', type: 'line', source: 'openmaptiles', 'source-layer': 'transportation', filter: ['match', ['get', 'class'], ['motorway', 'trunk'], true, false], paint: { 'line-color': '#536275', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 2, 16, 10, 20, 70], 'line-opacity': .85 } },
       { id: 'path', type: 'line', source: 'openmaptiles', 'source-layer': 'transportation', filter: ['==', ['get', 'class'], 'path'], paint: { 'line-color': '#47504f', 'line-width': ['interpolate', ['linear'], ['zoom'], 13, .5, 17, 2], 'line-opacity': .65 } },
-      { id: 'building-footprints', type: 'fill', source: 'openmaptiles', 'source-layer': 'building', paint: { 'fill-color': '#31465e', 'fill-opacity': .6 } },
-      { id: 'buildings-3d', type: 'fill-extrusion', source: 'openmaptiles', 'source-layer': 'building', minzoom: 13, paint: {
+      { id: 'building-footprints', type: 'fill', source: 'openmaptiles', 'source-layer': 'building', filter:outsideBases, paint: { 'fill-color': '#31465e', 'fill-opacity': .55 } },
+      // MapLibre batches and simplifies vector-tile geometry. The normal 3D
+      // layer retains the skyline while flat footprints preserve every low-rise
+      // building at the same low cost as the buildings-off baseline.
+      { id: 'buildings-3d', type: 'fill-extrusion', source: 'openmaptiles', 'source-layer': 'building', minzoom: 14.2, filter:prominentBuildings, paint: {
+        'fill-extrusion-color': ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], 6], 0, '#344f6c', 25, '#476685', 100, '#6686a1'],
+        'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 6], 'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0], 'fill-extrusion-opacity': 1, 'fill-extrusion-vertical-gradient': false,
+      } },
+      // High quality can add the omitted low-rise extrusions at inspection
+      // distance without drawing prominent buildings twice.
+      { id: 'buildings-3d-detail', type: 'fill-extrusion', source: 'openmaptiles', 'source-layer': 'building', minzoom:18.8, filter:lowRiseBuildings, paint: {
         'fill-extrusion-color': ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], 6], 0, '#344f6c', 25, '#476685', 100, '#6686a1'],
         'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 6], 'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0], 'fill-extrusion-opacity': 1, 'fill-extrusion-vertical-gradient': true,
       } },
@@ -51,3 +70,4 @@ export function zoneFeatures(state: BattleState, perspective: Perspective = 'OBS
   const zones=[...state.objectives.map(o=>({...o,radius:100})),...state.units.filter(u=>u.role==='UAV_JAMMER'&&u.hp>0&&!u.construction&&(perspective==='OBS'||u.side===perspective||u.spotted)).map(u=>({...u,owner:u.side,radius:JAMMER.radius}))]
   return { type: 'FeatureCollection', features: zones.map(o => ({ type: 'Feature', properties: { color: o.owner === 'BLU' ? '#54b7ff' : o.owner === 'RED' ? '#ee777b' : '#dbe7ef' }, geometry: { type: 'Polygon', coordinates: [Array.from({ length: 49 }, (_, i) => lngLat({ x: o.x + Math.cos(i * Math.PI / 24) * o.radius, y: o.y + Math.sin(i * Math.PI / 24) * o.radius }))] } })) }
 }
+
