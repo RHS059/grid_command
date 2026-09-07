@@ -16,7 +16,7 @@ import { createUnit } from './types'
 import { captureBodies } from './capture'
 import { nextPurchase, startAirfieldUpgrade } from './requisitions'
 import { AIRFIELD_TIERS } from './types'
-import { updateVehicleService, consumeFuel, missionFuel, syncDepotTotals } from './sustainment'
+import { authorizeMissionFuel, commissioningFuelPercent, commitMissionFuel, updateVehicleService, consumeFuel, syncDepotTotals } from './sustainment'
 import { aiInfantry, InfantryDirector, issueInfantryOrder } from './infantry-ai'
 import { Perception } from './perception'
 import { startObjectiveConstruction, updateObjectiveLogistics } from './objective-logistics'
@@ -68,7 +68,11 @@ function commanders() {
     for (const u of p.own) {
       if (u.crewBailed || u.servicing || u.emergency || u.deployment || missionAsset(u.role) || u.carrier || u.attachedSquad || (troopSeats(u.role)>0&&u.transport&&!['available','escort'].includes(u.transport.phase)) || state.units.some(c=>c.hp>0&&c.transport?.passengers?.includes(u.id)) || state.units.some(j=>j.hp>0&&j.construction?.builder===u.id) || ['COMMAND', 'PILOT', 'LOGISTICS'].includes(u.role)) continue
       if(u.orderRefusal?.target===p.target.id&&u.orderRefusal.retryAt>state.time)continue
-      if (isVehicle(u.role) && u.fuel < missionFuel(u, p.target, undefined, state)) { u.path = []; u.servicing = true; u.mission = 'RTB FOR SERVICE'; u.target = isAir(u.role) ? 'AIRFIELD' : 'MOB'; u.serviceStatus = 'INSUFFICIENT MISSION FUEL RESERVE'; refuse(u,'INSUFFICIENT_FUEL','mission fuel reserve is insufficient',45,p.target.id); continue }
+      if (isVehicle(u.role)) {
+        const fuelTarget=u.role==='RECON_UAV'?BASES[p.side==='BLU'?'RED':'BLU']:p.target,authorization=authorizeMissionFuel(u,fuelTarget,undefined,state)
+        if (!authorization.ok) { u.path=[];u.fuelCommitment=undefined;u.servicing=authorization.required<=100;u.mission=u.servicing?'RTB FOR SERVICE':'HOLD FOR FORWARD SERVICE';u.target=u.servicing?(isAir(u.role)?'AIRFIELD':'MOB'):p.target.id;u.serviceStatus=authorization.required>100?'FORWARD SERVICE REQUIRED':'INSUFFICIENT MISSION FUEL RESERVE';refuse(u,'INSUFFICIENT_FUEL',authorization.reason,45,p.target.id);continue }
+        commitMissionFuel(u,p.target.id,authorization.required,state.time)
+      }
       u.serviceStatus = undefined
       if (u.role === 'CAS_FIGHTER' || u.role === 'JET' || u.role === 'ATTACK_HELI') { if(u.airPhase === 'attack') { u.mission = 'CAS'; u.target = p.target.id; route(u,p.target) } continue }
       if (u.role === 'RECON_UAV') { u.mission = 'RECON'; u.target = 'Enemy MOB'; route(u, BASES[p.side === 'BLU' ? 'RED' : 'BLU']); continue }
@@ -107,7 +111,7 @@ function spawn(side: Side, role: Role) {
   const base = isAir(role) ? AIRBASES[side] : BASES[side]
   const staging=INFANTRY_STAGING_Y[side].flatMap(y=>INFANTRY_STAGING_X.map(x=>mobWorld(side,{x,y})))
   const p = isAir(role) ? base : nav.nearest(staging.find(candidate=>!state.units.some(u=>u.hp>0&&!isVehicle(u.role)&&distance(u,candidate)<14))||staging[serial%staging.length])
-  state.units.push(createUnit(side, role, `${side}-${serial++}`, p))
+  const unit=createUnit(side, role, `${side}-${serial++}`, p);if(isVehicle(role))unit.fuel=commissioningFuelPercent(role);state.units.push(unit)
   log(side, `${role.replaceAll('_', ' ')} assembled at ${isAir(role) ? 'airfield' : 'MOB'}.${isVehicle(role) ? ' Awaiting fuel and ammunition from depot stock.' : ' Ready for orders.'}`, 'logistics')
 }
 function startGarageDeployment(delivery: typeof deliveries[number]) {
@@ -120,7 +124,7 @@ function startGarageDeployment(delivery: typeof deliveries[number]) {
   })
   if(!staging)return false
   const inside=mobWorld(delivery.side,{x:MOB_GARAGE.x,y:MOB_GARAGE.insideY}),unit=createUnit(delivery.side,delivery.role,`${delivery.side}-garage-${serial++}`,inside)
-  mob.garageSerial=serial;delivery.unitId=unit.id;unit.heading=0;unit.fuel=5;unit.ammo=0;unit.servicing=false;unit.deployment='garage';unit.mission='GARAGE DOOR OPENING';unit.subcommand='MOB COMMISSIONING';unit.path=[]
+  mob.garageSerial=serial;delivery.unitId=unit.id;unit.heading=0;unit.fuel=commissioningFuelPercent(unit.role);unit.ammo=0;unit.servicing=false;unit.deployment='garage';unit.mission='GARAGE DOOR OPENING';unit.subcommand='MOB COMMISSIONING';unit.path=[]
   state.units.push(unit);mob.garage={unitId:unit.id,phase:'opening',since:state.time,staging:mobWorld(delivery.side,staging)}
   return true
 }
