@@ -5,9 +5,23 @@ import { assetPath } from '@/lib/asset-path'
 import { SIDE_COLOR, type Side } from './types'
 
 let soldierAsset:Promise<GLTF>|undefined
+let soldierWeaponAsset:Promise<GLTF>|undefined
+
+export type SoldierWeapon='RIFLE'|'MG'|'AT'|'AA_TEAM'
 
 /** One request and one parsed source rig for the whole page. */
 export function loadSoldierAsset(){return soldierAsset??=(new GLTFLoader()).loadAsync(assetPath('/models/soldier.glb'))}
+
+/** The separate weapon library is parsed once, then its named nodes are cloned per rig. */
+export function loadSoldierWeaponAsset(){return soldierWeaponAsset??=(new GLTFLoader()).loadAsync(assetPath('/models/soldier-weapons.glb'))}
+
+export function cloneSoldierWeapon(source:T.Object3D,weapon:SoldierWeapon){
+  const node=source.getObjectByName(`Weapon_${weapon}`)
+  if(!node)return undefined
+  const clone=node.clone(true)
+  clone.traverse(child=>{if(!(child instanceof T.Mesh))return;child.geometry=child.geometry.clone();child.material=Array.isArray(child.material)?child.material.map(material=>material.clone()):child.material.clone();child.castShadow=false;child.receiveShadow=false})
+  return clone
+}
 
 /** Each batch owns one disposable template; its instances share geometry and materials. */
 export function createSoldierTemplate(source:T.Object3D,side:Side){

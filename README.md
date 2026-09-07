@@ -51,14 +51,18 @@ play vehicle engines with adjustable speed, listener distance, and angle.
 
 On-foot personnel use `public/models/soldier.glb`, exported from the editable
 `assets/blender/soldier.blend` source. The shared rig includes separate boots,
-shins, hands and low-poly fingers plus idle, walk, fire, cover, peek, throw,
-drag, crouch, prone, downed and dead animation clips. Role equipment is stored
-as named gear nodes in the same asset and team markings are recolored at load.
+shins, hands and low-poly fingers. Its clips include ready and role-specific
+passive idles, the updated walk, fire, cover and cover-shoot poses, the peek
+transition, AT arm IK, throw, drag, crouch, prone, downed and dead. Handheld
+weapons live separately in `assets/blender/soldier-weapons.blend` and export to
+`public/models/soldier-weapons.glb`; the runtime attaches the appropriate model
+to the rig's `weapon` bone. Team markings are recolored at load.
 
-Regenerate both files with Blender 4.5 LTS in background mode:
+Export the hand-authored soldier and rebuild the separate weapon library with
+Blender 4.5 LTS in background mode:
 
 ```powershell
-blender --background --python tools/blender/build_soldier.py
+blender --background assets/blender/soldier.blend --python tools/blender/build_soldier.py
 ```
 
 The GLB is loaded once and pooled for nearby battlefield personnel and Model
