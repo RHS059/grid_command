@@ -8,7 +8,7 @@ import { SoldierBatch, vehicleGeometry } from './unit-models'
 import { createAircraft, animateAircraft, disposeModel } from './aircraft-models'
 import { createSupportModel, isSupportModel, animateSupport } from './support-models'
 import type { Unit } from './types'
-import { createBase, conformBase } from './base-models'
+import { airfieldPlatform, createBase, conformBase } from './base-models'
 
 export class BattlefieldRenderer {
   private frustum = new T.Frustum()
@@ -44,7 +44,7 @@ export class BattlefieldRenderer {
     if(process.env.NODE_ENV==='development') (window as unknown as {gridDebug:BattlefieldRenderer}).gridDebug=this
   }
   resize(){this.map.triggerRepaint()}
-  altitude(p:{x:number;y:number;id:string},now:number){if(!this.map.getTerrain())return 0;for(const {model,point}of this.bases){const x=p.x-point.x,y=p.y-point.y,inside=model.name==='MOB'?Math.abs(x)<MOB_YARD.halfWidth&&y>MOB_YARD.minY&&y<MOB_YARD.maxY:(Math.abs(x+48)<17&&Math.abs(y)<600)||(model.userData.tier===3&&Math.abs(x+118)<17&&Math.abs(y)<600)||(Math.abs(x)<85&&Math.abs(y)<210);if(inside&&Number.isFinite(model.userData.platformHeight))return model.userData.platformHeight+1.3}const old=this.ground.get(p.id);if(old&&now-old.time<600&&Math.hypot(old.x-p.x,old.y-p.y)<5)return old.z;const z=(this.map.queryTerrainElevation(lngLat(p))||0)+this.map.getCameraTargetElevation();this.ground.set(p.id,{x:p.x,y:p.y,z,time:now});return z}
+  altitude(p:{x:number;y:number;id:string},now:number){if(!this.map.getTerrain())return 0;for(const {model,point}of this.bases){const x=p.x-point.x,y=p.y-point.y,platform=airfieldPlatform(model.userData.tier),inside=model.name==='MOB'?Math.abs(x)<MOB_YARD.halfWidth&&y>MOB_YARD.minY&&y<MOB_YARD.maxY:Math.abs(x-platform.x)<platform.width/2&&Math.abs(y)<platform.depth/2;if(inside&&Number.isFinite(model.userData.platformHeight))return model.userData.platformHeight+1.3}const old=this.ground.get(p.id);if(old&&now-old.time<600&&Math.hypot(old.x-p.x,old.y-p.y)<5)return old.z;const z=(this.map.queryTerrainElevation(lngLat(p))||0)+this.map.getCameraTargetElevation();this.ground.set(p.id,{x:p.x,y:p.y,z,time:now});return z}
   render(matrix:number[]){if(this.disposed||this.getSettings().active===false){this.previous=0;return;}const now=performance.now(),state=this.getState(),{graphics,perspective,selected}=this.getSettings();if(this.previous)this.frames.push(now-this.previous);this.previous=now;if(now-this.report>1500&&this.frames.length){this.onFPS(Math.round(1000/(this.frames.reduce((a,b)=>a+b,0)/this.frames.length)));this.frames=[];this.report=now}
     if(state.time!==this.snapshotTime){this.snapshotTime=state.time;this.arrival=now}const time=state.time+(state.paused?0:Math.min(.1,(now-this.arrival)/1000)*state.speed)
     // MapLibre 4 custom-layer matrices use a target-relative vertical origin; simulation and cached models use sea-level elevations.
