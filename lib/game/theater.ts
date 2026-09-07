@@ -20,4 +20,8 @@ export const SECTOR_SIZE = 2000
 export const sectorKey = (p: Point) => `${Math.floor(p.x / SECTOR_SIZE)},${Math.floor(p.y / SECTOR_SIZE)}`
 export const sectorOrigin = (key: string): Point => { const [x,y] = key.split(',').map(Number); return { x: x * SECTOR_SIZE, y: y * SECTOR_SIZE } }
 export const RUNWAY = { spacing: 70, x: -48, halfLength: 600, apronX: 8, apronY: -100 }
+export const AIRFIELD_TRUCK_LOADING = [
+  { x: 30, y: -145 }, { x: 46, y: -145 }, { x: 62, y: -145 }, { x: 78, y: -145 },
+] as const
 export const JAMMER = { radius: 600, cost: 200, buildSeconds: 15, cap: 3 }
+

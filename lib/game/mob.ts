@@ -18,10 +18,19 @@ export const MOB_GARAGE_STAGING = [
   { x: -62, y: 28 }, { x: -42, y: 28 },
   { x: -62, y: 48 }, { x: -42, y: 48 },
 ] as const
+export const MOB_TRUCK_HOLDING = [
+  { x: 48, depth: 0 }, { x: 72, depth: 0 },
+  { x: 48, depth: 34 }, { x: 72, depth: 34 },
+  { x: 48, depth: 68 }, { x: 72, depth: 68 },
+] as const
 export const mobTier = (state: BattleState, side: Side): MobTier => state.mobs?.[side]?.tier ?? 1
 export const mobDock = (slot: number): Point => ({ x: 15 + slot * 7, y: 57 })
 export const mobStorage = (slot: number): Point => ({ x: 15 + slot * 7, y: 16 })
 export const mobWorld = (side: Side, point: Point): Point => ({ x: BASES[side].x + point.x, y: BASES[side].y + point.y })
+export const mobTruckHolding = (side: Side, slot: number) => {
+  const hold=MOB_TRUCK_HOLDING[slot]
+  return mobWorld(side,{x:hold.x,y:side==='BLU'?120+hold.depth:-20-hold.depth})
+}
 export const mobHelipad = (side: Side) => mobWorld(side, MOB_HELIPAD)
 export const onMobHelipad = (side: Side, point: Point) => Math.hypot(point.x - mobHelipad(side).x, point.y - mobHelipad(side).y) <= MOB_HELIPAD.radius
 export const mobHelipadRise = (tier: MobTier) => tier === 3 ? MOB_HELIPAD.rise : .08
