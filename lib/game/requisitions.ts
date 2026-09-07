@@ -1,5 +1,6 @@
 import { MOB_TIERS, mobTier, requisitionCost, type MobTier } from './mob'
-import { AIRFIELD_TIERS, type AirfieldTier, type BattleState, type Role, type Side } from './types'
+import { fuelEconomy } from './sustainment'
+import { AIRFIELD_TIERS, isVehicle, type AirfieldTier, type BattleState, type Role, type Side } from './types'
 export interface Requisition { side: Side; role: Role; due: number }
 export function startAirfieldUpgrade(state: BattleState, side: Side) {
   const field = state.airfields[side], force = state.forces[side]
@@ -37,6 +38,10 @@ export function nextPurchase(state: BattleState, side: Side, pending: Requisitio
   else role = (['APC', 'TRANSPORT_HELI', 'TANK', 'CAS_FIGHTER', 'ATTACK_HELI', 'JET', 'IFV', 'HEAVY_LIFT_HELI'] as Role[]).find(r => count([r]) === 0)
   if (!role || f.queue >= 4) return null
   if (f.sp < requisitionCost(state,side,role) + 200) { f.purchase = `Saving for ${role.replaceAll('_', ' ')} · ${requisitionCost(state,side,role).toLocaleString()} SP + 200 reserve`; return null }
+  if (isVehicle(role)) {
+    const economy = fuelEconomy(state, side, pending.filter(d => d.side === side && isVehicle(d.role)).map(d => d.role), role)
+    if (economy.available < 0) { f.purchase = `Fuel command holds ${role.replaceAll('_', ' ')} · ${Math.ceil(-economy.available)} fuel short of commissioning reserve`; return null }
+  }
   return role
 }
 

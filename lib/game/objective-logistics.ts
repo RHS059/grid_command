@@ -99,7 +99,7 @@ export function updateObjectiveLogistics(state: BattleState, nav: Navigation, lo
 
   // AI constructs one missing facility per side per command interval.
   if (state.tick % 600 === 1) for (const side of ['BLU', 'RED'] as const) {
-    const choices = state.objectives.filter(o => o.owner === side && !o.contested).sort((a, b) => distance(BASES[side], a) - distance(BASES[side], b) || a.id.localeCompare(b.id))
+    const choices = state.objectives.filter(o => o.owner === side && !o.contested).sort((a, b) => distance(BASES[side], b) - distance(BASES[side], a) || a.id.localeCompare(b.id))
     const choice = choices.flatMap(o => (['helipad', 'vehicleBay'] as const).map(kind => ({ o, kind }))).find(({ o, kind }) => !o.facilities[kind] || o.facilities[kind]!.hp < 40)
     if (choice && startObjectiveConstruction(state, side, choice.o.id, choice.kind)) log?.(side, `Construction started at objective ${choice.o.id}.`)
   }
@@ -132,8 +132,9 @@ export function updateObjectiveLogistics(state: BattleState, nav: Navigation, lo
   for (const side of ['BLU', 'RED'] as const) {
     const available=state.depots[side].mob
     const restockable=(o:Objective)=>(['fuel','ammo','repair'] as const).reduce((n,key)=>n+Math.min(available[key],OBJECTIVE_STOCK_CAPS[key]-o.stock[key]),0)
+    const priority=(o:Objective)=>state.units.filter(u=>u.side===side&&u.hp>0&&isVehicle(u.role)&&(u.servicing||!!u.fuelCommitment)&&distance(u,o)<5000).length*10000+distance(BASES[side],o)+restockable(o)
     const objective = state.objectives.filter(o => o.owner === side && !o.contested && !o.restock && Object.keys(o.facilities).length && stockTotal(o.stock) < OBJECTIVE_STOCK_TOTAL_CAP && restockable(o)>=100)
-      .sort((a, b) => stockTotal(a.stock) - stockTotal(b.stock) || a.id.localeCompare(b.id))[0]
+      .sort((a, b) => priority(b) - priority(a) || stockTotal(a.stock) - stockTotal(b.stock) || a.id.localeCompare(b.id))[0]
     if (!objective) continue
     const truck = state.units.filter(u => u.side === side && u.role === 'TRUCK' && u.hp > 0 && !u.servicing && u.transport?.phase === 'returning' && !u.transport.objectiveId && distance(u, BASES[side]) < 260)
       .sort((a, b) => a.id.localeCompare(b.id))[0]

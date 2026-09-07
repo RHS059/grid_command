@@ -1,7 +1,7 @@
 import { createUnit, prepareUnit, troopSeats, isVehicle, isAir, type BattleState, type Side, type Unit } from './types'
 import { Navigation } from './navigation'
 import { distance, travel } from './movement'
-import { missionFuel, serviceBase } from './sustainment'
+import { authorizeMissionFuel, commitMissionFuel, serviceBase } from './sustainment'
 import { mobHelipad, mobHelipadHold, releaseMobHelipad, reserveMobHelipad } from './mob'
 
 export const UNLOAD_INTERVAL = 1
@@ -31,8 +31,9 @@ export function transportBlockReason(state: BattleState, squad: Unit) {
   const pool = state.units.filter(c => c.side === squad.side && !c.external && (automaticCarrier(c) || attached.includes(c)) && troopSeats(c.role) >= activeTroops(squad))
   const healthy = pool.filter(c => c.hp > 0 && !c.crewBailed && !c.emergency)
   if (!healthy.length) return 'no operational personnel carrier is available'
-  const fueled = healthy.filter(c => c.fuel >= missionFuel(c, destination, squad, state))
-  if (!fueled.length) return 'available personnel carriers lack mission fuel'
+  const plans = healthy.map(carrier => ({ carrier, authorization: authorizeMissionFuel(carrier, destination, squad, state) }))
+  const fueled = plans.filter(plan => plan.authorization.ok).map(plan => plan.carrier)
+  if (!fueled.length) return plans.every(plan => plan.authorization.required > 100) ? 'route requires a stocked forward transport service point' : 'available personnel carriers lack mission fuel'
   if (!fueled.some(c => !c.servicing && (!c.transport || ['available', 'escort'].includes(c.transport.phase)))) return 'personnel carriers are committed or servicing'
   const assembled=state.units.filter(other=>transportSquad(other)&&!other.carrier&&other.side===squad.side&&other.target===squad.target&&distance(other,squad)<=150).reduce((total,other)=>total+activeTroops(other),0)
   if (fueled.every(c => c.role === 'TRANSPORT_HELI') && assembled < 12) return 'fewer than 12 troops are assembled for helicopter transport'
@@ -59,7 +60,7 @@ export function nearestPersonnelCarrier(state: BattleState, squad: Unit, range =
   const destination = destinationFor(state, squad) || squad
   return state.units.filter(carrier => carrier.side === squad.side && carrier.hp > 0 && !carrier.crewBailed && !carrier.external && !carrier.servicing && !carrier.emergency && troopSeats(carrier.role) >= activeTroops(squad)
     && (!carrier.attachedSquad || carrier.attachedSquad === squad.id) && (!carrier.transport || ['available', 'escort'].includes(carrier.transport.phase)) && !carrier.transport?.passengers?.length
-    && carrier.fuel >= missionFuel(carrier, destination, squad, state) && distance(carrier, squad) <= range).sort((a, b) => distance(a, squad) - distance(b, squad) || a.id.localeCompare(b.id))[0]
+    && authorizeMissionFuel(carrier, destination, squad, state).ok && distance(carrier, squad) <= range).sort((a, b) => distance(a, squad) - distance(b, squad) || a.id.localeCompare(b.id))[0]
 }
 export function manualGetIn(state: BattleState, side: Side, squadId: string, carrierId?: string) {
   const squad = state.units.find(u => u.id === squadId)
@@ -71,6 +72,7 @@ export function manualGetIn(state: BattleState, side: Side, squadId: string, car
   carrier.attachedSquad = squad.id
   squad.attachedVehicles = [...new Set([...(squad.attachedVehicles || []), carrier.id])]
   carrier.transport = { phase: 'pickup', since: state.time, destination: { ...destination }, passengers: [squad.id], home: { ...serviceBase(carrier, state, destination) }, manual: true, mobPad: squad.target === 'MOB' }
+  commitMissionFuel(carrier,squad.target,authorizeMissionFuel(carrier,destination,squad,state).required,state.time)
   carrier.path = []; carrier.target = squad.target; squad.path = []; squad.mission = 'WAITING FOR TRANSPORT'
   return true
 }
@@ -139,12 +141,13 @@ export function assignTransports(state: BattleState, nav?: Navigation) {
     if (!destination || reserved.has(squad.id) || distance(squad, destination) <= MAX_WALK_DISTANCE) continue
     const carrier = state.units.filter(c => c.side === squad.side && c.hp > 0 && !c.crewBailed && !c.external && !c.servicing && !c.emergency && troopSeats(c.role) >= activeTroops(squad)
       && (c.attachedSquad === squad.id || squad.attachedVehicles?.includes(c.id)) && (!c.transport || ['available', 'escort'].includes(c.transport.phase))
-      && !c.transport?.passengers?.length && distance(c, squad) <= 150 && c.fuel >= missionFuel(c, destination, squad, state))
+      && !c.transport?.passengers?.length && distance(c, squad) <= 150 && authorizeMissionFuel(c, destination, squad, state).ok)
       .sort((a, b) => distance(a, squad) - distance(b, squad) || a.id.localeCompare(b.id))[0]
     if (!carrier) continue
     carrier.attachedSquad = squad.id
     squad.attachedVehicles = [...new Set([...(squad.attachedVehicles || []), carrier.id])]
     carrier.transport = { phase: 'pickup', since: state.time, destination: { ...destination }, passengers: [squad.id], home: { ...serviceBase(carrier, state, destination) }, manual: true, autoDismount: true, mobPad: squad.target === 'MOB' }
+    commitMissionFuel(carrier,squad.target,authorizeMissionFuel(carrier,destination,squad,state).required,state.time)
     carrier.path = []; carrier.target = squad.target; squad.path = []; squad.mission = 'WAITING FOR TRANSPORT'; reserved.add(squad.id)
   }
   const available = state.units.filter(c => c.hp > 0 && !c.crewBailed && !c.external && !c.servicing && !c.emergency && !c.attachedSquad && automaticCarrier(c) && (!c.transport || c.transport.phase === 'available'))
@@ -153,7 +156,7 @@ export function assignTransports(state: BattleState, nav?: Navigation) {
     const seats = troopSeats(carrier.role)
     for (const lead of [...eligible].sort((a, b) => distance(carrier, a) - distance(carrier, b) || a.id.localeCompare(b.id))) {
       const destination = destinationFor(state, lead)
-      if (reserved.has(lead.id) || lead.side !== carrier.side || !destination || distance(lead, destination) <= MAX_WALK_DISTANCE || carrier.fuel < missionFuel(carrier, destination, lead, state)) continue
+      if (reserved.has(lead.id) || lead.side !== carrier.side || !destination || distance(lead, destination) <= MAX_WALK_DISTANCE || !authorizeMissionFuel(carrier, destination, lead, state).ok) continue
       let occupied = 0
       const passengers: Unit[] = []
       for (const squad of [lead, ...eligible.filter(s => s !== lead)]) {
@@ -164,6 +167,7 @@ export function assignTransports(state: BattleState, nav?: Navigation) {
       if (occupied < (carrier.role === 'TRANSPORT_HELI' ? seats / 2 : 1)) continue
       for (const squad of passengers) { reserved.add(squad.id); squad.path = []; squad.mission = 'WAITING FOR TRANSPORT' }
       carrier.transport = { phase: 'pickup', since: state.time, destination: { ...destination }, passengers: passengers.map(s => s.id), home: { ...serviceBase(carrier, state, destination) }, mobPad: lead.target === 'MOB' }
+      commitMissionFuel(carrier,lead.target,authorizeMissionFuel(carrier,destination,lead,state).required,state.time)
       carrier.path = []; carrier.target = lead.target
       break
     }

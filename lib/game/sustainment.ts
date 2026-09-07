@@ -1,30 +1,67 @@
-import { AIRBASES, BASES, CATALOG, isAir, isArmored, isVehicle, troopSeats, type BattleState, type Point, type Role, type Stock, type Unit } from './types'
+import { AIRBASES, BASES, CATALOG, isAir, isArmored, isVehicle, troopSeats, type BattleState, type Point, type Role, type Side, type Stock, type Unit } from './types'
 import { distance, travel } from './movement'
 import type { Navigation } from './navigation'
 import { nearestObjectiveService, nearestOperationalObjectiveService, objectiveCanService, objectiveFacilityPoint } from './objective-logistics'
 
 export const DT = .05
+export const FUEL_RESERVE_PERCENT = 15
+export const OPERATIONAL_RANGE_METERS: Partial<Record<Role, number>> = {
+  TRUCK: 260000, TROOP_TRUCK: 260000, FORKLIFT: 40000,
+  APC: 180000, CANNON_APC: 180000, IFV: 180000, TANK: 140000,
+  TRANSPORT_HELI: 280000, HEAVY_LIFT_HELI: 260000, ATTACK_HELI: 220000,
+  RECON_UAV: 240000, CAS_FIGHTER: 600000, JET: 600000, CARGO_PLANE: 800000,
+}
+export const commissioningFuelPercent = (role: Role) => isAir(role) ? 40 : 25
 export function vehicleResources(role: Role) {
   const air = isAir(role), armor = isArmored(role)
   const heavy = ['JET', 'CARGO_PLANE', 'HEAVY_LIFT_HELI'].includes(role)
+  const range = OPERATIONAL_RANGE_METERS[role] || 100000
   return { fuel: heavy ? 2200 : air ? 900 : armor ? 800 : 180,
     ammo: CATALOG[role].power ? (air ? 1200 : armor ? 600 : 100) : 0,
     repair: heavy ? 1600 : air ? 1000 : armor ? 800 : 120,
-    burn: role === 'UAV_JAMMER' ? 0 : heavy ? .1 : air ? .08 : armor ? .05 : .032,
+    burn: role === 'UAV_JAMMER' ? 0 : CATALOG[role].speed / range * 100,
     serviceRate: 5 }
 }
 export const serviceBase = (u: Unit, state?: BattleState, from: Point = u) => {
   const base = isAir(u.role) ? AIRBASES[u.side] : BASES[u.side]
   if (!state) return base
   const specs = vehicleResources(u.role)
-  const forward = nearestObjectiveService(state, u, from, {fuel: specs.fuel, repair: 0})
+  const forward = nearestObjectiveService(state, u, from, {fuel: specs.fuel * .25, repair: 0})
   return forward && distance(from, forward) < distance(from, base) ? objectiveFacilityPoint(forward, isAir(u.role) ? 'helipad' : 'vehicleBay') : base
 }
 export function missionFuel(u: Unit, destination: Point, via?: Point, state?: BattleState) {
   const recovery = serviceBase(u, state, destination)
   const route = (via ? distance(u, via) + distance(via, destination) : distance(u, destination)) + distance(destination, recovery)
-  const seconds = route / Math.max(1, CATALOG[u.role].speed) * (isAir(u.role) ? 1.15 : 1.8) + 120
-  return vehicleResources(u.role).burn * seconds + 10
+  const seconds = route / Math.max(1, CATALOG[u.role].speed) * (isAir(u.role) ? 1.08 : 1.35) + 60
+  return vehicleResources(u.role).burn * seconds + FUEL_RESERVE_PERCENT
+}
+export function authorizeMissionFuel(u: Unit, destination: Point, via?: Point, state?: BattleState) {
+  const required = missionFuel(u, destination, via, state)
+  if (required > 100) return { ok: false, required, reason: 'route exceeds safe operational range; establish and stock forward service' }
+  if (u.fuel + .001 < required) return { ok: false, required, reason: `mission requires ${Math.ceil(required)}% fuel including ${FUEL_RESERVE_PERCENT}% recovery reserve` }
+  return { ok: true, required, reason: '' }
+}
+export function commitMissionFuel(u: Unit, target: string, required: number, time: number) { u.fuelCommitment = { target, required, reservedAt: time } }
+export function fuelOnHand(state: BattleState, side: Side) {
+  const depot = state.depots[side]
+  return depot.airfield.fuel + depot.pending.fuel + depot.mob.fuel + state.objectives.filter(o => o.owner === side).reduce((n, o) => n + o.stock.fuel, 0)
+}
+export function inboundFuel(state: BattleState, side: Side) {
+  return state.units.filter(u => u.side === side && u.external && u.hp > 0).reduce((n, u) => n + (u.transport?.manifest?.fuel || 0), 0)
+}
+export function commissioningFuelStock(role: Role) {
+  const specs = vehicleResources(role)
+  return specs.fuel * (1 - commissioningFuelPercent(role) / 100)
+}
+export function fuelEconomy(state: BattleState, side: Side, queued: Role[] = [], candidate?: Role) {
+  const own = state.units.filter(u => u.side === side && u.hp > 0 && isVehicle(u.role) && !u.external)
+  const service = own.reduce((n, u) => n + (u.servicing ? Math.max(0, 100 - u.fuel) / 100 * vehicleResources(u.role).fuel : 0), 0)
+  const queuedFuel = queued.reduce((n, role) => n + commissioningFuelStock(role), 0)
+  const protectedFuel = 400 + own.reduce((n, u) => n + vehicleResources(u.role).fuel * (['TRUCK','TROOP_TRUCK','TRANSPORT_HELI','HEAVY_LIFT_HELI'].includes(u.role) ? .18 : .06), 0)
+  const candidateFuel = candidate ? commissioningFuelStock(candidate) + vehicleResources(candidate).fuel * FUEL_RESERVE_PERCENT / 100 : 0
+  const depot=state.depots[side],baseOnHand=depot.airfield.fuel+depot.pending.fuel+depot.mob.fuel,onHand=fuelOnHand(state,side),forwardFuel=onHand-baseOnHand
+  const inbound = inboundFuel(state, side), committed = service + queuedFuel
+  return { onHand, baseOnHand, forwardFuel, inbound, committed, protectedFuel, candidateFuel, available: baseOnHand + inbound - committed - protectedFuel - candidateFuel }
 }
 export function transferStock(from: Stock, to: Stock, fraction = 1) {
   for (const key of ['fuel', 'ammo', 'repair'] as const) { const amount = from[key] * Math.max(0, Math.min(1, fraction)); from[key] -= amount; to[key] += amount }
@@ -79,6 +116,7 @@ export function updateVehicleService(state: BattleState, nav: Navigation) {
     const baseReserve = vehicleResources(u.role).burn * (distance(u, fixedBase) / Math.max(1, CATALOG[u.role].speed) * (isAir(u.role) ? 1.2 : 1.8) + 45) + 8
     if (u.fuel < reserve || (armed && u.ammo < 12) || u.hp < 65) u.servicing = true
     if (!u.servicing) continue
+    u.fuelCommitment = undefined
     if(!u.serviceObjective&&forward&&forwardPoint&&distance(u,forwardPoint)<distance(u,fixedBase)){u.serviceObjective=forward.id;forward.facilities[isAir(u.role)?'helipad':'vehicleBay']!.occupant=u.id}
     if(!u.serviceObjective&&u.fuel<baseReserve){const fallback=nearestOperationalObjectiveService(state,u);if(fallback){const point=objectiveFacilityPoint(fallback,isAir(u.role)?'helipad':'vehicleBay');if(distance(u,point)<distance(u,fixedBase)){u.serviceObjective=fallback.id;fallback.facilities[isAir(u.role)?'helipad':'vehicleBay']!.occupant=u.id}}}
     const objective = u.serviceObjective ? state.objectives.find(o => o.id === u.serviceObjective && objectiveCanService(o, u)) : undefined

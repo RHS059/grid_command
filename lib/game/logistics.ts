@@ -1,16 +1,22 @@
 import { completeMobUpgrades, mobHelipad, mobHelipadHold, releaseMobHelipad, reserveMobHelipad } from './mob'
 import { updateMobTruck } from './mob-logistics'
-import { AIRBASES, AIRFIELD_TIERS, BASES, createUnit, emptyStock, stockTotal, type AirfieldTier, type BattleState, type Role, type Side, type Stock, type Unit } from './types'
+import { AIRBASES, AIRFIELD_TIERS, BASES, createUnit, emptyStock, isAir, isVehicle, stockTotal, type AirfieldTier, type BattleState, type Role, type Side, type Stock, type Unit } from './types'
 import { Navigation } from './navigation'
 import { AIRFIELD_TRUCK_LOADING, RUNWAY } from './theater'
 import { distance, travel } from './movement'
-import { missionFuel, syncDepotTotals, transferStock } from './sustainment'
+import { fuelEconomy, missionFuel, syncDepotTotals, transferStock, vehicleResources } from './sustainment'
 
 export const SUPPLY_CADENCE = 180
 const airfieldTruckSlotOwner = (state: BattleState, side: Side, slot: number) => state.units.filter(u=>u.side===side&&u.role==='TRUCK'&&u.hp>0&&u.transport?.airfieldSlot===slot&&['pickup','loading','returning'].includes(u.transport.phase)).sort((a,b)=>a.id.localeCompare(b.id))[0]
-export const supplyManifest = (tier: AirfieldTier = 1): Stock => {
+export const supplyManifest = (tier: AirfieldTier = 1, fuelShare = .55): Stock => {
   const scale = AIRFIELD_TIERS[tier].supplyMultiplier / AIRFIELD_TIERS[tier].runways
-  return { fuel: 1200 * scale, ammo: 1500 * scale, repair: 600 * scale }
+  const total = 3300 * scale, share = Math.max(.5, Math.min(.72, fuelShare))
+  return { fuel: total * share, ammo: total * (1 - share) * 2 / 3, repair: total * (1 - share) / 3 }
+}
+const strategicSupplyManifest = (state: BattleState, side: Side, tier: AirfieldTier) => {
+  const economy = fuelEconomy(state, side), coverage = economy.baseOnHand + economy.inbound - economy.committed
+  const target = Math.max(1, economy.protectedFuel)
+  return supplyManifest(tier, coverage < target ? .72 : coverage < target * 1.75 ? .62 : .55)
 }
 export function completeAirfieldUpgrades(state: BattleState) {
   for (const side of ['BLU', 'RED'] as const) {
@@ -28,9 +34,20 @@ function externalAsset(state: BattleState, side: Side, role: Role, phase: string
   state.units.push(u)
   return u
 }
-const exportable = (stock: Stock, multiplier = 1): Stock => ({ fuel: Math.max(0, stock.fuel - 300 * multiplier), ammo: Math.max(0, stock.ammo - 375 * multiplier), repair: Math.max(0, stock.repair - 150 * multiplier) })
-function load(u: Unit, stock: Stock, capacity: number, fraction = 1, reserveMultiplier = 1) {
-  const available = u.external && u.role === 'TRUCK' ? exportable(stock, reserveMultiplier) : { ...stock }, manifest = emptyStock(), total = stockTotal(available)
+const exportable = (stock: Stock, reserve: Stock): Stock => ({ fuel: Math.max(0, stock.fuel - reserve.fuel), ammo: Math.max(0, stock.ammo - reserve.ammo), repair: Math.max(0, stock.repair - reserve.repair) })
+function airfieldReserve(state: BattleState, side: Side): Stock {
+  const aircraft = state.units.filter(u => u.side === side && u.hp > 0 && !u.external && isAir(u.role))
+  const ground = state.units.filter(u => u.side === side && u.hp > 0 && !u.external && isVehicle(u.role) && !isAir(u.role))
+  const groundTarget = 700 + ground.reduce((n, u) => n + vehicleResources(u.role).fuel * .12, 0)
+  const mobShort = state.depots[side].mob.fuel < groundTarget
+  return {
+    fuel: mobShort ? 350 : Math.max(350, aircraft.reduce((n, u) => n + vehicleResources(u.role).fuel * .2, 0)),
+    ammo: Math.max(300, aircraft.reduce((n, u) => n + vehicleResources(u.role).ammo * .08, 0)),
+    repair: Math.max(150, aircraft.reduce((n, u) => n + vehicleResources(u.role).repair * .08, 0)),
+  }
+}
+function load(u: Unit, stock: Stock, capacity: number, fraction = 1, reserve?: Stock) {
+  const available = u.external && u.role === 'TRUCK' ? exportable(stock, reserve || emptyStock()) : { ...stock }, manifest = emptyStock(), total = stockTotal(available)
   transferStock(available, manifest, total > 0 ? Math.min(fraction, capacity / total) : 0)
   for (const key of ['fuel', 'ammo', 'repair'] as const) stock[key] -= manifest[key]
   u.transport!.manifest = manifest; u.transport!.cargo = stockTotal(manifest)
@@ -57,14 +74,14 @@ export function scheduleSupplies(state: BattleState) {
         const plane = externalAsset(state, side, 'CARGO_PLANE', 'approach')
         plane.transport!.runway = runway
         plane.x = AIRBASES[side].x + RUNWAY.x - runway * RUNWAY.spacing; plane.y = AIRBASES[side].y - 2100; plane.altitude = 180
-        plane.transport!.manifest = supplyManifest(tier); plane.transport!.cargo = stockTotal(plane.transport!.manifest)
+        plane.transport!.manifest = strategicSupplyManifest(state, side, tier); plane.transport!.cargo = stockTotal(plane.transport!.manifest)
         own.push(plane); launched = true
       }
       if (launched) state.nextSupply[side] = state.time + SUPPLY_CADENCE
     }
     for (const role of ['FORKLIFT', 'TRUCK'] as const) {
       const capacity = role === 'FORKLIFT' ? specs.forklifts : specs.trucks
-      const stock = role === 'FORKLIFT' ? state.depots[side].pending : exportable(state.depots[side].airfield, specs.supplyMultiplier)
+      const stock = role === 'FORKLIFT' ? state.depots[side].pending : exportable(state.depots[side].airfield, airfieldReserve(state, side))
       if (stockTotal(stock) < (role === 'FORKLIFT' ? 1 : 150)) continue
       for (let i = own.filter(u => u.external && u.role === role).length; i < capacity; i++) {
         const loadingSlot=role==='TRUCK'?AIRFIELD_TRUCK_LOADING.findIndex((_,index)=>!airfieldTruckSlotOwner(state,side,index)):-1
@@ -111,7 +128,7 @@ export function updateSupplyMissions(state: BattleState, nav: Navigation) {
       else if (m.phase === 'taxi-out' && travel(u, at(runwayX, -RUNWAY.halfLength), nav, state.time, 7, 0)) phase('takeoff')
       else if (m.phase === 'takeoff' && travel(u, at(runwayX, RUNWAY.halfLength), nav, state.time, 65, 45)) phase('departure')
       else if (m.phase === 'departure' && travel(u, at(runwayX, -2100), nav, state.time, 85, 180)) { if (u.external) retired.add(u.id); else phase('departed') }
-      else if (m.phase === 'departed' && freeRunway !== undefined && state.time - m.since >= SUPPLY_CADENCE) { m.runway = freeRunway; m.shipment = `${u.side}-owned-${++state.shipmentSerial}`; m.manifest = supplyManifest(state.airfields[u.side].tier); m.cargo = stockTotal(m.manifest); phase('approach') }
+      else if (m.phase === 'departed' && freeRunway !== undefined && state.time - m.since >= SUPPLY_CADENCE) { m.runway = freeRunway; m.shipment = `${u.side}-owned-${++state.shipmentSerial}`; m.manifest = strategicSupplyManifest(state,u.side,state.airfields[u.side].tier); m.cargo = stockTotal(m.manifest); phase('approach') }
     } else if (u.role === 'FORKLIFT') {
       const pickup = m.location === 'AIRBASE' ? at(18, -110) : { x: home.x - 25, y: home.y + 22 }, drop = m.location === 'AIRBASE' ? at(62, -110) : { x: home.x + 24, y: home.y + 23 }
       if (m.phase === 'waiting' && stockTotal(m.location === 'AIRBASE' ? depot.pending : depot.mob) > 0) phase('pickup')
@@ -135,7 +152,7 @@ export function updateSupplyMissions(state: BattleState, nav: Navigation) {
       }
       else if (m.phase === 'loading') {
         if(!helicopter){const slot=m.airfieldSlot;if(slot===undefined||slot<0||slot>=AIRFIELD_TRUCK_LOADING.length||airfieldTruckSlotOwner(state,u.side,slot)!==u){m.airfieldSlot=undefined;phase('pickup');continue}const bay=AIRFIELD_TRUCK_LOADING[slot];if(distance(u,at(bay.x,bay.y))>2){phase('pickup');continue}}
-        if(state.time-m.since>8&&stockTotal(depot.airfield)>0){load(u,depot.airfield,capacity,u.external?1:.5,AIRFIELD_TIERS[state.airfields[u.side].tier].supplyMultiplier);if(m.cargo){m.airfieldSlot=undefined;phase('delivery')}else if(u.external)retired.add(u.id)}
+        if(state.time-m.since>8&&stockTotal(depot.airfield)>0){load(u,depot.airfield,capacity,u.external?1:.5,airfieldReserve(state,u.side));if(m.cargo){m.airfieldSlot=undefined;phase('delivery')}else if(u.external)retired.add(u.id)}
       }
       else if (m.phase === 'delivery') {
         const destination=helicopter?mobHelipad(u.side):{ x: home.x + 20, y: home.y + 25 }
