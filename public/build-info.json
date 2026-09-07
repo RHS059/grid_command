@@ -1,0 +1,5 @@
+{
+  "release": "2026-09-07-clean-rebuild",
+  "source": "8bd702db200b6705eedac9b25d83fee7a6113b78",
+  "reason": "Clean GitHub Pages rebuild after failed historical workflow attempts"
+}
