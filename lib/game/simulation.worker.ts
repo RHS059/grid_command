@@ -20,6 +20,7 @@ import { authorizeMissionFuel, commissioningFuelPercent, commitMissionFuel, upda
 import { aiInfantry, InfantryDirector, issueInfantryOrder } from './infantry-ai'
 import { Perception } from './perception'
 import { startObjectiveConstruction, updateObjectiveLogistics } from './objective-logistics'
+import { assessCommandStaff } from './subcommanders'
 let visibility = new Visibility(), geometry = new Map<string,GeometryPacket>(), shotId = 0
 const nextShot = () => ++shotId
 
@@ -64,10 +65,16 @@ function commanders() {
   const plans = sides.map(plan)
   for (const p of plans) {
     const f = state.forces[p.side]; f.action = p.action; f.target = p.target.id; f.tempo = p.tempo; f.cycles++
+    const council=assessCommandStaff(state,p.side,p.target,p.action)
+    const staffHolds=Object.values(council.reports).filter(report=>report.required&&!report.approved)
+    log(p.side,`${p.side==='BLU'?'SABER':'VIPER'} staff review for objective ${p.target.id}: ${staffHolds.length?`Negative — ${staffHolds.map(report=>`${report.name}: ${report.reason}`).join(' ')}`:'all required subcommands approve'}.`,'command')
     let assault = 0
     for (const u of p.own) {
       if (u.crewBailed || u.servicing || u.emergency || u.deployment || missionAsset(u.role) || u.carrier || u.attachedSquad || (troopSeats(u.role)>0&&u.transport&&!['available','escort'].includes(u.transport.phase)) || state.units.some(c=>c.hp>0&&c.transport?.passengers?.includes(u.id)) || state.units.some(j=>j.hp>0&&j.construction?.builder===u.id) || ['COMMAND', 'PILOT', 'LOGISTICS'].includes(u.role)) continue
       if(u.orderRefusal?.target===p.target.id&&u.orderRefusal.retryAt>state.time)continue
+      if(!isVehicle(u.role)&&['RIFLE','SCOUT','AT'].includes(u.role)&&!council.infantryApproved){u.path=[];u.mission='HOLD BY COMMAND STAFF';u.subcommand='TROOP COMMAND';continue}
+      if(isAir(u.role)&&!['RECON_UAV','TRANSPORT_HELI','HEAVY_LIFT_HELI','CARGO_PLANE'].includes(u.role)&&!council.airApproved){u.path=[];u.mission='HOLD BY AIR COMMAND';continue}
+      if(['MG','MORTAR'].includes(u.role)&&!council.firesApproved){u.path=[];u.mission='HOLD BY FIRES COMMAND';continue}
       if (isVehicle(u.role)) {
         const fuelTarget=u.role==='RECON_UAV'?BASES[p.side==='BLU'?'RED':'BLU']:p.target,authorization=authorizeMissionFuel(u,fuelTarget,undefined,state)
         if (!authorization.ok) { u.path=[];u.fuelCommitment=undefined;u.servicing=authorization.required<=100;u.mission=u.servicing?'RTB FOR SERVICE':'HOLD FOR FORWARD SERVICE';u.target=u.servicing?(isAir(u.role)?'AIRFIELD':'MOB'):p.target.id;u.serviceStatus=authorization.required>100?'FORWARD SERVICE REQUIRED':'INSUFFICIENT MISSION FUEL RESERVE';refuse(u,'INSUFFICIENT_FUEL',authorization.reason,45,p.target.id);continue }
