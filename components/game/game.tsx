@@ -45,6 +45,7 @@ export function Game() {
   const selectUnit = useCallback((unit: Unit) => { const live = stateRef.current.units.find(u => u.id === unit.id) || unit; setSelected(live.id); setMobileOpen(false) }, [])
   const focus = useCallback((point: { x: number; y: number }) => { setSelected(null); mapAPI.current?.focus(point); setMobileOpen(false) }, [])
   const upgradeMob = useCallback((side: 'BLU' | 'RED') => worker.current?.postMessage({ type: 'upgrade-mob', side }), [])
+  const buildObjectiveFacility = useCallback((side: 'BLU'|'RED', objectiveId: string, kind: 'helipad'|'vehicleBay') => worker.current?.postMessage({type:'build-objective-facility',side,objectiveId,kind}),[])
   const restart = () => { setModal(null); setSelected(null); setWorkerError(''); const seed = crypto.getRandomValues(new Uint32Array(1))[0]; worker.current?.postMessage({ type: 'restart', seed }); mapAPI.current?.overview(); setTimeout(() => mapAPI.current?.reimport(), 1200) }
   useEffect(() => {
     const handle = (e: KeyboardEvent) => {
@@ -89,7 +90,7 @@ export function Game() {
       <div className="flex items-center gap-2"><Eye size={15} className="desktop-only text-muted-foreground" /><ToggleGroup aria-label="Observer perspective" spacing={0} value={[perspective]} onValueChange={v => { if (v.length) { setPerspective(v[0] as Perspective); setSelected(null) } }}><ToggleGroupItem value="OBS">Observer</ToggleGroupItem><ToggleGroupItem value="BLU">BLU</ToggleGroupItem><ToggleGroupItem value="RED">RED</ToggleGroupItem></ToggleGroup></div>
     </div>
     <div className="battle-workspace" id="panel-battlefield" role="tabpanel" aria-labelledby="tab-battlefield" style={view === 'models' ? { display: 'none' } : undefined}>
-      <CommandPanel state={state} perspective={perspective} selected={selected} onSelect={selectUnit} focus={focus} mobileOpen={mobileOpen} onUpgradeMob={upgradeMob} />
+      <CommandPanel state={state} perspective={perspective} selected={selected} onSelect={selectUnit} focus={focus} mobileOpen={mobileOpen} onUpgradeMob={upgradeMob} onBuildObjective={buildObjectiveFacility} />
       <div className="battle-main">
         <section className="map-area" aria-label="Live battlefield">
           <Battlefield active={view === 'battlefield'} stateRef={stateRef} graphics={graphics} perspective={perspective} selected={selected} onSelect={setSelected} onReady={onReady} onFPS={setFps} onStatus={setStatus} onGeometry={onGeometry} />
