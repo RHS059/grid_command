@@ -43,7 +43,7 @@ export class BattlefieldRenderer {
     if(process.env.NODE_ENV==='development') (window as unknown as {gridDebug:BattlefieldRenderer}).gridDebug=this
   }
   resize(){this.map.triggerRepaint()}
-  altitude(p:{x:number;y:number;id:string},now:number){const terrain=!!this.map.getTerrain();for(const {model,point,elevation}of this.bases){const x=p.x-point.x,y=p.y-point.y,platform=airfieldPlatform(model.userData.tier),inside=model.name==='MOB'?Math.abs(x)<MOB_YARD.halfWidth&&y>MOB_YARD.minY&&y<MOB_YARD.maxY:Math.abs(x-platform.x)<platform.width/2&&Math.abs(y)<platform.depth/2;if(inside&&(!terrain||elevation))return (terrain?elevation!.high:0)+1.3+(model.name==='MOB'&&onMobHelipad(point.id.startsWith('BLU')?'BLU':'RED',p)?mobHelipadRise(model.userData.tier):0)}if(!terrain)return 0;const old=this.ground.get(p.id);if(old&&now-old.time<600&&Math.hypot(old.x-p.x,old.y-p.y)<5)return old.z;const z=(this.map.queryTerrainElevation(lngLat(p))||0)+this.map.getCameraTargetElevation();this.ground.set(p.id,{x:p.x,y:p.y,z,time:now});return z}
+  altitude(p:{x:number;y:number;id:string},now:number){const terrain=!!this.map.getTerrain();for(const {model,point,elevation}of this.bases){const x=p.x-point.x,y=p.y-point.y,platform=airfieldPlatform(model.userData.tier),inside=model.name==='MOB'?Math.abs(x)<MOB_YARD.halfWidth&&y>MOB_YARD.minY&&y<MOB_YARD.maxY:Math.abs(x-platform.x)<platform.width/2&&Math.abs(y)<platform.depth/2;if(inside&&(!terrain||elevation))return (terrain?elevation!.high:0)+1.3+(model.name==='MOB'&&onMobHelipad(point.id.startsWith('BLU')?'BLU':'RED',p)?mobHelipadRise(model.userData.tier):0)}if(!terrain)return 0;const old=this.ground.get(p.id);if(old&&now-old.time<600&&Math.hypot(old.x-p.x,old.y-p.y)<5)return old.z;const sampled=this.map.queryTerrainElevation(lngLat(p)),z=sampled!==null&&Number.isFinite(sampled)?sampled:old?.z??0;this.ground.set(p.id,{x:p.x,y:p.y,z,time:now});return z}
   render(matrix:number[]){if(this.disposed||this.getSettings().active===false){this.previous=0;return;}const now=performance.now(),state=this.getState(),{graphics,perspective,selected}=this.getSettings();if(this.previous)this.frames.push(now-this.previous);this.previous=now;if(now-this.report>1500&&this.frames.length){this.onFPS(Math.round(1000/(this.frames.reduce((a,b)=>a+b,0)/this.frames.length)));this.frames=[];this.report=now}
     if(state.time!==this.snapshotTime){this.snapshotTime=state.time;this.arrival=now}const time=state.time+(state.paused?0:Math.min(.1,(now-this.arrival)/1000)*state.speed)
     // MapLibre 4 custom-layer matrices use a target-relative vertical origin; simulation and cached models use sea-level elevations.
@@ -65,8 +65,7 @@ export class BattlefieldRenderer {
       const terrain=!!this.map.getTerrain()
       // Source events and camera target elevation can change repeatedly; accept one complete footprint sample only.
       if(terrain&&!base.elevation&&this.map.isSourceLoaded('elevation')){
-        const targetElevation=this.map.getCameraTargetElevation()
-        const sampled=conformBase(model,(x,y)=>{const z=this.map.queryTerrainElevation(lngLat({x:point.x+x,y:point.y+y}));return z===null?undefined:z+targetElevation})
+        const sampled=conformBase(model,(x,y)=>{const z=this.map.queryTerrainElevation(lngLat({x:point.x+x,y:point.y+y}));return z===null||!Number.isFinite(z)?undefined:z})
         if(sampled){base.elevation=sampled;model.userData.elevationMode='locked'}
       }
       if(terrain&&base.elevation&&model.userData.elevationMode!=='locked'){conformBase(model,undefined,base.elevation);model.userData.elevationMode='locked'}
