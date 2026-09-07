@@ -34,7 +34,7 @@ export const troopSeats = (r: Role) => r === 'TRANSPORT_HELI' ? 24 : r === 'TROO
 export const missionAsset = (r: Role) => ['FORKLIFT','CARGO_PLANE','UAV_JAMMER','TRANSPORT_HELI','HEAVY_LIFT_HELI','TROOP_TRUCK','TRUCK'].includes(r)
 export interface Unit extends Point {
   crewBailed?: boolean; external?: boolean; engine?: boolean; servicing?: boolean; serviceStatus?: string; emergency?: boolean;
-  travelStatus?: string; routeRetry?: number; transport?: MissionState; carrier?: string; destroyedAt?: number; lossProcessed?: boolean; lock?: { target: string; since: number }; construction?: { builder: string; due: number };
+  travelStatus?: string; routeRetry?: number; transport?: MissionState; carrier?: string; transportIntent?: { destination: Point; mission: string; target: string }; destroyedAt?: number; lossProcessed?: boolean; lock?: { target: string; since: number }; construction?: { builder: string; due: number };
   soldiers?: Soldier[]; aim?: number; altitude?: number; cooldown?: number; suppression?: number; smoke?: number; airPhase?: 'attack' | 'return' | 'rearm';
   id: string; name: string; side: Side; role: Role; members: number; maxMembers: number;
   hp: number; ammo: number; fuel: number; heading: number; mission: string; target: string;
