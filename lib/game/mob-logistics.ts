@@ -2,25 +2,36 @@ import { AIRBASES, type BattleState, type Unit } from './types'
 import type { Navigation } from './navigation'
 import { travel } from './movement'
 import { transferStock } from './sustainment'
-import { MOB_TIERS, craneCycle, mobDock, mobTier, mobWorld } from './mob'
+import { MOB_TIERS, MOB_TRUCK_HOLDING, craneCycle, mobDock, mobTier, mobTruckHolding, mobWorld } from './mob'
+import { AIRFIELD_TRUCK_LOADING } from './theater'
 
 const reservedPhases = ['mob-approach','mob-docking','mob-unloading','mob-exit']
+const holdingPhases = ['delivery','mob-queue','mob-holding']
 export function updateMobTruck(u: Unit, state: BattleState, nav: Navigation): boolean | 'retire' {
   const m=u.transport!
   const phase=(name:string)=>{m.phase=name;m.since=state.time;u.path=[]}
   const occupied=(slot:number)=>state.units.some(v=>v!==u&&v.side===u.side&&v.role==='TRUCK'&&v.hp>0&&!v.servicing&&!v.emergency&&v.transport?.mobDock===slot&&reservedPhases.includes(v.transport.phase))
+  const holdOwner=(slot:number)=>state.units.filter(v=>v.side===u.side&&v.role==='TRUCK'&&v.hp>0&&!v.servicing&&!v.emergency&&v.transport?.mobHold===slot&&holdingPhases.includes(v.transport.phase)).sort((a,b)=>a.id.localeCompare(b.id))[0]
+  const reserveHold=()=>{
+    if(m.mobHold!==undefined&&m.mobHold>=0&&m.mobHold<MOB_TRUCK_HOLDING.length&&holdOwner(m.mobHold)===u)return true
+    m.mobHold=undefined
+    const slot=MOB_TRUCK_HOLDING.findIndex((_,i)=>!holdOwner(i))
+    if(slot<0)return false
+    m.mobHold=slot;return true
+  }
   if(m.phase==='delivery'){
-    if(travel(u,mobWorld(u.side,{x:60,y:125}),nav,state.time,24,0)) {m.queuedAt=state.time;phase('mob-queue')}
+    if(!reserveHold()){u.mission='WAITING FOR MOB HOLDING';return true}
+    if(travel(u,mobTruckHolding(u.side,m.mobHold!),nav,state.time,24,0,.5)) {m.queuedAt=state.time;phase('mob-holding')}
   }else if(m.phase==='mob-queue'){
-    const queue=state.units.filter(v=>v.side===u.side&&v.hp>0&&!v.servicing&&v.transport?.phase==='mob-queue')
+    // Recover old saves whose trucks were already converging on the former shared queue point.
+    if(!reserveHold()){u.mission='WAITING FOR MOB HOLDING';return true}
+    if(travel(u,mobTruckHolding(u.side,m.mobHold!),nav,state.time,6,0,.5))phase('mob-holding')
+  }else if(m.phase==='mob-holding'){
+    const queue=state.units.filter(v=>v.side===u.side&&v.hp>0&&!v.servicing&&v.transport?.phase==='mob-holding')
       .sort((a,b)=>(a.transport!.queuedAt??0)-(b.transport!.queuedAt??0)||(a.id<b.id?-1:a.id>b.id?1:0))
     const slot=Array.from({length:MOB_TIERS[mobTier(state,u.side)].cranes},(_,i)=>i).find(i=>!occupied(i))
-    if(queue[0]===u&&slot!==undefined){m.mobDock=slot;phase('mob-approach')}
-    else {
-      u.mission='QUEUED FOR MOB CRANE'
-      const rank=Math.max(0,queue.indexOf(u))
-      travel(u,mobWorld(u.side,{x:60,y:125+rank*28}),nav,state.time,6,0)
-    }
+    u.engine=false;u.path=[];u.mission='QUEUED FOR MOB CRANE'
+    if(queue[0]===u&&slot!==undefined){m.mobHold=undefined;m.mobDock=slot;phase('mob-approach')}
   }else if(m.phase==='mob-approach'){
     const dock=mobDock(m.mobDock!)
     if(travel(u,mobWorld(u.side,{x:dock.x,y:105}),nav,state.time,6,0,.15))phase('mob-docking')
@@ -54,7 +65,14 @@ export function updateMobTruck(u: Unit, state: BattleState, nav: Navigation): bo
     }
   }else if(m.phase==='returning'){
     u.mission='RETURNING · EMPTY CONTAINER BED'
-    if(travel(u,{x:AIRBASES[u.side].x+18,y:AIRBASES[u.side].y-135},nav,state.time,24,0)){
+    const owner=(slot:number)=>state.units.filter(v=>v.side===u.side&&v.role==='TRUCK'&&v.hp>0&&v.transport?.airfieldSlot===slot&&['pickup','loading','returning'].includes(v.transport.phase)).sort((a,b)=>a.id.localeCompare(b.id))[0]
+    let slot=m.airfieldSlot
+    if(slot===undefined||slot<0||slot>=AIRFIELD_TRUCK_LOADING.length||owner(slot)!==u)slot=AIRFIELD_TRUCK_LOADING.findIndex((_,i)=>!owner(i))
+    if(slot===undefined||slot<0){m.airfieldSlot=undefined;u.engine=false;u.path=[];u.mission='WAITING FOR AIRFIELD LOADING BAY';return true}
+    m.airfieldSlot=slot
+    const bay=AIRFIELD_TRUCK_LOADING[slot]
+    if(travel(u,{x:AIRBASES[u.side].x+bay.x,y:AIRBASES[u.side].y+bay.y},nav,state.time,24,0,.5)){
+      u.x=AIRBASES[u.side].x+bay.x;u.y=AIRBASES[u.side].y+bay.y;u.heading=Math.PI
       if(u.external)return 'retire'
       phase('loading')
     }
