@@ -2,11 +2,12 @@ import { completeMobUpgrades, mobHelipad, mobHelipadHold, releaseMobHelipad, res
 import { updateMobTruck } from './mob-logistics'
 import { AIRBASES, AIRFIELD_TIERS, BASES, createUnit, emptyStock, stockTotal, type AirfieldTier, type BattleState, type Role, type Side, type Stock, type Unit } from './types'
 import { Navigation } from './navigation'
-import { RUNWAY } from './theater'
+import { AIRFIELD_TRUCK_LOADING, RUNWAY } from './theater'
 import { distance, travel } from './movement'
 import { missionFuel, syncDepotTotals, transferStock } from './sustainment'
 
 export const SUPPLY_CADENCE = 180
+const airfieldTruckSlotOwner = (state: BattleState, side: Side, slot: number) => state.units.filter(u=>u.side===side&&u.role==='TRUCK'&&u.hp>0&&u.transport?.airfieldSlot===slot&&['pickup','loading','returning'].includes(u.transport.phase)).sort((a,b)=>a.id.localeCompare(b.id))[0]
 export const supplyManifest = (tier: AirfieldTier = 1): Stock => {
   const scale = AIRFIELD_TIERS[tier].supplyMultiplier / AIRFIELD_TIERS[tier].runways
   return { fuel: 1200 * scale, ammo: 1500 * scale, repair: 600 * scale }
@@ -66,9 +67,13 @@ export function scheduleSupplies(state: BattleState) {
       const stock = role === 'FORKLIFT' ? state.depots[side].pending : exportable(state.depots[side].airfield, specs.supplyMultiplier)
       if (stockTotal(stock) < (role === 'FORKLIFT' ? 1 : 150)) continue
       for (let i = own.filter(u => u.external && u.role === role).length; i < capacity; i++) {
+        const loadingSlot=role==='TRUCK'?AIRFIELD_TRUCK_LOADING.findIndex((_,index)=>!airfieldTruckSlotOwner(state,side,index)):-1
+        if(role==='TRUCK'&&loadingSlot<0)break
         const asset = externalAsset(state, side, role, 'pickup')
-        asset.x += i * 5; asset.y -= i * 4
-        if (role === 'TRUCK') asset.transport!.trailers = specs.trailers
+        if (role === 'TRUCK') {
+          asset.transport!.trailers = specs.trailers;asset.transport!.airfieldSlot=loadingSlot
+          const bay=AIRFIELD_TRUCK_LOADING[loadingSlot];asset.x=AIRBASES[side].x+bay.x;asset.y=AIRBASES[side].y+bay.y;asset.heading=Math.PI
+        } else { asset.x += i * 5; asset.y -= i * 4 }
         own.push(asset)
       }
     }
@@ -119,8 +124,19 @@ export function updateSupplyMissions(state: BattleState, nav: Navigation) {
       if (m.phase === 'waiting') {
         if (!u.external && u.fuel < missionFuel(u, home, air)) { u.serviceStatus = 'INSUFFICIENT MISSION FUEL RESERVE'; u.servicing = true; continue }
         phase('pickup')
-      } else if (m.phase === 'pickup' && travel(u, at(18, -135), nav, state.time, speed, helicopter ? 3 : 0)) phase('loading')
-      else if (m.phase === 'loading' && state.time - m.since > 8 && stockTotal(depot.airfield) > 0) { load(u, depot.airfield, capacity, u.external ? 1 : .5, AIRFIELD_TIERS[state.airfields[u.side].tier].supplyMultiplier); if (m.cargo) phase('delivery'); else if (u.external) retired.add(u.id) }
+      } else if (m.phase === 'pickup') {
+        if(helicopter){if(travel(u,at(18,-135),nav,state.time,speed,3))phase('loading')}
+        else {
+          let slot=m.airfieldSlot
+          if(slot===undefined||slot<0||slot>=AIRFIELD_TRUCK_LOADING.length||airfieldTruckSlotOwner(state,u.side,slot)!==u)slot=AIRFIELD_TRUCK_LOADING.findIndex((_,i)=>!airfieldTruckSlotOwner(state,u.side,i))
+          if(slot===undefined||slot<0){m.airfieldSlot=undefined;u.mission='WAITING FOR AIRFIELD LOADING BAY'}
+          else {m.airfieldSlot=slot;const bay=AIRFIELD_TRUCK_LOADING[slot];if(travel(u,at(bay.x,bay.y),nav,state.time,speed,0,.5)){u.x=air.x+bay.x;u.y=air.y+bay.y;u.heading=Math.PI;phase('loading')}}
+        }
+      }
+      else if (m.phase === 'loading') {
+        if(!helicopter){const slot=m.airfieldSlot;if(slot===undefined||slot<0||slot>=AIRFIELD_TRUCK_LOADING.length||airfieldTruckSlotOwner(state,u.side,slot)!==u){m.airfieldSlot=undefined;phase('pickup');continue}const bay=AIRFIELD_TRUCK_LOADING[slot];if(distance(u,at(bay.x,bay.y))>2){phase('pickup');continue}}
+        if(state.time-m.since>8&&stockTotal(depot.airfield)>0){load(u,depot.airfield,capacity,u.external?1:.5,AIRFIELD_TIERS[state.airfields[u.side].tier].supplyMultiplier);if(m.cargo){m.airfieldSlot=undefined;phase('delivery')}else if(u.external)retired.add(u.id)}
+      }
       else if (m.phase === 'delivery') {
         const destination=helicopter?mobHelipad(u.side):{ x: home.x + 20, y: home.y + 25 }
         if(helicopter&&distance(u,destination)<=180&&!reserveMobHelipad(state,u.side,u.id)){u.travelStatus='HOLDING FOR MOB HELIPAD';travel(u,mobHelipadHold(u.side,u.id),nav,state.time,speed,70)}
