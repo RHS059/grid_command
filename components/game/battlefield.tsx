@@ -39,14 +39,14 @@ export function Battlefield(props: Props) {
     const imported = new Set<string>(), fixed: maplibregl.Marker[] = []
     let minimap: GeoMap | null = null, lastMarkers = 0, lastData = 0, lastDataTick = -1, lastRoutes = false, lastPerspective = '', overlayStarted = false
     const poses = new DisplayPoses()
-    let chaseOptions: ReturnType<NonNullable<GeoMap['transformCameraUpdate']>> | null = null
+    let chaseOptions: ReturnType<NonNullable<GeoMap['transformCameraUpdate']>> | null = null, orbiting = false, orbitBearing = 0
     // Pinned MapLibre 4.7 overwrites target elevation during terrain rendering after transformCameraUpdate.
     // Freeze only while following; restore its normal elevation management for every free-camera interaction.
     const elevationControl = map as GeoMap & { _elevationFreeze: boolean }
-    map.transformCameraUpdate = () => chaseOptions || {}
-    const clearChase = () => { if (chaseOptions) elevationControl._elevationFreeze = false; chaseOptions = null }
+    map.transformCameraUpdate = () => orbiting ? {} : chaseOptions || {}
+    const clearChase = () => { if (chaseOptions) elevationControl._elevationFreeze = false; chaseOptions = null; orbiting = false }
     const releaseFollow = () => { clearChase(); latest.current = { ...latest.current, selected: null }; latest.current.onSelect(null) }
-    let displayState = latest.current.stateRef.current, frame = 0, previousFrame = 0, followed: string | null = null, heading = 0, chaseScale = 1
+    let displayState = latest.current.stateRef.current, frame = 0, previousFrame = 0, followed: string | null = null, heading = 0, orbitYaw = 0, chaseScale = 1
     const followFrame = (now: number) => {
       frame = requestAnimationFrame(followFrame)
       if (disposed || !latest.current.active || document.hidden) { previousFrame = 0; return }
@@ -60,12 +60,13 @@ export function Battlefield(props: Props) {
         if (latest.current.selected) latest.current.onSelect(null)
         clearChase(); followed = null; previousFrame = now; return
       }
-      if (followed !== subject.unit.id) { map.stop(); followed = subject.unit.id; heading = subject.heading; chaseScale = 1 }
+      if (followed !== subject.unit.id) { map.stop(); followed = subject.unit.id; heading = subject.heading; orbitYaw = 0; chaseScale = 1 }
       const dt = previousFrame ? Math.min(.1, (now - previousFrame) / 1000) : 1
       previousFrame = now
       heading += angleBetween(heading, subject.heading) * (1 - Math.exp(-12 * dt))
+      if (orbiting) return
       const ground = (p: { x: number; y: number }) => renderRef.current?.altitude({ ...p, id: p === subject.point ? 'camera-target' : 'camera-from' }, now) ?? ((map.queryTerrainElevation(lngLat(p)) || 0) + map.getCameraTargetElevation())
-      const view = chaseView(subject.unit, subject.point, heading, chaseScale, ground)
+      const view = chaseView(subject.unit, subject.point, heading + orbitYaw, chaseScale, ground)
       if (!map.getTerrain()) {
         const ratio = view.fromZ / Math.max(.1, view.fromZ - view.toZ)
         view.to = { x: view.from.x + (view.to.x - view.from.x) * ratio, y: view.from.y + (view.to.y - view.from.y) * ratio }; view.toZ = 0
@@ -80,8 +81,20 @@ export function Battlefield(props: Props) {
     const wheel = (e: WheelEvent) => { if (!latest.current.selected) return; e.preventDefault(); e.stopImmediatePropagation(); chaseScale = Math.max(.6, Math.min(6, chaseScale * Math.exp(Math.max(-100, Math.min(100, e.deltaY)) * .003))) }
     const element = map.getContainer()
     element.addEventListener('wheel', wheel, { passive: false, capture: true })
-    map.on('dragstart', releaseFollow)
-    map.on('rotatestart', e => { if (e.originalEvent) releaseFollow() })
+    map.on('dragstart', e => {
+      const event = e.originalEvent, rotateGesture = event instanceof MouseEvent ? event.button === 2 || event.buttons === 2 : event instanceof TouchEvent && event.touches.length > 1
+      if (latest.current.selected && !rotateGesture) releaseFollow()
+    })
+    map.on('rotatestart', e => {
+      if (!e.originalEvent || !latest.current.selected) return
+      orbiting = true; orbitBearing = map.getBearing()
+    })
+    const updateOrbit = () => {
+      const bearing = map.getBearing(), delta = (bearing - orbitBearing + 540) % 360 - 180
+      orbitYaw = angleBetween(0, orbitYaw + delta * Math.PI / 180); orbitBearing = bearing
+    }
+    map.on('rotate', () => { if (orbiting && latest.current.selected) updateOrbit() })
+    map.on('rotateend', () => { if (!orbiting) return; updateOrbit(); orbiting = false })
     let collision: GeometryPacket | null = null
     const cancelGeometry = loadBattleGeometry(packet => { collision = packet; latest.current.onGeometry(packet) }, text => latest.current.onStatus(text), () => latest.current.stateRef.current)
     const importGeometry = () => { if(collision) latest.current.onGeometry(collision) }
