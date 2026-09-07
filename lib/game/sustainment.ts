@@ -1,4 +1,4 @@
-import { AIRBASES, BASES, CATALOG, isAir, isArmored, isVehicle, type BattleState, type Point, type Role, type Stock, type Unit } from './types'
+import { AIRBASES, BASES, CATALOG, isAir, isArmored, isVehicle, troopSeats, type BattleState, type Point, type Role, type Stock, type Unit } from './types'
 import { distance, travel } from './movement'
 import type { Navigation } from './navigation'
 
@@ -72,7 +72,11 @@ export function updateVehicleService(state: BattleState, nav: Navigation) {
     serviceVehicle(state, u)
     if (u.fuel >= 99.99 && (!armed || u.ammo >= 99.99) && u.hp >= 99.99) {
       u.servicing = false; u.serviceStatus = undefined; u.travelStatus = undefined; u.airPhase = 'attack'; u.mission = 'AVAILABLE'; u.path = []
-      if (u.transport) { u.transport.phase = u.transport.manifest ? 'delivery' : ['TRANSPORT_HELI', 'TROOP_TRUCK'].includes(u.role) ? 'available' : 'waiting'; u.transport.since = state.time }
+      if (u.transport) {
+        const retry = u.transport.manual && u.transport.phase === 'return' && state.units.find(s => s.id === u.attachedSquad && s.hp > 0)
+        if (retry) u.transport.passengers = [retry.id]
+        u.transport.phase = retry ? 'pickup' : u.attachedSquad ? 'escort' : u.transport.manifest ? 'delivery' : troopSeats(u.role) ? 'available' : 'waiting'; u.transport.since = state.time
+      }
     }
   }
 }
@@ -86,3 +90,4 @@ export function consumeFuel(state: BattleState, dt = DT) {
     else if (!u.servicing) { u.engine = false; u.travelStatus = 'OUT OF FUEL'; u.path = []; if (u.external) { u.hp = 0; u.members = 0 } }
   }
 }
+
