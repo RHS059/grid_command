@@ -95,7 +95,7 @@ function commanders() {
         route(u, destination)
       }
     }
-    const refusalReasons=[...new Set(p.own.filter(u=>u.orderRefusal?.retryAt>state.time).map(u=>u.orderRefusal!.reason))]
+    const refusalReasons=[...new Set(p.own.flatMap(u=>{const refusal=u.orderRefusal;return refusal&&refusal.retryAt>state.time?[refusal.reason]:[]}))]
     log(p.side, `${p.side === 'BLU' ? 'SABER' : 'VIPER'} elements, ${p.action.toLowerCase()} objective ${p.target.id}. ${assault} maneuver groups committed.${assault===0&&refusalReasons.length?` Delayed: ${refusalReasons.join('; ')}.`:''} OUT.`)
     const role = nextPurchase(state, p.side, deliveries.filter(d=>!d.unitId))
     if (role === 'AIRFIELD_UPGRADE') { if (startAirfieldUpgrade(state, p.side)) log(p.side, f.purchase, 'logistics') }
