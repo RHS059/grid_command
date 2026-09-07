@@ -30,7 +30,8 @@ Open **Graphics & settings** and enable **Performance mode**. It defaults to off
 The mode caps pixel density at 1×, hides 3D city buildings, shading, labels, routes,
 grid and minimap, and limits detailed unit models to the visible area within 1 km
 of the map's view center. The selected unit remains available to the chase camera.
-Terrain stays enabled unless you turn it off separately.
+The heightmap is disabled by default for a flat view and can be enabled separately;
+navigation, line of sight, and collision still use streamed terrain data.
 
 Off-screen units continue all movement, combat, logistics and collision simulation;
 their visual interpolation and model animation are skipped. This is view-frustum
