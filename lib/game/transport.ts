@@ -106,6 +106,21 @@ export function assignTransports(state: BattleState, nav?: Navigation) {
     if (squad.path.length || !squad.transportIntent) squad.transportIntent = { destination: { ...destination }, mission: intendedMission(squad), target: squad.target }
     squad.path = []; squad.mission = 'WAITING FOR TRANSPORT'
   }
+  // Attached vehicles are the squad's first transport choice. They stay owned
+  // by the squad and return to escort after this automatic movement cycle.
+  for (const squad of [...eligible].sort((a, b) => a.id.localeCompare(b.id))) {
+    const destination = destinationFor(state, squad)
+    if (!destination || reserved.has(squad.id) || distance(squad, destination) <= MAX_WALK_DISTANCE) continue
+    const carrier = state.units.filter(c => c.side === squad.side && c.hp > 0 && !c.crewBailed && !c.external && !c.servicing && !c.emergency && troopSeats(c.role) >= activeTroops(squad)
+      && (c.attachedSquad === squad.id || squad.attachedVehicles?.includes(c.id)) && (!c.transport || ['available', 'escort'].includes(c.transport.phase))
+      && !c.transport?.passengers?.length && distance(c, squad) <= 150 && c.fuel >= missionFuel(c, destination, squad))
+      .sort((a, b) => distance(a, squad) - distance(b, squad) || a.id.localeCompare(b.id))[0]
+    if (!carrier) continue
+    carrier.attachedSquad = squad.id
+    squad.attachedVehicles = [...new Set([...(squad.attachedVehicles || []), carrier.id])]
+    carrier.transport = { phase: 'pickup', since: state.time, destination: { ...destination }, passengers: [squad.id], home: { ...serviceBase(carrier) }, manual: true, autoDismount: true, mobPad: squad.target === 'MOB' }
+    carrier.path = []; carrier.target = squad.target; squad.path = []; squad.mission = 'WAITING FOR TRANSPORT'; reserved.add(squad.id)
+  }
   const available = state.units.filter(c => c.hp > 0 && !c.crewBailed && !c.external && !c.servicing && !c.emergency && !c.attachedSquad && automaticCarrier(c) && (!c.transport || c.transport.phase === 'available'))
     .sort((a, b) => Number(b.role === 'TRANSPORT_HELI') - Number(a.role === 'TRANSPORT_HELI') || a.id.localeCompare(b.id))
   for (const carrier of available) {
@@ -163,7 +178,7 @@ export function updateTransports(state: BattleState, nav: Navigation) {
     } else if (m.phase === 'transit' && m.destination) {
       const pad=helicopter&&m.mobPad?mobHelipad(u.side):undefined
       if(pad&&distance(u,pad)<=180&&!reserveMobHelipad(state,u.side,u.id)){u.travelStatus='HOLDING FOR MOB HELIPAD';travel(u,mobHelipadHold(u.side,u.id),nav,state.time,undefined,85);continue}
-      if (travel(u, pad||m.destination, nav, state.time, undefined, isAir(u.role) ? 85 : 0)) phase(m.manual ? 'attached-hold' : 'landing')
+      if (travel(u, pad||m.destination, nav, state.time, undefined, isAir(u.role) ? 85 : 0)) phase(m.manual && !m.autoDismount ? 'attached-hold' : 'landing')
     } else if (m.phase === 'attached-hold') {
       u.engine = helicopter; u.path = []; u.mission = helicopter ? 'HOLDING FOR DISMOUNT' : 'AWAITING DISMOUNT'
     } else if (m.phase === 'landing' && m.destination) {
