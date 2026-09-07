@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { AIRFIELD_TIERS, BASES, stockTotal, type BattleState, type Perspective, type Role, type Side, type Unit } from '@/lib/game/types'
 import { MOB_TIERS, mobTier, type MobTier } from '@/lib/game/mob'
+import { OBJECTIVE_FACILITIES, OBJECTIVE_STOCK_CAP } from '@/lib/game/objective-logistics'
 
 export function UnitIcon({ role }: { role: Role }) {
   const Icon = ['TANK', 'APC', 'CANNON_APC', 'IFV'].includes(role) ? Shield : ['TRUCK','LOGISTICS','FORKLIFT','TROOP_TRUCK'].includes(role) ? Truck : role === 'MEDIC' ? ShieldPlus : ['RECON_UAV', 'PILOT', 'CAS_FIGHTER','JET', 'ATTACK_HELI', 'CARGO_PLANE', 'TRANSPORT_HELI', 'HEAVY_LIFT_HELI'].includes(role) ? Plane : role === 'COMMAND' ? Flag : role === 'UAV_JAMMER' ? Radio : ['MORTAR','AT','AA_TEAM'].includes(role) ? Target : role === 'SCOUT' ? Navigation : Users
@@ -24,7 +25,7 @@ function ForceCard({ side, state, focus }: { side: Side; state: BattleState; foc
     {force.hold > 0 && <div className="text-sm text-primary">Secure hold: {Math.floor(force.hold)} / 60s</div>}
   </section>
 }
-function LogisticsPanel({ state, side, onUpgradeMob }: { state: BattleState; side: Side; onUpgradeMob?: (side: Side) => void }) {
+function LogisticsPanel({ state, side, focus, onUpgradeMob, onBuildObjective }: { state: BattleState; side: Side; focus: (p: {x:number;y:number})=>void; onUpgradeMob?: (side: Side) => void; onBuildObjective?: (side: Side, objectiveId: string, kind: 'helipad'|'vehicleBay') => void }) {
   const f = state.forces[side], field = state.airfields[side], tier = AIRFIELD_TIERS[field.tier]
   const level = mobTier(state, side), mob = state.mobs?.[side], mobSpec = MOB_TIERS[level]
   const nextLevel = Math.min(3, level + 1) as MobTier, nextMob = MOB_TIERS[nextLevel]
@@ -44,6 +45,7 @@ function LogisticsPanel({ state, side, onUpgradeMob }: { state: BattleState; sid
       <p className="text-sm leading-relaxed">{field.upgrade ? `Upgrading to tier ${field.upgrade.tier} · ${Math.max(0, Math.ceil(field.upgrade.due - state.time))}s remaining` : field.tier === 3 ? 'Maximum infrastructure capacity' : 'Commander prioritizes upgrades after initial infantry and transport.'}</p>
       <details className="text-sm text-muted-foreground"><summary className="cursor-pointer">Tier capacities and costs</summary><div className="flex flex-col gap-2 pt-2">{([1, 2, 3] as const).map(fieldLevel => { const spec = AIRFIELD_TIERS[fieldLevel]; return <p key={fieldLevel}>T{fieldLevel}: {spec.runways} strip / {spec.forklifts} forklifts / {spec.trucks} trucks{spec.trailers ? ' + 2 trailers each' : ''} · {spec.supplyMultiplier}× supplies · {spec.cost ? `${spec.cost} SP / ${spec.buildSeconds}s upgrade` : 'Starting tier'}</p> })}</div></details>
     </div>
+    <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4"><span className="force-color font-mono">FORWARD OBJECTIVE LOGISTICS</span>{state.objectives.filter(o=>o.owner===side).map(o=><div key={o.id} className="rounded-md border border-border p-3"><div className="flex items-center justify-between"><button className="text-sm font-medium hover:text-primary" onClick={()=>focus(o)}>Objective {o.id}</button><span className="font-mono text-xs text-muted-foreground">{Math.floor(stockTotal(o.stock))} / {OBJECTIVE_STOCK_CAP*3}</span></div><p className="pt-1 text-xs text-muted-foreground">Fuel {Math.floor(o.stock.fuel)} · Repair {Math.floor(o.stock.repair)} · Ammo {Math.floor(o.stock.ammo)}{o.restock?` · convoy ${o.restock.side}`:''}</p>{(['helipad','vehicleBay'] as const).map(kind=>{const facility=o.facilities[kind],spec=OBJECTIVE_FACILITIES[kind],label=kind==='helipad'?'Helipad':'Vehicle repair bay';return <div key={kind} className="flex items-center justify-between gap-2 pt-2"><span className="text-xs">{label}: {facility?.construction?`${Math.max(0,Math.ceil(facility.construction.due-state.time))}s`:facility?facility.hp>=40?`${Math.round(facility.hp)}% operational`:`disabled · ${Math.round(facility.hp)}%`:'not built'}</span>{(!facility||facility.hp<40)&&!facility?.construction&&!o.contested&&<Button size="sm" variant="outline" disabled={f.sp<spec.cost+200} onClick={()=>onBuildObjective?.(side,o.id,kind)}>{spec.cost} SP</Button>}</div>})}</div>)}{!state.objectives.some(o=>o.owner===side)&&<p className="text-sm text-muted-foreground">Capture an objective to establish forward service.</p>}</div>
     <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
       <span className="force-color font-mono">MOB LEVEL {level} · {mobSpec.cranes} CRANE {mobSpec.cranes === 1 ? 'SLOT' : 'SLOTS'}</span>
       <p className="text-sm leading-relaxed text-muted-foreground">{reservedCranes} of {mobSpec.cranes} crane slots reserved · {mobSpec.unloadSeconds}s per container</p>
@@ -59,7 +61,7 @@ function LogisticsPanel({ state, side, onUpgradeMob }: { state: BattleState; sid
     <div className="flex flex-col gap-3 pt-4"><p className="text-sm text-primary">Next scheduled flight in {Math.max(0, Math.ceil(state.nextSupply[side] - state.time))}s</p>{(['airfield', 'mob'] as const).map(location => <p key={location} className="text-sm leading-relaxed text-muted-foreground">{location === 'mob' ? 'MOB · ground servicing' : 'Airfield · aircraft servicing'}<br />Fuel {Math.floor(state.depots[side][location].fuel)} · Ammo {Math.floor(state.depots[side][location].ammo)} · Repair {Math.floor(state.depots[side][location].repair)}</p>)}{state.units.filter(u => u.external && u.hp > 0 && u.side === side).map(u => <p key={u.id} className="text-sm leading-relaxed text-muted-foreground">{u.name}: {u.travelStatus || u.mission.toLowerCase()} · {Math.floor(u.transport?.cargo || 0)} cargo</p>)}</div>
   </section>
 }
-export const CommandPanel = memo(function CommandPanel({ state, perspective, selected, onSelect, focus, mobileOpen, onUpgradeMob }: { state: BattleState; perspective: Perspective; selected: string | null; onSelect: (u: Unit) => void; focus: (p: { x: number; y: number }) => void; mobileOpen: boolean; onUpgradeMob?: (side: Side) => void }) {
+export const CommandPanel = memo(function CommandPanel({ state, perspective, selected, onSelect, focus, mobileOpen, onUpgradeMob, onBuildObjective }: { state: BattleState; perspective: Perspective; selected: string | null; onSelect: (u: Unit) => void; focus: (p: { x: number; y: number }) => void; mobileOpen: boolean; onUpgradeMob?: (side: Side) => void; onBuildObjective?: (side: Side, objectiveId: string, kind: 'helipad'|'vehicleBay') => void }) {
   const [tab, setTab] = useState('forces'), [rosterSide, setRosterSide] = useState<Side>('BLU'), [expanded, setExpanded] = useState(false)
   const visibleSides: Side[] = perspective === 'OBS' ? ['BLU', 'RED'] : [perspective]
   const activeSide = perspective === 'OBS' ? rosterSide : perspective
@@ -67,7 +69,7 @@ export const CommandPanel = memo(function CommandPanel({ state, perspective, sel
   return <aside className={cn('command-sidebar', mobileOpen && 'mobile-open')} aria-label="Command overview">
     <div className="sidebar-tabs"><ToggleGroup value={[tab]} onValueChange={v => v.length && setTab(v[0] as string)} spacing={1} aria-label="Command panel"><ToggleGroupItem value="forces">Forces</ToggleGroupItem><ToggleGroupItem value="logistics">Logistics</ToggleGroupItem></ToggleGroup><span className="eyebrow"><Radio size={14} /></span></div>
     <div className="panel-scroll">
-      {visibleSides.map(side => tab === 'forces' ? <ForceCard key={side} side={side} state={state} focus={focus} /> : <LogisticsPanel key={side} side={side} state={state} onUpgradeMob={onUpgradeMob} />)}
+      {visibleSides.map(side => tab === 'forces' ? <ForceCard key={side} side={side} state={state} focus={focus} /> : <LogisticsPanel key={side} side={side} state={state} focus={focus} onUpgradeMob={onUpgradeMob} onBuildObjective={onBuildObjective} />)}
       {perspective !== 'OBS' && <div className="p-5 text-sm leading-relaxed text-muted-foreground">Enemy positions appear only when detected by friendly units. Enemy force totals are hidden.</div>}
       <div className="section-heading"><span className="eyebrow">CURRENT FORCE <span className="text-foreground/70">{units.length}</span></span>{perspective === 'OBS' && <button className="flex items-center gap-1 font-mono text-sm text-muted-foreground" onClick={() => setRosterSide(s => s === 'BLU' ? 'RED' : 'BLU')}>{rosterSide}<ChevronDown size={13} /></button>}</div>
       {(expanded ? units : units.slice(0, 5)).map(u => <button key={u.id} className={cn('unit-row', selected === u.id && 'selected')} onClick={() => onSelect(u)}><div className={cn('unit-symbol', u.side === 'RED' && 'red')}><UnitIcon role={u.role} /></div><div className="flex min-w-0 flex-1 flex-col"><span className="unit-name">{u.name}</span><span className="unit-detail">{u.role.replaceAll('_', ' ').toLowerCase()} · {u.members}/{u.maxMembers}</span></div><ArrowUpRight size={15} className="text-muted-foreground" /></button>)}
@@ -76,7 +78,7 @@ export const CommandPanel = memo(function CommandPanel({ state, perspective, sel
     <div className="sidebar-footer"><span className="live-dot" /><span>Local commanders active</span><HeartPulse size={15} className="ml-auto" /></div>
   </aside>
 }, (previous, next) => {
-  const summary = (s: BattleState) => JSON.stringify([Math.floor(s.time), s.airfields, s.mobs, s.nextSupply, s.depots, s.forces, s.objectives.map(o => o.owner), s.units.map(u => [u.id, u.members, u.hp > 0, u.transport?.phase, u.transport?.cargo, u.travelStatus])])
-  return previous.perspective === next.perspective && previous.selected === next.selected && previous.mobileOpen === next.mobileOpen && previous.onSelect === next.onSelect && previous.focus === next.focus && previous.onUpgradeMob === next.onUpgradeMob && summary(previous.state) === summary(next.state)
+  const summary = (s: BattleState) => JSON.stringify([Math.floor(s.time), s.airfields, s.mobs, s.nextSupply, s.depots, s.forces, s.objectives.map(o => [o.owner,o.contested,o.stock,o.facilities,o.restock]), s.units.map(u => [u.id, u.members, u.hp > 0, u.transport?.phase, u.transport?.cargo, u.travelStatus])])
+  return previous.perspective === next.perspective && previous.selected === next.selected && previous.mobileOpen === next.mobileOpen && previous.onSelect === next.onSelect && previous.focus === next.focus && previous.onUpgradeMob === next.onUpgradeMob && previous.onBuildObjective === next.onBuildObjective && summary(previous.state) === summary(next.state)
 })
 

@@ -122,7 +122,7 @@ export function updateSupplyMissions(state: BattleState, nav: Navigation) {
     } else {
       const helicopter = u.role === 'HEAVY_LIFT_HELI', speed = helicopter ? 65 : 24, capacity = helicopter ? 1800 : 900 * (1 + (m.trailers || 0))
       if (m.phase === 'waiting') {
-        if (!u.external && u.fuel < missionFuel(u, home, air)) { u.serviceStatus = 'INSUFFICIENT MISSION FUEL RESERVE'; u.servicing = true; continue }
+        if (!u.external && u.fuel < missionFuel(u, home, air, state)) { u.serviceStatus = 'INSUFFICIENT MISSION FUEL RESERVE'; u.servicing = true; continue }
         phase('pickup')
       } else if (m.phase === 'pickup') {
         if(helicopter){if(travel(u,at(18,-135),nav,state.time,speed,3))phase('loading')}
