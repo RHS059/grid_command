@@ -43,6 +43,7 @@ export function Game() {
   const onReady = useCallback((api: MapAPI) => { mapAPI.current = api }, [])
   const selectUnit = useCallback((unit: Unit) => { const live = stateRef.current.units.find(u => u.id === unit.id) || unit; setSelected(live.id); setMobileOpen(false) }, [])
   const focus = useCallback((point: { x: number; y: number }) => { setSelected(null); mapAPI.current?.focus(point); setMobileOpen(false) }, [])
+  const upgradeMob = useCallback((side: 'BLU' | 'RED') => worker.current?.postMessage({ type: 'upgrade-mob', side }), [])
   const restart = () => { setModal(null); setSelected(null); setWorkerError(''); const seed = crypto.getRandomValues(new Uint32Array(1))[0]; worker.current?.postMessage({ type: 'restart', seed }); mapAPI.current?.overview(); setTimeout(() => mapAPI.current?.reimport(), 1200) }
   useEffect(() => {
     const handle = (e: KeyboardEvent) => {
@@ -70,7 +71,7 @@ export function Game() {
   const owned = (side: 'BLU' | 'RED') => state.objectives.filter(o => o.owner === side).length
   return <main className="game-shell font-sans">
     <header className="game-header">
-      <div className="flex items-center gap-3"><div className="brand-icon"><Crosshair size={25} strokeWidth={1.4} /></div><div><div className="wordmark">GRID COMMAND</div><div className="brand-subtitle font-mono">AUTONOMOUS WARFARE SIMULATOR</div></div><div className="header-divider header-location" /><div className="header-location flex flex-col gap-1"><span className="text-sm font-medium">Operation Pacific Shield</span><span className="flex items-center gap-1.5 text-xs text-muted-foreground"><MapPin size={12} />San Diego, California</span></div><span className="scenario-tag header-secondary">BUILD 0.6</span></div>
+      <div className="flex items-center gap-3"><div className="brand-icon"><Crosshair size={25} strokeWidth={1.4} /></div><div><div className="wordmark">GRID COMMAND</div><div className="brand-subtitle font-mono">AUTONOMOUS WARFARE SIMULATOR</div></div><div className="header-divider header-location" /><div className="header-location flex flex-col gap-1"><span className="text-sm font-medium">Operation Pacific Shield</span><span className="flex items-center gap-1.5 text-xs text-muted-foreground"><MapPin size={12} />San Diego, California</span></div><span className="scenario-tag header-secondary">BUILD 0.7</span></div>
       <div className="flex items-center gap-2"><div className="header-secondary flex items-center gap-2 pr-4 font-mono text-xs text-muted-foreground"><span className="live-dot" />LOCAL SIMULATION</div><IconButton label="How to observe · controls" onClick={() => setModal('help')}><CircleHelp /></IconButton><span className="desktop-only"><IconButton label={audio ? 'Mute radio voice' : 'Enable radio voice'} onClick={toggleAudio} active={audio}>{audio ? <Volume2 /> : <VolumeX />}</IconButton></span><IconButton label="Graphics & settings" onClick={() => setModal('settings')}><Settings2 /></IconButton><span className="desktop-only"><IconButton label="New operation" onClick={() => setModal('restart')}><RotateCcw /></IconButton></span></div>
     </header>
     <div className="game-view-tabs" role="tablist" aria-label="Game view" onKeyDown={e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); const next = view === 'battlefield' ? 'models' : 'battlefield'; setView(next); document.getElementById(`tab-${next}`)?.focus() } }}>{(['battlefield', 'models'] as const).map(id => <button key={id} role="tab" id={`tab-${id}`} aria-controls={`panel-${id}`} aria-selected={view === id} tabIndex={view === id ? 0 : -1} onClick={() => setView(id)}>{id === 'battlefield' ? <Crosshair size={16} /> : <Layers size={16} />}{id === 'battlefield' ? 'Battlefield' : 'Model Preview'}</button>)}</div>
@@ -80,7 +81,7 @@ export function Game() {
       <div className="flex items-center gap-2"><Eye size={15} className="desktop-only text-muted-foreground" /><ToggleGroup aria-label="Observer perspective" spacing={0} value={[perspective]} onValueChange={v => { if (v.length) { setPerspective(v[0] as Perspective); setSelected(null) } }}><ToggleGroupItem value="OBS">Observer</ToggleGroupItem><ToggleGroupItem value="BLU">BLU</ToggleGroupItem><ToggleGroupItem value="RED">RED</ToggleGroupItem></ToggleGroup></div>
     </div>
     <div className="battle-workspace" id="panel-battlefield" role="tabpanel" aria-labelledby="tab-battlefield" style={view === 'models' ? { display: 'none' } : undefined}>
-      <CommandPanel state={state} perspective={perspective} selected={selected} onSelect={selectUnit} focus={focus} mobileOpen={mobileOpen} />
+      <CommandPanel state={state} perspective={perspective} selected={selected} onSelect={selectUnit} focus={focus} mobileOpen={mobileOpen} onUpgradeMob={upgradeMob} />
       <div className="battle-main">
         <section className="map-area" aria-label="Live battlefield">
           <Battlefield active={view === 'battlefield'} stateRef={stateRef} graphics={graphics} perspective={perspective} selected={selected} onSelect={setSelected} onReady={onReady} onFPS={setFps} onStatus={setStatus} onGeometry={onGeometry} />
@@ -101,3 +102,4 @@ export function Game() {
     <GameDialogs soundEngine={soundEngine} modal={modal} onClose={() => setModal(null)} graphics={graphics} setGraphics={setGraphics} restart={restart} />
   </main>
 }
+

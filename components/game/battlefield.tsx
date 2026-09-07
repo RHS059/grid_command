@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type MutableRefObject } from 'react'
 import maplibregl, { type GeoJSONSource, type Map as GeoMap } from 'maplibre-gl'
 import type { FeatureCollection, Feature, Geometry } from 'geojson'
 import { DisplayPoses, followSubject, chaseView, angleBetween } from '@/lib/game/chase-camera'
+import { MOB_YARD } from '@/lib/game/mob'
 import { THEATER_BOUNDS } from '@/lib/game/theater'
 import { effectiveGraphics } from '@/lib/game/graphics'
 import { tacticalStyle, zoneFeatures } from '@/lib/game/map-style'
@@ -92,7 +93,7 @@ export function Battlefield(props: Props) {
       else if (/tile|fetch|network/i.test(message)) latest.current.onStatus('Some map tiles unavailable · retry by panning')
     })
     const excludedBuildings = new Set<string | number>()
-    const compounds = [...Object.values(BASES).map(p => ({ ...p, w: 44, h: 38 })), ...Object.values(AIRBASES).map(p => ({ ...p, w: 88, h: 610 }))].map(p => ({ min: lngLat({ x: p.x - p.w, y: p.y - p.h }), max: lngLat({ x: p.x + p.w, y: p.y + p.h }) }))
+    const compounds = [...Object.values(BASES).map(p => ({ ...p, y: p.y+(MOB_YARD.maxY+MOB_YARD.minY)/2, w: MOB_YARD.halfWidth+4, h: (MOB_YARD.maxY-MOB_YARD.minY)/2+4 })), ...Object.values(AIRBASES).map(p => ({ ...p, w: 88, h: 610 }))].map(p => ({ min: lngLat({ x: p.x - p.w, y: p.y - p.h }), max: lngLat({ x: p.x + p.w, y: p.y + p.h }) }))
     const clearCompoundBuildings = () => {
       if (disposed || !map.getLayer('buildings-3d')) return
       const before = excludedBuildings.size
@@ -218,3 +219,4 @@ export function Battlefield(props: Props) {
     {error && <div className="map-loading" role="alert"><span className="max-w-sm text-center text-sm">{error}</span><button className="map-control" onClick={() => window.location.reload()}>Reload battlefield</button></div>}
   </>
 }
+

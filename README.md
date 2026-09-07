@@ -38,3 +38,25 @@ culling, not building-occlusion culling. Turning the mode off restores the norma
 graphics choices without restarting the battle.
 
 Runtime FPS and visual confirmation for this change are left to manual review.
+
+## MOB logistics and upgrades
+
+Supply trucks now arrive with visible containers and queue for the cranes at their
+side's mobile operating base. Each crane removes one container at a time, places it
+on a receiving trailer beside the storage area, and credits the supplies only after
+the complete lift finishes. A level 1 MOB has one crane and needs 18 simulation
+seconds per container. Levels 2 and 3 need 12 seconds per container and can unload
+two and three trucks at once, respectively.
+
+Level 2 costs 4,000 SP and takes 90 seconds. It makes troop requisitions and MOB
+unloading 50% faster. Level 3 costs 8,000 SP and takes 150 seconds, adds a helipad
+and vehicle bay, and makes tanks, trucks, troop trucks, attack helicopters,
+transport helicopters and heavy-lift helicopters 25% cheaper and faster to
+requisition. The Logistics panel shows upgrade cost, progress, crane capacity and
+active bonuses. Commanders pursue these upgrades after completing airfield tiers.
+
+Living soldiers and vehicles use deterministic local traffic avoidance. Downed
+soldiers remain obstacles while dead casualties do not block movement. Aircraft
+avoid other aircraft when their vertical volumes overlap and pass over ground units
+once they have enough altitude separation.
+

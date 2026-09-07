@@ -1,3 +1,5 @@
+import { createCargoContainer } from './container-model'
+import { containerOnTruck, truckContainerPose } from './mob'
 import * as T from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { shell, rod } from './model-geometry'
@@ -34,16 +36,12 @@ export function createSupportModel(role:Role,side:Side){
       for(const y of [-.7,.4])b(.88,.045,.65,sign*1.05,y,1.03,dark)
       b(.08,.65,.55,sign*1.35,-4.55,.75,dark)
     }
-    b(2.5,5.15,2.45,0,-1.9,2.7)
-    for(const sign of [-1,1])for(let i=0;i<24;i++)b(.045,.055,2.3,sign*1.275,-4.37+i*.215,1.48+1.15,metal)
-    for(let i=0;i<24;i++)b(2.45,.055,.035,0,-4.37+i*.215,3.945,metal)
-    for(const x of [-1.24,1.24])for(const y of [-4.5,.7])b(.1,.1,2.5,x,y,2.7,metal)
-    for(const x of [-.63,.63]){b(1.2,.045,2.3,x,-4.5,2.7);b(.035,.065,2.05,x,-4.55,2.7,metal);b(.23,.07,.045,x,-4.57,2.3,metal)}
+    const container=createCargoContainer();container.name='truck-container-0';const pose=truckContainerPose(0);container.position.set(pose.x,pose.y,pose.z);root.add(container)
     b(2.65,.17,.2,0,-4.83,1.18,metal)
     const spare=new T.Mesh(new T.CylinderGeometry(.64,.64,.3,12),dark);spare.rotation.z=Math.PI/2;spare.position.set(0,1.15,2.05);root.add(spare)
     for(let i=0;i<2;i++){
       const trailer=new T.Group();trailer.name=`cargo-trailer-${i+1}`;trailer.position.y=-7-i*6.2;trailer.visible=false;root.add(trailer)
-      b(.2,2,.2,0,3,.6,metal,trailer);b(2.5,4.8,.3,0,0,.8,dark,trailer);b(2.4,4.5,1.9,0,0,1.9,body,trailer);b(1.2,.06,.3,0,-2.28,2,mark,trailer)
+      b(.2,2,.2,0,3,.6,metal,trailer);b(2.5,4.8,.3,0,0,.8,dark,trailer);const cargo=createCargoContainer();cargo.name=`truck-container-${i+1}`;cargo.position.z=truckContainerPose(i+1).z;trailer.add(cargo)
       for(const x of [-1.3,1.3])for(const y of [-1.3,1.3]){const tire=new T.Mesh(new T.CylinderGeometry(.5,.5,.3,16),dark);tire.rotation.z=Math.PI/2;tire.position.set(x,y,.5);trailer.add(tire)}
     }
   }else if(role==='TROOP_TRUCK'){
@@ -96,7 +94,7 @@ export function createSupportModel(role:Role,side:Side){
     b(.65,.7,.6,1.15,0,.45,dark);b(.35,.05,.13,1.15,.36,.5,mark)
   }
   if(role==='TRUCK'){
-    const meshes=root.children.filter((o):o is T.Mesh=>o instanceof T.Mesh)
+    const meshes=root.children.filter((o):o is T.Mesh=>o instanceof T.Mesh&&!o.name.startsWith('truck-container-'))
     for(const material of [body,dark,metal,glass,mark]){
       const group=meshes.filter(m=>m.material===material);if(!group.length)continue
       const geos=group.map(m=>{m.updateMatrix();const g=m.geometry.index?m.geometry.toNonIndexed():m.geometry.clone();g.deleteAttribute('color');g.applyMatrix4(m.matrix);return g})
@@ -105,4 +103,7 @@ export function createSupportModel(role:Role,side:Side){
   }
   return root
 }
-export function animateSupport(root:T.Object3D,time:number,mission?:MissionState){for(let i=1;i<=2;i++){const trailer=root.getObjectByName(`cargo-trailer-${i}`);if(trailer)trailer.visible=i<=(mission?.trailers||0)}const forks=root.getObjectByName('fork-carriage'),pallet=root.getObjectByName('pallet');if(forks)forks.position.z=mission?(['loading','placing'].includes(mission.phase)?Math.min(.8,Math.max(0,time-mission.since)*.2):.35):.4+Math.sin(time)*.35;if(pallet)pallet.visible=mission?!!mission.cargo:true}
+export function animateSupport(root:T.Object3D,time:number,mission?:MissionState){
+  for(let i=0;i<3;i++){const container=root.getObjectByName(`truck-container-${i}`);if(container)container.visible=containerOnTruck(mission,i,time)}
+for(let i=1;i<=2;i++){const trailer=root.getObjectByName(`cargo-trailer-${i}`);if(trailer)trailer.visible=i<=(mission?.trailers||0)}const forks=root.getObjectByName('fork-carriage'),pallet=root.getObjectByName('pallet');if(forks)forks.position.z=mission?(['loading','placing'].includes(mission.phase)?Math.min(.8,Math.max(0,time-mission.since)*.2):.35):.4+Math.sin(time)*.35;if(pallet)pallet.visible=mission?!!mission.cargo:true}
+

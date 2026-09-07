@@ -1,3 +1,5 @@
+import { createMobYard } from './mob-models'
+import { MOB_YARD } from './mob'
 import * as T from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { SIDE_COLOR, type AirfieldTier, type Side } from './types'
@@ -18,18 +20,25 @@ export function createBase(kind: BaseKind, side: Side, tier: AirfieldTier = 1) {
     b(w * .7, .16, .55, x, y + d / 2 + .25, h - .8, 3)
   }
   if (kind === 'MOB') {
-    b(82, 70, .35, 0, 0, -.2, 2)
+    b(MOB_YARD.halfWidth*2,MOB_YARD.maxY-MOB_YARD.minY,.35,0,(MOB_YARD.maxY+MOB_YARD.minY)/2,-.2,2)
+    root.add(createMobYard(tier))
     shelter(-16, -13, 27, 17, 7)
     for (let i = 0; i < 5; i++) b(2.3, .18, 1.6, -26 + i * 4.8, -21.6, 4, 4)
     b(5, 4, 1.4, -23, -14, 7.8, 1); b(5, 4, 1.4, -13, -14, 7.8, 1)
     shelter(23, -17, 15, 22, 5)
-    for (let i = 0; i < 3; i++) { b(5, 10, 3, 15 + i * 7, 16, 1.5); for (let j = 0; j < 8; j++) b(.08, 10.1, 2.8, 13 + i * 7 + j * .55, 16, 1.5, 2) }
+    if(tier===3){
+      b(32,32,.12,-60,12,.04,1)
+      const ring=new T.RingGeometry(12,12.4,40).toNonIndexed();put(ring,-60,12,.13,2)
+      b(2,14,.05,-65,12,.15,2);b(2,14,.05,-55,12,.15,2);b(10,2,.05,-60,12,.15,2)
+      shelter(-60,-22,30,24,9)
+      b(27,.2,6,-60,-9.8,3,1)
+    }
     for (let i = 0; i < 4; i++) { b(2, 2, 1.8, -25 + i * 3, 22, .9); b(2.1, 2.1, .12, -25 + i * 3, 22, 1.8, 1) }
     pole(.3, 22, -34, -23); pole(.12, 14, -31, -23)
     for (let i = 0; i < 4; i++) { b(5, .15, .15, -34, -23, 14 + i * 2); b(.15, 4, .15, -34, -23, 14 + i * 2) }
     const dish = new T.SphereGeometry(2, 16, 8, 0, Math.PI * 2, 0, Math.PI / 3).toNonIndexed(); dish.rotateX(Math.PI / 3); put(dish, -31, -23, 13, 2)
-    for (let i = -4; i <= 4; i++) { b(7, 1.2, 1.6, i * 8, -33, .8, 2); if (Math.abs(i) > 1) b(7, 1.2, 1.6, i * 8, 33, .8, 2) }
-    for (const x of [-39, 39]) for (let y = -25; y <= 25; y += 8) b(1.2, 7, 1.6, x, y, .8, 2)
+    for (let x = -72; x <= 72; x += 8) { b(7, 1.2, 1.6, x, MOB_YARD.minY + 2, .8, 2); if (x < 48) b(7, 1.2, 1.6, x, MOB_YARD.maxY - 2, .8, 2) }
+    for (const x of [-MOB_YARD.halfWidth + 2, MOB_YARD.halfWidth - 2]) for (let y = MOB_YARD.minY + 10; y <= MOB_YARD.maxY - 10; y += 8) b(1.2, 7, 1.6, x, y, .8, 2)
     pole(.12, 10, -9, 24); b(3, .08, 1.6, -7.5, 24, 9, 3)
     b(14, 1, .05, 0, 29, .04, 1)
   } else {
@@ -65,19 +74,21 @@ export function createBase(kind: BaseKind, side: Side, tier: AirfieldTier = 1) {
 }
 
 export function conformBase(root: T.Group, elevation: (x: number, y: number) => number) {
-  const width = root.name === 'MOB' ? 82 : root.userData.tier === 3 ? 240 : 170, depth = root.name === 'MOB' ? 70 : 1200
+  const width = root.name === 'MOB' ? MOB_YARD.halfWidth*2 : root.userData.tier === 3 ? 240 : 170, depth = root.name === 'MOB' ? MOB_YARD.maxY-MOB_YARD.minY : 1200
   const offset = root.name === 'AIRFIELD' && root.userData.tier === 3 ? -35 : 0
+  const offsetY=root.name==='MOB'?(MOB_YARD.maxY+MOB_YARD.minY)/2:0
   let high = -Infinity, low = Infinity
-  for (let x = -width / 2 + offset; x <= width / 2 + offset; x += width / 10) for (let y = -depth / 2; y <= depth / 2; y += depth / 24) {
+  for (let x = -width / 2 + offset; x <= width / 2 + offset; x += width / 10) for (let y = -depth / 2+offsetY; y <= depth / 2+offsetY; y += depth / 24) {
     const height = elevation(x, y); high = Math.max(high, height); low = Math.min(low, height)
   }
   root.userData.platformHeight=high
   // A level graded platform keeps runway paint and roofs coplanar; its skirt extends down to the sampled terrain.
   root.traverse(o => {
-    if (!(o instanceof T.Mesh)) return
+    if (!(o instanceof T.Mesh)||o.userData.skipTerrainConform) return
     const p = o.geometry.getAttribute('position')
     const original: Float32Array = o.userData.originalPositions ||= new Float32Array(p.array)
     for (let i = 0; i < p.count; i++) p.setZ(i, original[i * 3 + 2] + (original[i * 3 + 2] < -.3 ? low - 2 : high))
     p.needsUpdate = true; o.geometry.computeVertexNormals(); o.geometry.computeBoundingSphere()
   })
 }
+
