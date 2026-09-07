@@ -1,8 +1,8 @@
 import * as T from 'three'
 import { generateBuilding, presetFromFeature, type BuildingPartKind } from './building-system'
+import { applyBuildingPartTransform, BUILDING_PART_CAPACITY } from './building-model'
 import type { GeometryPacket, Graphics } from './types'
 
-const CAPACITY: Record<BuildingPartKind, number> = { wall: 18000, window: 18000, door: 1000, floor: 6000, roof: 5000 }
 export class ModularBuildingRenderer {
   private features = new Map<string, GeometryPacket['features'][number]>()
   private sectors = new Map<string, string[]>()
@@ -12,10 +12,10 @@ export class ModularBuildingRenderer {
   private signature = ''
   constructor(private scene: T.Scene) {
     const geometry = new T.BoxGeometry(1, 1, 1)
-    for (const kind of Object.keys(CAPACITY) as BuildingPartKind[]) {
+    for (const kind of Object.keys(BUILDING_PART_CAPACITY) as BuildingPartKind[]) {
       const material = kind === 'window' ? new T.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: .18, metalness: .16, emissive: '#07131b', emissiveIntensity: .7 })
         : new T.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: kind === 'roof' ? .75 : .9, metalness: kind === 'door' ? .18 : .04 })
-      const mesh = new T.InstancedMesh(geometry.clone(), material, CAPACITY[kind]); mesh.count = 0; mesh.visible = false; mesh.frustumCulled = false; mesh.instanceMatrix.setUsage(T.DynamicDrawUsage); this.meshes.set(kind, mesh); scene.add(mesh)
+      const mesh = new T.InstancedMesh(geometry.clone(), material, BUILDING_PART_CAPACITY[kind]); mesh.count = 0; mesh.visible = false; mesh.frustumCulled = false; mesh.instanceMatrix.setUsage(T.DynamicDrawUsage); this.meshes.set(kind, mesh); scene.add(mesh)
     }
   }
   import(packet: GeometryPacket) {
@@ -35,12 +35,11 @@ export class ModularBuildingRenderer {
       .sort((a,b)=>Math.hypot(a.x-center.x,a.y-center.y)-Math.hypot(b.x-center.x,b.y-center.y)||a.preset.id.localeCompare(b.preset.id)).slice(0,maxBuildings)
     const counts = new Map<BuildingPartKind, number>()
     for (const building of buildings) {
-      const layout = generateBuilding(building.preset), cos = Math.cos(building.rotation), sin = Math.sin(building.rotation)
+      const layout = generateBuilding(building.preset)
       for (const part of layout.parts) {
         const mesh = this.meshes.get(part.kind)!, index = counts.get(part.kind) || 0
-        if (index >= CAPACITY[part.kind]) continue
-        this.dummy.position.set(building.x + part.x*cos-part.y*sin, building.y + part.x*sin+part.y*cos, (terrain ? building.elevation : 0) + part.z)
-        this.dummy.rotation.set(part.tilt || 0, 0, building.rotation + part.rotation); this.dummy.scale.set(part.width, part.depth, part.height); this.dummy.updateMatrix()
+        if (index >= BUILDING_PART_CAPACITY[part.kind]) continue
+        applyBuildingPartTransform(this.dummy, part, { x: building.x, y: building.y, z: terrain ? building.elevation : 0 }, building.rotation)
         mesh.setMatrixAt(index, this.dummy.matrix); mesh.setColorAt(index, new T.Color(part.color)); counts.set(part.kind, index + 1)
       }
     }
@@ -48,3 +47,4 @@ export class ModularBuildingRenderer {
   }
   dispose() { for (const mesh of this.meshes.values()) { this.scene.remove(mesh); mesh.geometry.dispose(); (mesh.material as T.Material).dispose(); mesh.dispose() } this.meshes.clear(); this.features.clear(); this.sectors.clear() }
 }
+
