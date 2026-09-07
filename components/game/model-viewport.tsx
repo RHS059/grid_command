@@ -53,7 +53,7 @@ export function ModelViewport(props: Props) {
       orbit.autoRotate = c.rotate; orbit.update(); renderer.render(scene, camera)
     }
     frame = requestAnimationFrame(render)
-    return () => { cancelAnimationFrame(frame); observer.disconnect(); orbit.dispose(); disposeModel(scene); material.dispose(); renderer.dispose(); renderer.forceContextLoss(); renderer.domElement.remove() }
+    return () => { cancelAnimationFrame(frame); observer.disconnect(); orbit.dispose(); batch?.dispose(); disposeModel(scene); material.dispose(); renderer.dispose(); renderer.forceContextLoss(); renderer.domElement.remove() }
   }, [props.model, props.side, props.active])
   return <div className="model-viewport" ref={host}>{error && <p role="alert" className="p-6 text-sm text-destructive">{error}</p>}</div>
 }
