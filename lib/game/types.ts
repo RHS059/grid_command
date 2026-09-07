@@ -21,6 +21,13 @@ export type Point = { x: number; y: number }
 export type Vec3 = Point & { z: number }
 export type Stance = 'stand' | 'crouch' | 'prone'
 export type SoldierAction = 'idle' | 'walk' | 'fire' | 'cover' | 'peek' | 'throw' | 'drag'
+export type StrategicAction = 'ASSEMBLE' | 'MASS' | 'FLANK' | 'SEIZE' | 'RESUPPLY'
+export type StrategicTask = 'CAPTURE' | 'SUPPORT' | 'OVERWATCH' | 'RESUPPLY'
+export type TacticalAction = 'ADVANCE' | 'HOLD' | 'ENGAGE' | 'COVER' | 'SUPPRESS' | 'LOCAL_FLANK' | 'WITHDRAW' | 'RESCUE' | 'RESUPPLY' | 'MOUNT'
+export interface StrategicOrder { revision: number; action: StrategicAction; task: StrategicTask; target: string; destination: Point; issuedAt: number }
+export interface TacticalIntent { action: TacticalAction; score: number; decidedAt: number; committedUntil: number; targetId?: string; destination?: Point }
+export interface MovementIntent { source: 'strategic' | 'tactical'; destination: Point; speed: number; arrival: number; issuedAt: number }
+export interface ContactMemory { unitId: string; role: Role; position: Point; lastSeen: number; confidence: number; observers: string[] }
 export interface Soldier extends Point { disembarked?: boolean; id: string; status: 'active' | 'downed' | 'dead'; stance: Stance; action: SoldierAction; heading: number; aim: number; shotAt: number; since: number; rescue?: string; cover?: Point; path?: Point[]; routeAt?: number }
 export interface GeometryFeature { key: string; water: boolean; rings: number[][][]; base?: number; roof?: number; elevation?: number }
 export interface TerrainGrid { x: number; y: number; step: number; width: number; height: number; values: number[] }
@@ -36,6 +43,7 @@ export interface Unit extends Point {
   crewBailed?: boolean; external?: boolean; engine?: boolean; servicing?: boolean; serviceStatus?: string; emergency?: boolean;
   travelStatus?: string; routeRetry?: number; transport?: MissionState; carrier?: string; transportIntent?: { destination: Point; mission: string; target: string }; attachedSquad?: string; attachedVehicles?: string[]; deployment?: 'garage'; destroyedAt?: number; lossProcessed?: boolean; lock?: { target: string; since: number }; construction?: { builder: string; due: number };
   soldiers?: Soldier[]; aim?: number; altitude?: number; cooldown?: number; suppression?: number; smoke?: number; airPhase?: 'attack' | 'return' | 'rearm';
+  strategicOrder?: StrategicOrder; tacticalIntent?: TacticalIntent; movementIntent?: MovementIntent;
   id: string; name: string; side: Side; role: Role; members: number; maxMembers: number;
   hp: number; ammo: number; fuel: number; heading: number; mission: string; target: string;
   path: Point[]; spotted: boolean; firing: boolean; kills: number; subcommand: string;
@@ -43,7 +51,7 @@ export interface Unit extends Point {
 export interface Objective extends Point { id: string; name: string; owner: Side | null; contested: boolean; progress: number; capturing: Side | null }
 export interface RadioEvent { id: number; time: number; side: Side | 'SYS'; text: string; type: 'command' | 'combat' | 'logistics' | 'system' }
 export interface Force { sp: number; tempo: number; action: string; target: string; cycles: number; casualties: number; fuel: number; ammo: number; manpower: number; queue: number; purchase: string; hold: number; delivered: number }
-export interface BattleState { mobs?: Record<Side, MobState>; airfields: Record<Side, AirfieldState>; nextSupply: Record<Side, number>; depots: Record<Side, Depot>; missiles: Missile[]; casualties: Casualty[]; shipmentSerial: number; shots: ShotEvent[]; smokes: Smoke[]; geometryReady: boolean; workerMs: number; time: number; tick: number; seed: number; paused: boolean; speed: number; units: Unit[]; objectives: Objective[]; forces: Record<Side, Force>; events: RadioEvent[]; winner: Side | 'DRAW' | null; navCells: number; buildings: number }
+export interface BattleState { mobs?: Record<Side, MobState>; airfields: Record<Side, AirfieldState>; nextSupply: Record<Side, number>; depots: Record<Side, Depot>; contacts?: Record<Side, ContactMemory[]>; missiles: Missile[]; casualties: Casualty[]; shipmentSerial: number; shots: ShotEvent[]; smokes: Smoke[]; geometryReady: boolean; workerMs: number; time: number; tick: number; seed: number; paused: boolean; speed: number; units: Unit[]; objectives: Objective[]; forces: Record<Side, Force>; events: RadioEvent[]; winner: Side | 'DRAW' | null; navCells: number; buildings: number }
 export interface Graphics { performanceMode?: boolean; quality: 'performance' | 'balanced' | 'high'; terrain: boolean; buildings: boolean; shadows: boolean; labels: boolean; routes: boolean; grid: boolean; models: boolean }
 export const DEFAULT_GRAPHICS: Graphics = { performanceMode: false, quality: 'balanced', terrain: true, buildings: true, shadows: true, labels: true, routes: true, grid: true, models: true }
 export const CENTER = ORIGIN
@@ -90,6 +98,6 @@ export function initialState(seed = 3701): BattleState {
   const depot = (): Depot => ({ airfield: emptyStock(), pending: emptyStock(), mob: emptyStock() })
   const objectives: Objective[] = CITY_OBJECTIVES.map(o => ({ ...o, owner: null, contested: false, progress: 0, capturing: null }))
   const units = (['BLU', 'RED'] as Side[]).map(side => createUnit(side, 'COMMAND', `${side}-command`))
-  return { mobs: { BLU: { tier: 1 }, RED: { tier: 1 } }, airfields: { BLU: { tier: 1 }, RED: { tier: 1 } }, nextSupply: { BLU: 30, RED: 30 }, depots: { BLU: depot(), RED: depot() }, missiles: [], casualties: [], shipmentSerial: 0, shots: [], smokes: [], geometryReady: false, workerMs: 0, time: 0, tick: 0, seed, paused: false, speed: 1, units, objectives, forces: { BLU: force(), RED: force() }, events: [{ id: 1, time: 0, side: 'SYS', type: 'system', text: 'Commanders online. Depots empty. Scheduled airfield supplies inbound; all force assets must be purchased.' }], winner: null, navCells: 0, buildings: 0 }
+  return { mobs: { BLU: { tier: 1 }, RED: { tier: 1 } }, airfields: { BLU: { tier: 1 }, RED: { tier: 1 } }, nextSupply: { BLU: 30, RED: 30 }, depots: { BLU: depot(), RED: depot() }, contacts: { BLU: [], RED: [] }, missiles: [], casualties: [], shipmentSerial: 0, shots: [], smokes: [], geometryReady: false, workerMs: 0, time: 0, tick: 0, seed, paused: false, speed: 1, units, objectives, forces: { BLU: force(), RED: force() }, events: [{ id: 1, time: 0, side: 'SYS', type: 'system', text: 'Commanders online. Depots empty. Scheduled airfield supplies inbound; all force assets must be purchased.' }], winner: null, navCells: 0, buildings: 0 }
 }
 
