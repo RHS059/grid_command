@@ -6,6 +6,7 @@ import { SIDE_COLOR, type AirfieldTier, type Side } from './types'
 import { RUNWAY } from './theater'
 
 export type BaseKind = 'MOB' | 'AIRFIELD'
+export type BaseElevation = { high: number; low: number }
 export const airfieldPlatform = (tier: AirfieldTier) => ({ width: tier === 3 ? 240 : 170, depth: RUNWAY.halfLength * 2, x: tier === 3 ? -35 : 0 })
 export function createBase(kind: BaseKind, side: Side, tier: AirfieldTier = 1) {
   const root = new T.Group(); root.name = kind; root.userData.tier = tier
@@ -68,14 +69,19 @@ export function createBase(kind: BaseKind, side: Side, tier: AirfieldTier = 1) {
   return root
 }
 
-export function conformBase(root: T.Group, elevation: (x: number, y: number) => number) {
+export function conformBase(root: T.Group, elevation?: (x: number, y: number) => number | undefined, locked?: BaseElevation) {
   const platform = airfieldPlatform(root.userData.tier as AirfieldTier)
   const width = root.name === 'MOB' ? MOB_YARD.halfWidth*2 : platform.width, depth = root.name === 'MOB' ? MOB_YARD.maxY-MOB_YARD.minY : platform.depth
   const offset = root.name === 'AIRFIELD' ? platform.x : 0
   const offsetY=root.name==='MOB'?(MOB_YARD.maxY+MOB_YARD.minY)/2:0
-  let high = -Infinity, low = Infinity
-  for (let x = -width / 2 + offset; x <= width / 2 + offset; x += width / 10) for (let y = -depth / 2+offsetY; y <= depth / 2+offsetY; y += depth / 24) {
-    const height = elevation(x, y); high = Math.max(high, height); low = Math.min(low, height)
+  let high = locked?.high ?? -Infinity, low = locked?.low ?? Infinity
+  if (!locked) {
+    if (!elevation) return undefined
+    for (let x = -width / 2 + offset; x <= width / 2 + offset; x += width / 10) for (let y = -depth / 2+offsetY; y <= depth / 2+offsetY; y += depth / 24) {
+      const height = elevation(x, y)
+      if (height === undefined || !Number.isFinite(height)) return undefined
+      high = Math.max(high, height); low = Math.min(low, height)
+    }
   }
   root.userData.platformHeight=high
   // A level graded platform keeps runway paint and roofs coplanar; its skirt extends down to the sampled terrain.
@@ -86,5 +92,6 @@ export function conformBase(root: T.Group, elevation: (x: number, y: number) => 
     for (let i = 0; i < p.count; i++) p.setZ(i, original[i * 3 + 2] + (original[i * 3 + 2] < -.3 ? low - 2 : high))
     p.needsUpdate = true; o.geometry.computeVertexNormals(); o.geometry.computeBoundingSphere()
   })
+  return { high, low }
 }
 
