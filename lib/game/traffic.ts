@@ -7,7 +7,7 @@ type Body = { id: string; mover: Mover; unit: Unit; x: number; y: number; z: num
 const sessions = new WeakMap<Navigation, Traffic>()
 const CELL = 64, DT = .05
 const LOGISTICS_ROLES = new Set(['CARGO_PLANE','FORKLIFT','HEAVY_LIFT_HELI','TRUCK'])
-const STATIONARY_LOGISTICS_PHASES = new Set(['waiting','loading','unloading','placing','mob-unloading'])
+const STATIONARY_LOGISTICS_PHASES = new Set(['waiting','loading','unloading','placing','mob-holding','mob-unloading'])
 const length = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y)
 function ground(nav: Navigation, p: Point) {
   const g = (nav.sectors.get(sectorKey(p)) || nav.sectors.get('legacy'))?.terrain
