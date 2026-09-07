@@ -8,7 +8,7 @@ export const AIRFIELD_TIERS = {
   3: { runways: 2, forklifts: 4, trucks: 4, trailers: 2, supplyMultiplier: 4, income: 40, cost: 1200, buildSeconds: 90 },
 } as const
 export interface AirfieldState { tier: AirfieldTier; upgrade?: { tier: AirfieldTier; due: number } }
-export interface MissionState { manual?: boolean; autoDismount?: boolean; dismountCrew?: boolean; mobPad?: boolean; containerState?: 'loaded' | 'empty'; containerCount?: number; unloadedContainers?: number; airfieldSlot?: number; mobHold?: number; mobDock?: number; queuedAt?: number; unloadStarted?: number; unloadSeconds?: number; phase: string; since: number; destination?: Point; passengers?: string[]; cargo?: number; manifest?: Stock; shipment?: string; home?: Point; location?: 'MOB' | 'AIRBASE'; runway?: number; trailers?: number; dispatchTroops?: number; unloaded?: number; lastUnload?: number }
+export interface MissionState { manual?: boolean; autoDismount?: boolean; dismountCrew?: boolean; mobPad?: boolean; pickup?: Point; pickupFor?: string; containerState?: 'loaded' | 'empty'; containerCount?: number; unloadedContainers?: number; airfieldSlot?: number; mobHold?: number; mobDock?: number; queuedAt?: number; unloadStarted?: number; unloadSeconds?: number; phase: string; since: number; destination?: Point; passengers?: string[]; cargo?: number; manifest?: Stock; shipment?: string; home?: Point; location?: 'MOB' | 'AIRBASE'; runway?: number; trailers?: number; dispatchTroops?: number; unloaded?: number; lastUnload?: number }
 export interface Stock { fuel: number; ammo: number; repair: number }
 export const emptyStock = (): Stock => ({ fuel: 0, ammo: 0, repair: 0 })
 export const stockTotal = (s: Stock) => s.fuel + s.ammo + s.repair
