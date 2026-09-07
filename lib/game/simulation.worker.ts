@@ -6,7 +6,7 @@ import { Visibility } from './visibility'
 import { canSee, resolveCombat } from './combat'
 import { updateSoldiers } from './behaviors'
 import { isAir, isVehicle, troopSeats, type GeometryPacket } from './types'
-import { assignTransports, manualGetIn, requestDismount, transportBlockReason, updateTransports } from './transport'
+import { assignTransports, FINAL_APPROACH_WALK_DISTANCE, manualGetIn, requestDismount, transportBlockReason, updateTransports } from './transport'
 import { updateSupplyMissions } from './logistics'
 import { deployJammer, updateJammers } from './electronic-warfare'
 import { recordCasualties } from './casualties'
@@ -72,7 +72,8 @@ function commanders() {
     for (const u of p.own) {
       if (u.crewBailed || u.servicing || u.emergency || u.deployment || missionAsset(u.role) || u.carrier || u.attachedSquad || (troopSeats(u.role)>0&&u.transport&&!['available','escort'].includes(u.transport.phase)) || state.units.some(c=>c.hp>0&&c.transport?.passengers?.includes(u.id)) || state.units.some(j=>j.hp>0&&j.construction?.builder===u.id) || ['COMMAND', 'PILOT', 'LOGISTICS'].includes(u.role)) continue
       if(u.orderRefusal?.target===p.target.id&&u.orderRefusal.retryAt>state.time)continue
-      if(!isVehicle(u.role)&&['RIFLE','SCOUT','AT'].includes(u.role)&&!council.infantryApproved){u.path=[];u.mission='HOLD BY COMMAND STAFF';u.subcommand='TROOP COMMAND';continue}
+      const localFootAssault=!isVehicle(u.role)&&['RIFLE','SCOUT','AT'].includes(u.role)&&(distance(u,p.target)<=FINAL_APPROACH_WALK_DISTANCE||(u.walkFallbackUntil||0)>state.time)
+      if(!isVehicle(u.role)&&['RIFLE','SCOUT','AT'].includes(u.role)&&!council.infantryApproved&&!localFootAssault){u.path=[];u.mission='HOLD BY COMMAND STAFF';u.subcommand='TROOP COMMAND';continue}
       if(isAir(u.role)&&!['RECON_UAV','TRANSPORT_HELI','HEAVY_LIFT_HELI','CARGO_PLANE'].includes(u.role)&&!council.airApproved){u.path=[];u.mission='HOLD BY AIR COMMAND';continue}
       if(['MG','MORTAR'].includes(u.role)&&!council.firesApproved){u.path=[];u.mission='HOLD BY FIRES COMMAND';continue}
       if (isVehicle(u.role)) {
