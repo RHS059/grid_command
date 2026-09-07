@@ -19,6 +19,7 @@ import { AIRFIELD_TIERS } from './types'
 import { updateVehicleService, consumeFuel, missionFuel, syncDepotTotals } from './sustainment'
 import { aiInfantry, InfantryDirector, issueInfantryOrder } from './infantry-ai'
 import { Perception } from './perception'
+import { startObjectiveConstruction, updateObjectiveLogistics } from './objective-logistics'
 let visibility = new Visibility(), geometry = new Map<string,GeometryPacket>(), shotId = 0
 const nextShot = () => ++shotId
 
@@ -58,7 +59,7 @@ function commanders() {
     let assault = 0
     for (const u of p.own) {
       if (u.crewBailed || u.servicing || u.emergency || u.deployment || missionAsset(u.role) || u.carrier || u.attachedSquad || (troopSeats(u.role)>0&&u.transport&&!['available','escort'].includes(u.transport.phase)) || state.units.some(c=>c.hp>0&&c.transport?.passengers?.includes(u.id)) || state.units.some(j=>j.hp>0&&j.construction?.builder===u.id) || ['COMMAND', 'PILOT', 'LOGISTICS'].includes(u.role)) continue
-      if (isVehicle(u.role) && u.fuel < missionFuel(u, p.target)) { u.path = []; u.servicing = true; u.mission = 'RTB FOR SERVICE'; u.target = isAir(u.role) ? 'AIRFIELD' : 'MOB'; u.serviceStatus = 'INSUFFICIENT MISSION FUEL RESERVE'; continue }
+      if (isVehicle(u.role) && u.fuel < missionFuel(u, p.target, undefined, state)) { u.path = []; u.servicing = true; u.mission = 'RTB FOR SERVICE'; u.target = isAir(u.role) ? 'AIRFIELD' : 'MOB'; u.serviceStatus = 'INSUFFICIENT MISSION FUEL RESERVE'; continue }
       u.serviceStatus = undefined
       if (u.role === 'CAS_FIGHTER' || u.role === 'JET' || u.role === 'ATTACK_HELI') { if(u.airPhase === 'attack') { u.mission = 'CAS'; u.target = p.target.id; route(u,p.target) } continue }
       if (u.role === 'RECON_UAV') { u.mission = 'RECON'; u.target = 'Enemy MOB'; route(u, BASES[p.side === 'BLU' ? 'RED' : 'BLU']); continue }
@@ -160,7 +161,7 @@ function logistics() {
   }
   for (const u of state.units.filter(u => u.hp > 0)) {
     const f = state.forces[u.side]
-    if (!isVehicle(u.role) && distance(u, BASES[u.side]) < 110) { const stock = state.depots[u.side].mob; const amount = Math.min(4, 100 - u.ammo, stock.ammo); u.ammo += amount; stock.ammo -= amount }
+    if (!isVehicle(u.role)) { const forward=state.objectives.filter(o=>o.owner===u.side&&!o.contested&&distance(u,o)<100).sort((a,b)=>distance(u,a)-distance(u,b)||a.id.localeCompare(b.id))[0]; const stock=forward?.stock||(distance(u,BASES[u.side])<110?state.depots[u.side].mob:undefined); if(stock){const amount=Math.min(4,100-u.ammo,stock.ammo);u.ammo+=amount;stock.ammo-=amount} }
     if (u.role === 'MEDIC') for (const friend of state.units) if (!isVehicle(friend.role) && friend.side === u.side && friend.hp > 0 && distance(u, friend) < 80) friend.hp = Math.min(100, friend.hp + 1)
   }
 }
@@ -180,6 +181,7 @@ function tick() {
   updateJammers(state,nav)
   updateTransports(state,nav)
   updateSupplyMissions(state,nav)
+  updateObjectiveLogistics(state,nav,(side,text)=>log(side,text,'logistics'))
   for (const u of state.units) {
     if (aiInfantry(u)) { const intent=infantryAI.movement(state,u);if(intent)travel(u,intent.destination,nav,state.time,intent.speed,0,intent.arrival);continue }
     if (u.hp <= 0 || u.crewBailed || u.servicing || u.emergency || u.deployment || u.external || u.carrier || u.attachedSquad || (troopSeats(u.role)>0&&u.transport&&u.transport.phase!=='available') || missionAsset(u.role) || u.mission==='WAITING FOR TRANSPORT') continue
@@ -205,6 +207,7 @@ self.onmessage = (event: MessageEvent) => {
   if (msg.type === 'init' || msg.type === 'restart') { state = initialState(msg.seed || 3701); seed = state.seed; nav = new Navigation(); nav.strict=true; visibility=new Visibility(); perception=new Perception(); infantryAI=new InfantryDirector(); serial = 100; eventId = 1; shotId = 0; seen.clear(); deliveries.length = 0; ready = true; for(const packet of geometry.values()) applyGeometry({...packet,evict:undefined}); publish() }
   if (msg.type === 'deploy-jammer' && !state.winner && (msg.side==='BLU'||msg.side==='RED')) { const error=deployJammer(state,nav,String(msg.builder),msg.side); log(msg.side,error||'UAV jammer construction started. Coverage online in 15 seconds.',error?'system':'logistics');publish() }
   if(msg.type==='upgrade-mob'&&!state.winner&&(msg.side==='BLU'||msg.side==='RED')){const side=msg.side as Side;if(startMobUpgrade(state,side))log(side,state.forces[side].purchase,'logistics');publish()}
+  if(msg.type==='build-objective-facility'&&!state.winner&&(msg.side==='BLU'||msg.side==='RED')&&typeof msg.objectiveId==='string'&&(msg.kind==='helipad'||msg.kind==='vehicleBay')){const side=msg.side as Side;if(startObjectiveConstruction(state,side,msg.objectiveId,msg.kind))log(side,`Objective ${msg.objectiveId} ${msg.kind==='helipad'?'helipad':'vehicle repair bay'} construction started.`,'logistics');publish()}
   if(msg.type==='transport-action'&&!state.winner&&(msg.side==='BLU'||msg.side==='RED')&&typeof msg.unitId==='string'&&['get-in','dismount','dismount-all'].includes(msg.action)){
     const side=msg.side as Side,ok=msg.action==='get-in'?manualGetIn(state,side,msg.unitId,typeof msg.carrierId==='string'?msg.carrierId:undefined):requestDismount(state,nav,side,msg.unitId,msg.action==='dismount-all')
     if(ok)log(side,msg.action==='get-in'?'Manual vehicle pickup ordered.':msg.action==='dismount-all'?'Passenger and crew dismount ordered.':'Passenger dismount ordered.','command');publish()
