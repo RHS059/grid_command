@@ -6,6 +6,9 @@ import { mobHelipad, mobHelipadHold, releaseMobHelipad, reserveMobHelipad } from
 
 export const UNLOAD_INTERVAL = 1
 export const MAX_WALK_DISTANCE = 500
+export const FINAL_APPROACH_WALK_DISTANCE = 1500
+export const MAX_TRANSPORT_WAIT = 60
+export const TRANSPORT_FALLBACK_MARCH = 120
 const PICKUP_STANDOFF = 14
 const PICKUP_BOARDING_RANGE = 18
 // APCs and IFVs can carry a squad through explicit Get In orders, but remain
@@ -25,7 +28,8 @@ export const transportSquad = (squad: Unit) => squad.hp > 0 && !isVehicle(squad.
 export function transportBlockReason(state: BattleState, squad: Unit) {
   if(squad.mission!=='WAITING FOR TRANSPORT'||!squad.transportIntent)return undefined
   const destination = destinationFor(state, squad)
-  if (!destination || distance(squad, destination) <= MAX_WALK_DISTANCE) return undefined
+  const objective = state.objectives.find(o => o.id === squad.target)
+  if (!destination || distance(squad, destination) <= MAX_WALK_DISTANCE || objective && distance(squad, objective) <= FINAL_APPROACH_WALK_DISTANCE || (squad.walkFallbackUntil || 0) > state.time) return undefined
   if (state.units.some(c => c.hp > 0 && c.transport?.passengers?.includes(squad.id))) return undefined
   const attached = state.units.filter(c => c.side === squad.side && (c.attachedSquad === squad.id || squad.attachedVehicles?.includes(c.id)))
   const pool = state.units.filter(c => c.side === squad.side && !c.external && (automaticCarrier(c) || attached.includes(c)) && troopSeats(c.role) >= activeTroops(squad))
@@ -44,6 +48,12 @@ const intendedMission = (squad: Unit) => !['REPATH', 'WAITING FOR TRANSPORT', 'E
 function destinationFor(state: BattleState, squad: Unit) {
   return squad.path.at(-1) || squad.transportIntent?.destination || (squad.target === 'MOB' ? serviceBase(squad) : state.objectives.find(o => o.id === squad.target))
 }
+function shouldWalk(state: BattleState, squad: Unit, destination: { x: number; y: number }) {
+  const objective = state.objectives.find(o => o.id === squad.target)
+  return distance(squad, destination) <= MAX_WALK_DISTANCE
+    || !!objective && distance(squad, objective) <= FINAL_APPROACH_WALK_DISTANCE
+    || (squad.walkFallbackUntil || 0) > state.time
+}
 function restoreSquad(squad: Unit, nav?: Navigation) {
   const intent = squad.transportIntent
   squad.carrier = undefined
@@ -53,6 +63,7 @@ function restoreSquad(squad: Unit, nav?: Navigation) {
   if (first) { squad.x = first.x; squad.y = first.y }
   squad.path = intent ? nav ? nav.route(squad, intent.destination) : [{ ...intent.destination }] : []
   squad.transportIntent = undefined
+  squad.transportWaitSince = undefined
   for (const body of squad.soldiers || []) body.disembarked = undefined
 }
 export function nearestPersonnelCarrier(state: BattleState, squad: Unit, range = 150) {
@@ -73,7 +84,7 @@ export function manualGetIn(state: BattleState, side: Side, squadId: string, car
   squad.attachedVehicles = [...new Set([...(squad.attachedVehicles || []), carrier.id])]
   carrier.transport = { phase: 'pickup', since: state.time, destination: { ...destination }, passengers: [squad.id], home: { ...serviceBase(carrier, state, destination) }, manual: true, mobPad: squad.target === 'MOB' }
   commitMissionFuel(carrier,squad.target,authorizeMissionFuel(carrier,destination,squad,state).required,state.time)
-  carrier.path = []; carrier.target = squad.target; squad.path = []; squad.mission = 'WAITING FOR TRANSPORT'
+  carrier.path = []; carrier.target = squad.target; squad.path = []; squad.mission = 'WAITING FOR TRANSPORT'; squad.transportWaitSince = undefined; squad.walkFallbackUntil = undefined
   return true
 }
 function detach(state: BattleState, carrier: Unit) {
@@ -123,22 +134,25 @@ export function assignTransports(state: BattleState, nav?: Navigation) {
   const reserved = new Set(state.units.filter(c => c.hp > 0).flatMap(c => c.transport?.passengers || []))
   const eligible = state.units.filter(s => transportSquad(s) && !s.carrier && !reserved.has(s.id))
   for (const squad of eligible) {
-    if (squad.path.length && squad.mission !== 'WAITING FOR TRANSPORT') squad.transportIntent = undefined
+    if (squad.path.length && squad.mission !== 'WAITING FOR TRANSPORT' && (squad.walkFallbackUntil || 0) <= state.time) squad.transportIntent = undefined
     const destination = destinationFor(state, squad)
     if (!destination) continue
     if (squad.mission === 'WAITING FOR TRANSPORT' && !squad.transportIntent) squad.transportIntent = { destination: { ...destination }, mission: intendedMission(squad), target: squad.target }
-    if (distance(squad, destination) <= MAX_WALK_DISTANCE) {
+    const waitedTooLong = squad.transportWaitSince !== undefined && state.time - squad.transportWaitSince >= MAX_TRANSPORT_WAIT
+    if (waitedTooLong) squad.walkFallbackUntil = state.time + TRANSPORT_FALLBACK_MARCH
+    if (shouldWalk(state, squad, destination) || waitedTooLong) {
       if (squad.transportIntent && !squad.path.length) restoreSquad(squad, nav)
       continue
     }
     if (squad.path.length || !squad.transportIntent) squad.transportIntent = { destination: { ...destination }, mission: intendedMission(squad), target: squad.target }
+    squad.transportWaitSince ??= state.time
     squad.path = []; squad.mission = 'WAITING FOR TRANSPORT'
   }
   // Attached vehicles are the squad's first transport choice. They stay owned
   // by the squad and return to escort after this automatic movement cycle.
   for (const squad of [...eligible].sort((a, b) => a.id.localeCompare(b.id))) {
     const destination = destinationFor(state, squad)
-    if (!destination || reserved.has(squad.id) || distance(squad, destination) <= MAX_WALK_DISTANCE) continue
+    if (!destination || reserved.has(squad.id) || shouldWalk(state, squad, destination)) continue
     const carrier = state.units.filter(c => c.side === squad.side && c.hp > 0 && !c.crewBailed && !c.external && !c.servicing && !c.emergency && troopSeats(c.role) >= activeTroops(squad)
       && (c.attachedSquad === squad.id || squad.attachedVehicles?.includes(c.id)) && (!c.transport || ['available', 'escort'].includes(c.transport.phase))
       && !c.transport?.passengers?.length && distance(c, squad) <= 150 && authorizeMissionFuel(c, destination, squad, state).ok)
@@ -148,7 +162,7 @@ export function assignTransports(state: BattleState, nav?: Navigation) {
     squad.attachedVehicles = [...new Set([...(squad.attachedVehicles || []), carrier.id])]
     carrier.transport = { phase: 'pickup', since: state.time, destination: { ...destination }, passengers: [squad.id], home: { ...serviceBase(carrier, state, destination) }, manual: true, autoDismount: true, mobPad: squad.target === 'MOB' }
     commitMissionFuel(carrier,squad.target,authorizeMissionFuel(carrier,destination,squad,state).required,state.time)
-    carrier.path = []; carrier.target = squad.target; squad.path = []; squad.mission = 'WAITING FOR TRANSPORT'; reserved.add(squad.id)
+    carrier.path = []; carrier.target = squad.target; squad.path = []; squad.mission = 'WAITING FOR TRANSPORT'; squad.transportWaitSince = undefined; squad.walkFallbackUntil = undefined; reserved.add(squad.id)
   }
   const available = state.units.filter(c => c.hp > 0 && !c.crewBailed && !c.external && !c.servicing && !c.emergency && !c.attachedSquad && automaticCarrier(c) && (!c.transport || c.transport.phase === 'available'))
     .sort((a, b) => Number(b.role === 'TRANSPORT_HELI') - Number(a.role === 'TRANSPORT_HELI') || a.id.localeCompare(b.id))
@@ -156,16 +170,16 @@ export function assignTransports(state: BattleState, nav?: Navigation) {
     const seats = troopSeats(carrier.role)
     for (const lead of [...eligible].sort((a, b) => distance(carrier, a) - distance(carrier, b) || a.id.localeCompare(b.id))) {
       const destination = destinationFor(state, lead)
-      if (reserved.has(lead.id) || lead.side !== carrier.side || !destination || distance(lead, destination) <= MAX_WALK_DISTANCE || !authorizeMissionFuel(carrier, destination, lead, state).ok) continue
+      if (reserved.has(lead.id) || lead.side !== carrier.side || !destination || shouldWalk(state, lead, destination) || !authorizeMissionFuel(carrier, destination, lead, state).ok) continue
       let occupied = 0
       const passengers: Unit[] = []
       for (const squad of [lead, ...eligible.filter(s => s !== lead)]) {
         const troops = activeTroops(squad)
-        if (squad.side !== carrier.side || squad.target !== lead.target || reserved.has(squad.id) || !squad.transportIntent || distance(squad, lead) > 150 || occupied + troops > seats) continue
+        if (squad.side !== carrier.side || squad.target !== lead.target || reserved.has(squad.id) || !squad.transportIntent || (squad.walkFallbackUntil || 0) > state.time || distance(squad, lead) > 150 || occupied + troops > seats) continue
         passengers.push(squad); occupied += troops
       }
       if (occupied < (carrier.role === 'TRANSPORT_HELI' ? seats / 2 : 1)) continue
-      for (const squad of passengers) { reserved.add(squad.id); squad.path = []; squad.mission = 'WAITING FOR TRANSPORT' }
+      for (const squad of passengers) { reserved.add(squad.id); squad.path = []; squad.mission = 'WAITING FOR TRANSPORT'; squad.transportWaitSince = undefined; squad.walkFallbackUntil = undefined }
       carrier.transport = { phase: 'pickup', since: state.time, destination: { ...destination }, passengers: passengers.map(s => s.id), home: { ...serviceBase(carrier, state, destination) }, mobPad: lead.target === 'MOB' }
       commitMissionFuel(carrier,lead.target,authorizeMissionFuel(carrier,destination,lead,state).required,state.time)
       carrier.path = []; carrier.target = lead.target

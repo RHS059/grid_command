@@ -3,6 +3,7 @@ import { distance } from './movement'
 import { Navigation } from './navigation'
 import { Perception } from './perception'
 import { Visibility } from './visibility'
+import { FINAL_APPROACH_WALK_DISTANCE } from './transport'
 
 const DECISION_TICKS = 10
 const hash = (id: string) => [...id].reduce((value, char) => (Math.imul(value, 33) + char.charCodeAt(0)) >>> 0, 5381)
@@ -78,7 +79,7 @@ export class InfantryDirector {
     }
     if (destination) {
       const remaining = distance(unit, destination)
-      if (remaining > 500 && (unit.transportIntent || !unit.path.length)) candidates.push({ action: 'MOUNT', score: 52, commitment: 3 })
+      if (remaining > FINAL_APPROACH_WALK_DISTANCE && (unit.walkFallbackUntil || 0) <= state.time && (unit.transportIntent || !unit.path.length)) candidates.push({ action: 'MOUNT', score: 52, commitment: 3 })
       candidates.push(remaining <= 35 ? { action: 'HOLD', score: 45, commitment: 3 } : { action: 'ADVANCE', score: 42, destination, commitment: 3 })
     } else candidates.push({ action: 'HOLD', score: 30, commitment: 3 })
     candidates.sort((a, b) => b.score - a.score || a.action.localeCompare(b.action))
@@ -113,7 +114,7 @@ export class InfantryDirector {
 
   movement(state: BattleState, unit: Unit) {
     if (!aiInfantry(unit) || unit.carrier || unit.emergency || unit.servicing || unit.deployment || state.units.some(carrier => carrier.hp > 0 && carrier.transport?.passengers?.includes(unit.id))) return undefined
-    if (unit.transportIntent && !unit.path.length) return undefined
+    if (unit.transportIntent && !unit.path.length && (unit.walkFallbackUntil || 0) <= state.time) return undefined
     return unit.movementIntent
   }
 }
