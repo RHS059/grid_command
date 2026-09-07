@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, type MutableRefObject } from 'react'
 import maplibregl, { type GeoJSONSource, type Map as GeoMap } from 'maplibre-gl'
 import type { FeatureCollection, Feature, Geometry } from 'geojson'
 import { DisplayPoses, followSubject, chaseView, angleBetween } from '@/lib/game/chase-camera'
-import { MOB_YARD } from '@/lib/game/mob'
 import { THEATER_BOUNDS } from '@/lib/game/theater'
 import { effectiveGraphics } from '@/lib/game/graphics'
 import { tacticalStyle, zoneFeatures } from '@/lib/game/map-style'
@@ -28,7 +27,7 @@ export function Battlefield(props: Props) {
 
   useEffect(() => {
     if (!container.current || !canvas.current) return
-    let disposed = false, interval: ReturnType<typeof setInterval> | undefined, importTimer: ReturnType<typeof setTimeout> | undefined
+    let disposed = false, interval: ReturnType<typeof setInterval> | undefined
     const homeZoom = () => 10
     let map: GeoMap
     try { map = new maplibregl.Map({ container: container.current, style: tacticalStyle(), center: CENTER, zoom: homeZoom(), pitch: 45, bearing: -18, minZoom: 8, maxZoom: 22, maxPitch: 75, antialias: false, pixelRatio: Math.min(window.devicePixelRatio, 1.5), attributionControl: { compact: true }, maxBounds: [[-118.5,31.5],[-115.5,34.2]], fadeDuration: 0, refreshExpiredTiles: false }) }
@@ -105,21 +104,6 @@ export function Battlefield(props: Props) {
       if (/webgl|context lost/i.test(message)) { setError('The graphics context was lost. Reload to reconnect.'); latest.current.onStatus('Graphics interrupted') }
       else if (/tile|fetch|network/i.test(message)) latest.current.onStatus('Some map tiles unavailable · retry by panning')
     })
-    const excludedBuildings = new Set<string | number>()
-    const compounds = [...Object.values(BASES).map(p => ({ ...p, y: p.y+(MOB_YARD.maxY+MOB_YARD.minY)/2, w: MOB_YARD.halfWidth+4, h: (MOB_YARD.maxY-MOB_YARD.minY)/2+4 })), ...Object.values(AIRBASES).map(p => ({ ...p, w: 88, h: 610 }))].map(p => ({ min: lngLat({ x: p.x - p.w, y: p.y - p.h }), max: lngLat({ x: p.x + p.w, y: p.y + p.h }) }))
-    const clearCompoundBuildings = () => {
-      if (disposed || !map.getLayer('buildings-3d')) return
-      const before = excludedBuildings.size
-      for (const f of map.querySourceFeatures('openmaptiles', { sourceLayer: 'building' })) {
-        if (f.id == null || excludedBuildings.has(f.id) || (f.geometry.type !== 'Polygon' && f.geometry.type !== 'MultiPolygon')) continue
-        const points = f.geometry.type === 'Polygon' ? f.geometry.coordinates.flat() : f.geometry.coordinates.flat(2)
-        let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity
-        for (const p of points) { minX=Math.min(minX,p[0]);maxX=Math.max(maxX,p[0]);minY=Math.min(minY,p[1]);maxY=Math.max(maxY,p[1]) }
-        if (compounds.some(c => maxX >= c.min[0] && minX <= c.max[0] && maxY >= c.min[1] && minY <= c.max[1])) excludedBuildings.add(f.id)
-      }
-      if (excludedBuildings.size !== before) map.setFilter('buildings-3d', ['!', ['in', ['id'], ['literal', [...excludedBuildings]]]])
-    }
-    map.on('sourcedata', e => { if (e.sourceId === 'openmaptiles' && e.isSourceLoaded) { if (importTimer) clearTimeout(importTimer); importTimer = setTimeout(clearCompoundBuildings, 250) } })
     map.on('resize', () => { if(!latest.current.selected&&map.getZoom()<12)map.fitBounds(THEATER_BOUNDS,{padding:{top:85,bottom:45,left:35,right:35},duration:0,pitch:0,bearing:0}) })
     map.on('click', () => latest.current.onSelect(null))
     const syncMinimap = () => {
@@ -127,7 +111,7 @@ export function Battlefield(props: Props) {
         minimap?.remove(); minimap = null; return
       }
       if (!minimap && miniContainer.current) {
-        const style = tacticalStyle(); style.layers = style.layers.filter(l => !['hillshade', 'buildings-3d', 'road-labels', 'unit-routes', 'tactical-grid'].includes(l.id)); delete style.sources.elevation; delete style.sources.hillshadeDem
+        const style = tacticalStyle(); style.layers = style.layers.filter(l => !['hillshade', 'buildings-3d', 'buildings-3d-detail', 'road-labels', 'unit-routes', 'tactical-grid'].includes(l.id)); delete style.sources.elevation; delete style.sources.hillshadeDem
         style.sources['mini-units'] = { type: 'geojson', data: { type: 'FeatureCollection', features: [] } }
         style.layers.push({ id: 'mini-units', type: 'circle', source: 'mini-units', paint: { 'circle-radius': 2, 'circle-color': ['get', 'color'] } })
         minimap = new maplibregl.Map({ container: miniContainer.current, style, center: CENTER, zoom: 7.9, interactive: false, attributionControl: false, antialias: false, pixelRatio: 1 })
@@ -139,7 +123,7 @@ export function Battlefield(props: Props) {
       if (disposed) return
       setLoading(false); latest.current.onStatus('Geographic renderer online')
       const initialGraphics = latest.current.graphics
-      for (const [id, enabled] of [['buildings-3d', initialGraphics.buildings], ['tactical-grid', initialGraphics.grid], ['unit-routes', initialGraphics.routes], ['road-labels', initialGraphics.labels], ['hillshade', initialGraphics.shadows]] as const) map.setLayoutProperty(id, 'visibility', enabled ? 'visible' : 'none')
+      for (const [id, enabled] of [['buildings-3d', initialGraphics.buildings], ['buildings-3d-detail', initialGraphics.buildings&&initialGraphics.quality==='high'], ['tactical-grid', initialGraphics.grid], ['unit-routes', initialGraphics.routes], ['road-labels', initialGraphics.labels], ['hillshade', initialGraphics.shadows]] as const) map.setLayoutProperty(id, 'visibility', enabled ? 'visible' : 'none')
       map.setPixelRatio(Math.min(window.devicePixelRatio, initialGraphics.quality === 'performance' ? 1 : initialGraphics.quality === 'balanced' ? 1.5 : 2))
       if (latest.current.graphics.terrain) map.setTerrain({ source: 'elevation', exaggeration: 1 })
       for (const side of ['BLU', 'RED'] as Side[]) for (const base of [{ ...BASES[side], label: `${side} MOB` }, { ...AIRBASES[side], label: `${side} AIRBASE` }]) {
@@ -206,7 +190,7 @@ export function Battlefield(props: Props) {
       }, 100)
     })
     return () => {
-      disposed = true; element.removeEventListener('wheel', wheel, true); cancelAnimationFrame(frame); cancelGeometry(); if (interval) clearInterval(interval); if (importTimer) clearTimeout(importTimer)
+      disposed = true; element.removeEventListener('wheel', wheel, true); cancelAnimationFrame(frame); cancelGeometry(); if (interval) clearInterval(interval)
       renderRef.current?.dispose(); renderRef.current = null
       markers.forEach(m => m.remove()); objectives.forEach(m => m.remove()); fixed.forEach(m => m.remove()); minimap?.remove(); map.remove(); mapRef.current = null
     }
@@ -216,7 +200,7 @@ export function Battlefield(props: Props) {
     const map = mapRef.current
     if (!map?.getLayer('buildings-3d')) return
     const graphics = effectiveGraphics(props.graphics)
-    for (const [id, enabled] of [['buildings-3d', graphics.buildings], ['tactical-grid', graphics.grid], ['unit-routes', graphics.routes], ['road-labels', graphics.labels], ['hillshade', graphics.shadows]] as const) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', enabled ? 'visible' : 'none')
+    for (const [id, enabled] of [['buildings-3d', graphics.buildings], ['buildings-3d-detail', graphics.buildings&&graphics.quality==='high'], ['tactical-grid', graphics.grid], ['unit-routes', graphics.routes], ['road-labels', graphics.labels], ['hillshade', graphics.shadows]] as const) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', enabled ? 'visible' : 'none')
     map.setTerrain(graphics.terrain ? { source: 'elevation', exaggeration: 1 } : null)
     map.setPixelRatio(Math.min(window.devicePixelRatio, graphics.quality === 'performance' ? 1 : graphics.quality === 'balanced' ? 1.5 : 2))
     renderRef.current?.resize()
