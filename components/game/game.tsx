@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Activity, AudioLines, ChevronDown, CircleHelp, Crosshair, Expand, Eye, Flag, Layers, LocateFixed, MapPin, Maximize2, Minus, Pause, Play, Plus, Radio, RotateCcw, Settings2, Shield, SkipForward, Volume2, VolumeX, X, PanelLeft, Navigation2 } from 'lucide-react'
+import { Activity, AudioLines, Building2, ChevronDown, CircleHelp, Crosshair, Expand, Eye, Flag, Layers, LocateFixed, MapPin, Maximize2, Minus, Pause, Play, Plus, Radio, RotateCcw, Settings2, Shield, SkipForward, Volume2, VolumeX, X, PanelLeft, Navigation2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import { BattlefieldAudio } from '@/lib/game/audio'
 import { UnitLab } from './unit-lab'
 import { SoundSettings } from './sound-settings'
+import { BuildingEditor } from './building-editor'
 import { eligibleBuilder } from '@/lib/game/electronic-warfare'
 import { troopSeats, isVehicle, isAir, CATALOG } from '@/lib/game/types'
 import { nearestPersonnelCarrier, transportSquad } from '@/lib/game/transport'
@@ -21,7 +22,7 @@ function IconButton({ label, onClick, children, active = false }: { label: strin
   return <Tooltip><TooltipTrigger render={<Button variant={active ? 'secondary' : 'ghost'} size="icon" aria-label={label} onClick={onClick} />}>{children}</TooltipTrigger><TooltipContent>{label}</TooltipContent></Tooltip>
 }
 export function Game() {
-  const [view, setView] = useState<'battlefield' | 'models' | 'sfx'>('battlefield')
+  const [view, setView] = useState<'battlefield' | 'models' | 'buildings' | 'sfx'>('battlefield')
   const [state, setState] = useState<BattleState>(() => initialState()), stateRef = useRef(state)
   const worker = useRef<Worker | null>(null), mapAPI = useRef<MapAPI | null>(null), lastUI = useRef(0)
   const [perspective, setPerspective] = useState<Perspective>('OBS'), [selected, setSelected] = useState<string | null>(null)
@@ -81,10 +82,10 @@ export function Game() {
   const owned = (side: 'BLU' | 'RED') => state.objectives.filter(o => o.owner === side).length
   return <main className="game-shell font-sans">
     <header className="game-header">
-      <div className="flex items-center gap-3"><div className="brand-icon"><Crosshair size={25} strokeWidth={1.4} /></div><div><div className="wordmark">GRID COMMAND</div><div className="brand-subtitle font-mono">AUTONOMOUS WARFARE SIMULATOR</div></div><div className="header-divider header-location" /><div className="header-location flex flex-col gap-1"><span className="text-sm font-medium">Operation Pacific Shield</span><span className="flex items-center gap-1.5 text-xs text-muted-foreground"><MapPin size={12} />San Diego, California</span></div><span className="scenario-tag header-secondary">BUILD 0.9.8</span></div>
+      <div className="flex items-center gap-3"><div className="brand-icon"><Crosshair size={25} strokeWidth={1.4} /></div><div><div className="wordmark">GRID COMMAND</div><div className="brand-subtitle font-mono">AUTONOMOUS WARFARE SIMULATOR</div></div><div className="header-divider header-location" /><div className="header-location flex flex-col gap-1"><span className="text-sm font-medium">Operation Pacific Shield</span><span className="flex items-center gap-1.5 text-xs text-muted-foreground"><MapPin size={12} />San Diego, California</span></div><span className="scenario-tag header-secondary">BUILD 0.9.9</span></div>
       <div className="flex items-center gap-2"><IconButton label="How to observe · controls" onClick={() => setModal('help')}><CircleHelp /></IconButton><span className="desktop-only"><IconButton label={audio ? 'Mute radio voice' : 'Enable radio voice'} onClick={toggleAudio} active={audio}>{audio ? <Volume2 /> : <VolumeX />}</IconButton></span><IconButton label="Graphics & settings" onClick={() => setModal('settings')}><Settings2 /></IconButton><span className="desktop-only"><IconButton label="New operation" onClick={() => setModal('restart')}><RotateCcw /></IconButton></span></div>
     </header>
-    <div className="game-view-tabs" role="tablist" aria-label="Game view" onKeyDown={e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); const views=['battlefield','models','sfx'] as const,index=views.indexOf(view),next=views[(index+(e.key==='ArrowRight'?1:views.length-1))%views.length];setView(next);document.getElementById(`tab-${next}`)?.focus() } }}>{(['battlefield', 'models', 'sfx'] as const).map(id => <button key={id} role="tab" id={`tab-${id}`} aria-controls={`panel-${id}`} aria-selected={view === id} tabIndex={view === id ? 0 : -1} onClick={() => setView(id)}>{id === 'battlefield' ? <Crosshair size={16} /> : id === 'models' ? <Layers size={16} /> : <AudioLines size={16} />}{id === 'battlefield' ? 'Battlefield' : id === 'models' ? 'Model Preview' : 'SFX Designer'}</button>)}</div>
+    <div className="game-view-tabs" role="tablist" aria-label="Game view" onKeyDown={e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); const views=['battlefield','models','buildings','sfx'] as const,index=views.indexOf(view),next=views[(index+(e.key==='ArrowRight'?1:views.length-1))%views.length];setView(next);document.getElementById(`tab-${next}`)?.focus() } }}>{(['battlefield', 'models', 'buildings', 'sfx'] as const).map(id => <button key={id} role="tab" id={`tab-${id}`} aria-controls={`panel-${id}`} aria-selected={view === id} tabIndex={view === id ? 0 : -1} onClick={() => setView(id)}>{id === 'battlefield' ? <Crosshair size={16} /> : id === 'models' ? <Layers size={16} /> : id === 'buildings' ? <Building2 size={16} /> : <AudioLines size={16} />}{id === 'battlefield' ? 'Battlefield' : id === 'models' ? 'Model Preview' : id === 'buildings' ? 'Building Designer' : 'SFX Designer'}</button>)}</div>
     <div className="game-toolbar">
       <div className="flex items-center gap-4"><div className="flex flex-col"><span className="font-mono text-[10px] tracking-widest text-muted-foreground">MISSION ELAPSED</span><span className="timer">{clock(state.time)}</span></div><div className="flex items-center gap-1"><IconButton label={state.paused ? 'Resume simulation (Space)' : 'Pause simulation (Space)'} onClick={pause}>{state.paused ? <Play /> : <Pause />}</IconButton><span className="desktop-only"><IconButton label="Advance one simulation tick" onClick={() => { worker.current?.postMessage({ type: 'pause', value: true }); worker.current?.postMessage({ type: 'step' }) }}><SkipForward /></IconButton></span></div><ToggleGroup aria-label="Simulation speed" spacing={0} value={[String(state.speed)]} onValueChange={v => v.length && speed(Number(v[0]))}>{[1, 2, 4, 8, 16].map(n => <ToggleGroupItem key={n} value={String(n)}>{n}×</ToggleGroupItem>)}</ToggleGroup></div>
       <div className="objective-strip"><span className="toolbar-label eyebrow pr-2">OBJECTIVES</span><span className="font-mono text-sm text-primary pr-1">{owned('BLU')}</span>{state.objectives.map(o => <button key={o.id} className={cn('objective-button', o.owner === 'BLU' && 'blu', o.owner === 'RED' && 'red', o.contested && 'contested')} aria-label={`Focus objective ${o.id}: ${o.name}, ${o.owner || 'neutral'}`} onClick={() => focus(o)}>{o.id}</button>)}<span className="font-mono text-sm text-destructive pl-1">{owned('RED')}</span></div>
@@ -108,8 +109,9 @@ export function Game() {
       </div>
     </div>
     <div id="panel-models" role="tabpanel" aria-labelledby="tab-models" className="model-tab-panel" hidden={view !== 'models'}><UnitLab embedded active={view === 'models'} simulationPaused={state.paused || !!state.winner} soundEngine={soundEngine} /></div>
+    <div id="panel-buildings" role="tabpanel" aria-labelledby="tab-buildings" className="model-tab-panel" hidden={view !== 'buildings'}><BuildingEditor /></div>
     <div id="panel-sfx" role="tabpanel" aria-labelledby="tab-sfx" className="model-tab-panel overflow-y-auto p-6" hidden={view !== 'sfx'}><div className="mx-auto max-w-3xl"><SoundSettings engine={soundEngine} /></div></div>
-    <footer className="game-status"><div className="flex items-center gap-4"><span className="flex items-center gap-1.5"><Activity size={11} /><span className="text-primary">{view === 'models' ? 'MODEL VIEW' : view === 'sfx' ? 'SFX DESIGNER' : `${fps === null ? '—' : fps === 0 ? '<1' : fps} FPS`}</span></span></div><div className="flex items-center gap-4"><span className="desktop-only">NEXT COMMAND {Math.max(0, 30 - Math.floor(state.time % 30))}s</span><span>NO TIME LIMIT</span></div></footer>
+    <footer className="game-status"><div className="flex items-center gap-4"><span className="flex items-center gap-1.5"><Activity size={11} /><span className="text-primary">{view === 'models' ? 'MODEL VIEW' : view === 'buildings' ? 'BUILDING DESIGNER' : view === 'sfx' ? 'SFX DESIGNER' : `${fps === null ? '—' : fps === 0 ? '<1' : fps} FPS`}</span></span></div><div className="flex items-center gap-4"><span className="desktop-only">NEXT COMMAND {Math.max(0, 30 - Math.floor(state.time % 30))}s</span><span>NO TIME LIMIT</span></div></footer>
     <GameDialogs modal={modal} onClose={() => setModal(null)} graphics={graphics} setGraphics={setGraphics} restart={restart} />
   </main>
 }
