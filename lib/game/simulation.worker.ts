@@ -161,7 +161,7 @@ self.onmessage = (event: MessageEvent) => {
   const msg = event.data
   if (msg.type === 'init' || msg.type === 'restart') { state = initialState(msg.seed || 3701); seed = state.seed; nav = new Navigation(); nav.strict=true; visibility=new Visibility(); serial = 100; eventId = 1; shotId = 0; seen.clear(); deliveries.length = 0; ready = true; for(const packet of geometry.values()) applyGeometry({...packet,evict:undefined}); publish() }
   if (msg.type === 'deploy-jammer' && !state.winner && (msg.side==='BLU'||msg.side==='RED')) { const error=deployJammer(state,nav,String(msg.builder),msg.side); log(msg.side,error||'UAV jammer construction started. Coverage online in 15 seconds.',error?'system':'logistics');publish() }
-  if(msg.type==='upgrade-mob'&&!state.winner&&(msg.side==='BLU'||msg.side==='RED')){if(startMobUpgrade(state,msg.side))log(msg.side,state.forces[msg.side].purchase,'logistics');publish()}
+  if(msg.type==='upgrade-mob'&&!state.winner&&(msg.side==='BLU'||msg.side==='RED')){const side=msg.side as Side;if(startMobUpgrade(state,side))log(side,state.forces[side].purchase,'logistics');publish()}
   if (msg.type === 'pause') { state.paused = Boolean(msg.value); publish() }
   if (msg.type === 'speed') { state.speed = [1, 2, 4, 8, 16].includes(msg.value) ? msg.value : 1; publish() }
   if (msg.type === 'step' && state.paused && !state.winner) { tick(); publish() }
