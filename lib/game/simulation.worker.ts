@@ -56,7 +56,7 @@ function commanders() {
     let assault = 0
     for (const u of p.own) {
       if (u.crewBailed || u.servicing || u.emergency || u.deployment || missionAsset(u.role) || u.carrier || u.attachedSquad || (troopSeats(u.role)>0&&u.transport&&!['available','escort'].includes(u.transport.phase)) || state.units.some(c=>c.hp>0&&c.transport?.passengers?.includes(u.id)) || state.units.some(j=>j.hp>0&&j.construction?.builder===u.id) || ['COMMAND', 'PILOT', 'LOGISTICS'].includes(u.role)) continue
-      if (isVehicle(u.role) && u.fuel < missionFuel(u, p.target)) { u.path = []; u.mission = 'HOLD'; u.serviceStatus = 'INSUFFICIENT MISSION FUEL RESERVE'; continue }
+      if (isVehicle(u.role) && u.fuel < missionFuel(u, p.target)) { u.path = []; u.servicing = true; u.mission = 'RTB FOR SERVICE'; u.target = isAir(u.role) ? 'AIRFIELD' : 'MOB'; u.serviceStatus = 'INSUFFICIENT MISSION FUEL RESERVE'; continue }
       u.serviceStatus = undefined
       if (u.role === 'CAS_FIGHTER' || u.role === 'JET' || u.role === 'ATTACK_HELI') { if(u.airPhase === 'attack') { u.mission = 'CAS'; u.target = p.target.id; route(u,p.target) } continue }
       if (u.role === 'RECON_UAV') { u.mission = 'RECON'; u.target = 'Enemy MOB'; route(u, BASES[p.side === 'BLU' ? 'RED' : 'BLU']); continue }
@@ -66,8 +66,12 @@ function commanders() {
         u.mission = 'CAPTURE'; u.target = p.target.id; u.subcommand = `MANEUVER ${Math.floor(assault / 3) + 1}`
         const destination = { x: p.target.x + ((assault % 3) - 1) * 30, y: p.target.y + sign * (assault % 2) * 25 }
         if (p.action === 'FLANK' && assault === 0 && distance(u, destination) > 220) {
-          const flank = nav.nearest({ x: destination.x + sign * 280, y: destination.y + sign * 190 }); const first = nav.route(u, flank), second = nav.route(flank, destination)
-          u.path = first.length && second.length ? [...first, ...second] : nav.route(u, destination)
+          const flank = nav.nearest({ x: destination.x + sign * 280, y: destination.y + sign * 190 })
+          route(u, flank)
+          const first = [...u.path], second = nav.route(flank, destination)
+          if (first.length && second.length) u.path = [...first, ...second]
+          else route(u, destination)
+          if (u.path.length) u.mission = 'CAPTURE'
         } else route(u, destination)
         assault++
       } else {
