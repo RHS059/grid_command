@@ -27,6 +27,8 @@ export type TacticalAction = 'ADVANCE' | 'HOLD' | 'ENGAGE' | 'COVER' | 'SUPPRESS
 export interface StrategicOrder { revision: number; action: StrategicAction; task: StrategicTask; target: string; destination: Point; issuedAt: number }
 export interface TacticalIntent { action: TacticalAction; score: number; decidedAt: number; committedUntil: number; targetId?: string; destination?: Point }
 export interface MovementIntent { source: 'strategic' | 'tactical'; destination: Point; speed: number; arrival: number; issuedAt: number }
+export type OrderRefusalCode = 'NO_ROUTE' | 'NO_TRANSPORT' | 'INSUFFICIENT_FUEL' | 'LANDING_BLOCKED'
+export interface OrderRefusal { code: OrderRefusalCode; reason: string; target: string; since: number; retryAt: number }
 export interface ContactMemory { unitId: string; role: Role; position: Point; lastSeen: number; confidence: number; observers: string[] }
 export interface Soldier extends Point { disembarked?: boolean; id: string; status: 'active' | 'downed' | 'dead'; stance: Stance; action: SoldierAction; heading: number; aim: number; shotAt: number; since: number; rescue?: string; cover?: Point; path?: Point[]; routeAt?: number }
 export interface GeometryFeature { key: string; water: boolean; rings: number[][][]; base?: number; roof?: number; elevation?: number }
@@ -43,7 +45,7 @@ export interface Unit extends Point {
   crewBailed?: boolean; external?: boolean; engine?: boolean; servicing?: boolean; serviceStatus?: string; emergency?: boolean;
   serviceObjective?: string; travelStatus?: string; routeRetry?: number; transport?: MissionState; carrier?: string; transportIntent?: { destination: Point; mission: string; target: string }; attachedSquad?: string; attachedVehicles?: string[]; deployment?: 'garage'; destroyedAt?: number; lossProcessed?: boolean; lock?: { target: string; since: number }; construction?: { builder: string; due: number };
   soldiers?: Soldier[]; aim?: number; altitude?: number; cooldown?: number; suppression?: number; smoke?: number; airPhase?: 'attack' | 'return' | 'rearm';
-  strategicOrder?: StrategicOrder; tacticalIntent?: TacticalIntent; movementIntent?: MovementIntent;
+  strategicOrder?: StrategicOrder; tacticalIntent?: TacticalIntent; movementIntent?: MovementIntent; orderRefusal?: OrderRefusal;
   id: string; name: string; side: Side; role: Role; members: number; maxMembers: number;
   hp: number; ammo: number; fuel: number; heading: number; mission: string; target: string;
   path: Point[]; spotted: boolean; firing: boolean; kills: number; subcommand: string;

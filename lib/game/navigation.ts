@@ -46,11 +46,12 @@ export class Navigation {
     const a=closest(from),b=closest(to),step=a<=b?1:-1,startMob=mobYardSide(from),endMob=mobYardSide(to),path:Point[]=[]
     if(startMob)path.push(mobEgress(startMob))
     if(a!==b)for(let i=a;i!==b+step;i+=step){const p=CORRIDOR[i];if((startMob&&i===a)||(endMob&&i===b))continue;path.push({...p})}
-    if(endMob)path.push(mobEgress(endMob));path.push({x:to.x,y:to.y});return path
+    if(endMob)path.push(mobEgress(endMob));path.push({x:to.x,y:to.y})
+    return path.every(p=>this.covered(p))?path:[]
   }
   route(from:Point,to:Point):Point[]{
     if(Math.hypot(from.x-to.x,from.y-to.y)>2500)return this.strategic(from,to)
-    const a=this.nearest(from),b=this.nearest(to);if(!this.covered(a)||!this.covered(b))return [b]
+    const a=this.nearest(from),b=this.nearest(to);if(!this.covered(a)||!this.covered(b))return []
     if(this.clear(a,b))return [b]
     const start=key(a),goal=key(b),cost=new Map([[start,0]]),parents=new Map<string,string>(),closed=new Set<string>(),open=[{key:start,f:0}]
     let attempts=0

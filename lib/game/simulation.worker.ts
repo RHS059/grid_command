@@ -1,12 +1,12 @@
 import { MOB_GARAGE, MOB_GARAGE_STAGING, mobWorld, startMobUpgrade, requisitionCost, requisitionDelay } from './mob'
 import { beginTraffic, moveWithTraffic } from './traffic'
-import { initialState, CATALOG, BASES, AIRBASES, type BattleState, type Side, type Unit, type Point, type Role, type StrategicAction } from './types'
+import { initialState, CATALOG, BASES, AIRBASES, type BattleState, type Side, type Unit, type Point, type Role, type StrategicAction, type OrderRefusalCode } from './types'
 import { Navigation } from './navigation'
 import { Visibility } from './visibility'
 import { canSee, resolveCombat } from './combat'
 import { updateSoldiers } from './behaviors'
 import { isAir, isVehicle, troopSeats, type GeometryPacket } from './types'
-import { assignTransports, manualGetIn, requestDismount, updateTransports } from './transport'
+import { assignTransports, manualGetIn, requestDismount, transportBlockReason, updateTransports } from './transport'
 import { updateSupplyMissions } from './logistics'
 import { deployJammer, updateJammers } from './electronic-warfare'
 import { recordCasualties } from './casualties'
@@ -32,11 +32,18 @@ const INFANTRY_STAGING_Y = { BLU: [88, 110] as const, RED: [-22, 0] as const }
 const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y)
 const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296 }
 function log(side: Side | 'SYS', text: string, type: 'command' | 'combat' | 'logistics' | 'system' = 'command') { state.events.unshift({ id: ++eventId, time: state.time, side, text, type }); state.events.length = Math.min(80, state.events.length) }
+function refuse(u: Unit, code: OrderRefusalCode, reason: string, retry = 60, target=u.target||'current order') {
+  const previous=u.orderRefusal
+  const same=previous?.code===code&&previous.target===target&&previous.reason===reason,report=!same||state.time-previous.since>=60
+  if(report)log(u.side,`${u.name}: Negative — cannot comply with those orders — ${reason}.`,'system')
+  u.orderRefusal={code,reason,target,since:report?state.time:previous!.since,retryAt:state.time+retry}
+}
 function route(u: Unit, target: Point) {
-  if (isAir(u.role)) { u.path = [target]; return }
+  if (isAir(u.role)) { u.path = [target]; u.orderRefusal=undefined; return true }
   const start = nav.nearest(u); u.x = start.x; u.y = start.y
-  u.path = nav.route(u, target)
-  if (!u.path.length && distance(u, target) > 50) { u.mission = 'REPATH'; if (!seen.has(`nav-${u.id}`)) { seen.add(`nav-${u.id}`); log(u.side, `${u.name}: route obstructed. Holding for a new approach.`, 'system') } }
+  const approach=nav.nearest(target);u.path = nav.route(u, approach)
+  if (!u.path.length && distance(u, approach) > 50) { u.mission = 'REPATH'; refuse(u,'NO_ROUTE',nav.covered(approach)?'no traversable approach is available':'terrain for the ordered approach is not available',45);return false }
+  u.orderRefusal=undefined;return true
 }
 function plan(side: Side) {
   const own = state.units.filter(u => u.side === side && u.hp > 0 && !u.external)
@@ -46,6 +53,7 @@ function plan(side: Side) {
   const candidates = state.objectives.filter(o => o.owner !== side || o.contested)
   const target = [...candidates].sort((a, b) => {
     const score = (o: typeof a) => distance(BASES[side], o) / 100 + contacts.filter(e => distance(e, o) < 250).length * (1.3 - tempo / 100)
+      + own.filter(u=>u.orderRefusal?.target===o.id&&u.orderRefusal.retryAt>state.time).length*1000
     return score(a) - score(b)
   })[0] || state.objectives[Math.floor(state.objectives.length / 2)]
   const action: StrategicAction = f.cycles > 0 && f.cycles % 3 === 0 ? 'FLANK' : own.filter(u => u.ammo < 20).length > 3 ? 'RESUPPLY' : held < 2 ? 'MASS' : 'SEIZE'
@@ -59,7 +67,8 @@ function commanders() {
     let assault = 0
     for (const u of p.own) {
       if (u.crewBailed || u.servicing || u.emergency || u.deployment || missionAsset(u.role) || u.carrier || u.attachedSquad || (troopSeats(u.role)>0&&u.transport&&!['available','escort'].includes(u.transport.phase)) || state.units.some(c=>c.hp>0&&c.transport?.passengers?.includes(u.id)) || state.units.some(j=>j.hp>0&&j.construction?.builder===u.id) || ['COMMAND', 'PILOT', 'LOGISTICS'].includes(u.role)) continue
-      if (isVehicle(u.role) && u.fuel < missionFuel(u, p.target, undefined, state)) { u.path = []; u.servicing = true; u.mission = 'RTB FOR SERVICE'; u.target = isAir(u.role) ? 'AIRFIELD' : 'MOB'; u.serviceStatus = 'INSUFFICIENT MISSION FUEL RESERVE'; continue }
+      if(u.orderRefusal?.target===p.target.id&&u.orderRefusal.retryAt>state.time)continue
+      if (isVehicle(u.role) && u.fuel < missionFuel(u, p.target, undefined, state)) { u.path = []; u.servicing = true; u.mission = 'RTB FOR SERVICE'; u.target = isAir(u.role) ? 'AIRFIELD' : 'MOB'; u.serviceStatus = 'INSUFFICIENT MISSION FUEL RESERVE'; refuse(u,'INSUFFICIENT_FUEL','mission fuel reserve is insufficient',45,p.target.id); continue }
       u.serviceStatus = undefined
       if (u.role === 'CAS_FIGHTER' || u.role === 'JET' || u.role === 'ATTACK_HELI') { if(u.airPhase === 'attack') { u.mission = 'CAS'; u.target = p.target.id; route(u,p.target) } continue }
       if (u.role === 'RECON_UAV') { u.mission = 'RECON'; u.target = 'Enemy MOB'; route(u, BASES[p.side === 'BLU' ? 'RED' : 'BLU']); continue }
@@ -69,15 +78,16 @@ function commanders() {
         u.mission = 'CAPTURE'; u.target = p.target.id; u.subcommand = `MANEUVER ${Math.floor(assault / 3) + 1}`
         const destination = { x: p.target.x + ((assault % 3) - 1) * 30, y: p.target.y + sign * (assault % 2) * 25 }
         if (!isVehicle(u.role)) issueInfantryOrder(u, p.action, 'CAPTURE', p.target.id, destination, f.cycles, state.time)
+        let accepted=false
         if (p.action === 'FLANK' && assault === 0 && distance(u, destination) > 220) {
           const flank = nav.nearest({ x: destination.x + sign * 280, y: destination.y + sign * 190 })
           route(u, flank)
           const first = [...u.path], second = nav.route(flank, destination)
-          if (first.length && second.length) u.path = [...first, ...second]
-          else route(u, destination)
-          if (u.path.length) u.mission = 'CAPTURE'
-        } else route(u, destination)
-        assault++
+          if (first.length && second.length) {u.path = [...first, ...second];u.orderRefusal=undefined;accepted=true}
+          else accepted=route(u, destination)
+          if (accepted) u.mission = 'CAPTURE'
+        } else accepted=route(u, destination)
+        if(accepted)assault++
       } else {
         u.mission = u.role === 'MEDIC' ? 'SUPPORT' : 'OVERWATCH'; u.target = p.target.id; u.subcommand = 'FIRE SUPPORT'
         const destination = { x: p.target.x + (u.role === 'MG' ? -120 : 150) * sign, y: p.target.y + (u.role === 'MORTAR' ? 420 : 180) * sign }
@@ -85,7 +95,8 @@ function commanders() {
         route(u, destination)
       }
     }
-    log(p.side, `${p.side === 'BLU' ? 'SABER' : 'VIPER'} elements, ${p.action.toLowerCase()} objective ${p.target.id}. ${assault} maneuver groups committed. OUT.`)
+    const refusalReasons=[...new Set(p.own.filter(u=>u.orderRefusal?.retryAt>state.time).map(u=>u.orderRefusal!.reason))]
+    log(p.side, `${p.side === 'BLU' ? 'SABER' : 'VIPER'} elements, ${p.action.toLowerCase()} objective ${p.target.id}. ${assault} maneuver groups committed.${assault===0&&refusalReasons.length?` Delayed: ${refusalReasons.join('; ')}.`:''} OUT.`)
     const role = nextPurchase(state, p.side, deliveries.filter(d=>!d.unitId))
     if (role === 'AIRFIELD_UPGRADE') { if (startAirfieldUpgrade(state, p.side)) log(p.side, f.purchase, 'logistics') }
     else if (role === 'MOB_UPGRADE') { if(startMobUpgrade(state,p.side))log(p.side,f.purchase,'logistics') }
@@ -169,6 +180,13 @@ function deliverRequisitions() {
   for (let i = deliveries.length - 1; i >= 0; i--) if (deliveries[i].due <= state.time && (!isVehicle(deliveries[i].role)||isAir(deliveries[i].role))) { const d = deliveries[i]; state.forces[d.side].queue--; state.forces[d.side].delivered++; spawn(d.side, d.role); deliveries.splice(i, 1) }
   updateGarageDeployments()
 }
+function auditTransportOrders(){
+  for(const u of state.units.filter(aiInfantry)){
+    const reason=transportBlockReason(state,u)
+    if(reason)refuse(u,'NO_TRANSPORT',reason,30)
+    else if(u.orderRefusal?.code==='NO_TRANSPORT')u.orderRefusal=undefined
+  }
+}
 function tick() {
   state.tick++; state.time = state.tick * .05
   beginTraffic(state,nav)
@@ -177,7 +195,7 @@ function tick() {
   if (state.tick % 600 === 1) commanders()
   perception.rebuild(state)
   infantryAI.update(state,perception,visibility,nav)
-  if (state.tick % 20 === 1) assignTransports(state,nav)
+  if (state.tick % 20 === 1) {assignTransports(state,nav);auditTransportOrders()}
   updateJammers(state,nav)
   updateTransports(state,nav)
   updateSupplyMissions(state,nav)

@@ -22,6 +22,22 @@ const pickupPoint = (carrier: Unit, squad: Unit, nav: Navigation) => {
 }
 export const activeTroops = (squad: Unit) => squad.soldiers?.filter(s => s.status === 'active').length || 0
 export const transportSquad = (squad: Unit) => squad.hp > 0 && !isVehicle(squad.role) && !['COMMAND', 'PILOT', 'LOGISTICS'].includes(squad.role) && activeTroops(squad) > 0
+export function transportBlockReason(state: BattleState, squad: Unit) {
+  if(squad.mission!=='WAITING FOR TRANSPORT'||!squad.transportIntent)return undefined
+  const destination = destinationFor(state, squad)
+  if (!destination || distance(squad, destination) <= MAX_WALK_DISTANCE) return undefined
+  if (state.units.some(c => c.hp > 0 && c.transport?.passengers?.includes(squad.id))) return undefined
+  const attached = state.units.filter(c => c.side === squad.side && (c.attachedSquad === squad.id || squad.attachedVehicles?.includes(c.id)))
+  const pool = state.units.filter(c => c.side === squad.side && !c.external && (automaticCarrier(c) || attached.includes(c)) && troopSeats(c.role) >= activeTroops(squad))
+  const healthy = pool.filter(c => c.hp > 0 && !c.crewBailed && !c.emergency)
+  if (!healthy.length) return 'no operational personnel carrier is available'
+  const fueled = healthy.filter(c => c.fuel >= missionFuel(c, destination, squad, state))
+  if (!fueled.length) return 'available personnel carriers lack mission fuel'
+  if (!fueled.some(c => !c.servicing && (!c.transport || ['available', 'escort'].includes(c.transport.phase)))) return 'personnel carriers are committed or servicing'
+  const assembled=state.units.filter(other=>transportSquad(other)&&!other.carrier&&other.side===squad.side&&other.target===squad.target&&distance(other,squad)<=150).reduce((total,other)=>total+activeTroops(other),0)
+  if (fueled.every(c => c.role === 'TRANSPORT_HELI') && assembled < 12) return 'fewer than 12 troops are assembled for helicopter transport'
+  return undefined
+}
 const intendedMission = (squad: Unit) => !['REPATH', 'WAITING FOR TRANSPORT', 'EMBARKED'].includes(squad.mission) ? squad.mission
   : squad.target === 'MOB' ? 'RESUPPLY' : squad.role === 'MEDIC' ? 'SUPPORT' : ['RIFLE', 'SCOUT', 'AT'].includes(squad.role) ? 'CAPTURE' : 'OVERWATCH'
 function destinationFor(state: BattleState, squad: Unit) {
