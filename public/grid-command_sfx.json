@@ -28,7 +28,9 @@
         "ratio": 1,
         "gain": 0.15,
         "detune": 0,
-        "endRatio": 0.26
+        "endRatio": 0.26,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": true,
@@ -37,7 +39,9 @@
         "ratio": 1,
         "gain": 0.09,
         "detune": 7,
-        "endRatio": 0.48
+        "endRatio": 0.48,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": false,
@@ -46,7 +50,9 @@
         "ratio": 1,
         "gain": 0.08,
         "detune": 0,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       }
     ]
   },
@@ -79,7 +85,9 @@
         "ratio": 1,
         "gain": 0.23,
         "detune": 0,
-        "endRatio": 0.34
+        "endRatio": 0.34,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": false,
@@ -88,7 +96,9 @@
         "ratio": 1,
         "gain": 0.13,
         "detune": -8,
-        "endRatio": 0.5
+        "endRatio": 0.5,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": false,
@@ -97,7 +107,9 @@
         "ratio": 1,
         "gain": 0.06,
         "detune": 0,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       }
     ]
   },
@@ -130,7 +142,9 @@
         "ratio": 1,
         "gain": 0.68,
         "detune": 0,
-        "endRatio": 0.34
+        "endRatio": 0.34,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": true,
@@ -139,7 +153,9 @@
         "ratio": 1,
         "gain": 0.26,
         "detune": -5,
-        "endRatio": 0.55
+        "endRatio": 0.55,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": true,
@@ -148,7 +164,9 @@
         "ratio": 1,
         "gain": 0.3,
         "detune": 3,
-        "endRatio": 0.72
+        "endRatio": 0.72,
+        "pan": 0,
+        "phase": 0
       }
     ]
   },
@@ -181,7 +199,9 @@
         "ratio": 1,
         "gain": 0.52,
         "detune": 0,
-        "endRatio": 0.38
+        "endRatio": 0.38,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": true,
@@ -190,7 +210,9 @@
         "ratio": 1,
         "gain": 0.19,
         "detune": 9,
-        "endRatio": 0.6
+        "endRatio": 0.6,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": true,
@@ -199,7 +221,9 @@
         "ratio": 1,
         "gain": 0.19,
         "detune": -5,
-        "endRatio": 0.72
+        "endRatio": 0.72,
+        "pan": 0,
+        "phase": 0
       }
     ]
   },
@@ -232,7 +256,9 @@
         "ratio": 1,
         "gain": 0.045,
         "detune": 0,
-        "endRatio": 0.4
+        "endRatio": 0.4,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": true,
@@ -241,7 +267,9 @@
         "ratio": 1,
         "gain": 0.2,
         "detune": -6,
-        "endRatio": 0.62
+        "endRatio": 0.62,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": false,
@@ -250,7 +278,9 @@
         "ratio": 1,
         "gain": 0.08,
         "detune": 0,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       }
     ]
   },
@@ -283,7 +313,9 @@
         "ratio": 1,
         "gain": 0.52,
         "detune": 0,
-        "endRatio": 0.32
+        "endRatio": 0.32,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": true,
@@ -292,7 +324,9 @@
         "ratio": 1,
         "gain": 0.23,
         "detune": -4,
-        "endRatio": 0.55
+        "endRatio": 0.55,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": true,
@@ -301,7 +335,9 @@
         "ratio": 1,
         "gain": 0.2,
         "detune": 6,
-        "endRatio": 0.78
+        "endRatio": 0.78,
+        "pan": 0,
+        "phase": 0
       }
     ]
   },
@@ -334,7 +370,9 @@
         "ratio": 1,
         "gain": 0.18,
         "detune": 0,
-        "endRatio": 0.64
+        "endRatio": 0.64,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": false,
@@ -343,7 +381,9 @@
         "ratio": 1,
         "gain": 0.08,
         "detune": 0,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": false,
@@ -352,7 +392,9 @@
         "ratio": 1,
         "gain": 0.07,
         "detune": 0,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       }
     ]
   },
@@ -385,7 +427,9 @@
         "ratio": 1,
         "gain": 0.42,
         "detune": 0,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": false,
@@ -394,7 +438,9 @@
         "ratio": 2.02,
         "gain": 0.23,
         "detune": -7,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": true,
@@ -403,7 +449,9 @@
         "ratio": 0.5,
         "gain": 0.1,
         "detune": 5,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       }
     ]
   },
@@ -436,7 +484,9 @@
         "ratio": 1,
         "gain": 0.46,
         "detune": 0,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": true,
@@ -445,7 +495,9 @@
         "ratio": 2.01,
         "gain": 0.25,
         "detune": -9,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": true,
@@ -454,7 +506,9 @@
         "ratio": 4.32,
         "gain": 0.11,
         "detune": 73,
-        "endRatio": 0.23
+        "endRatio": 0.23,
+        "pan": 0,
+        "phase": 0
       }
     ]
   },
@@ -487,7 +541,9 @@
         "ratio": 0.86,
         "gain": 0,
         "detune": 0,
-        "endRatio": 0.19
+        "endRatio": 0.19,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": false,
@@ -496,7 +552,9 @@
         "ratio": 0.245,
         "gain": 0,
         "detune": -3,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": false,
@@ -505,7 +563,9 @@
         "ratio": 2,
         "gain": 0.14,
         "detune": 6,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       }
     ]
   },
@@ -538,7 +598,9 @@
         "ratio": 1,
         "gain": 0,
         "detune": 0,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": true,
@@ -547,7 +609,9 @@
         "ratio": 1.68,
         "gain": 0.035,
         "detune": -7,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": false,
@@ -556,7 +620,9 @@
         "ratio": 0.5,
         "gain": 0.18,
         "detune": 4,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       }
     ]
   },
@@ -589,7 +655,9 @@
         "ratio": 1,
         "gain": 0.28,
         "detune": 0,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": true,
@@ -598,7 +666,9 @@
         "ratio": 0.25,
         "gain": 0.17,
         "detune": -4,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": true,
@@ -607,7 +677,9 @@
         "ratio": 2,
         "gain": 0.14,
         "detune": 5,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       }
     ]
   },
@@ -640,7 +712,9 @@
         "ratio": 1.68,
         "gain": 0.645,
         "detune": -1083,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": false,
@@ -649,7 +723,9 @@
         "ratio": 0.125,
         "gain": 0.75,
         "detune": -5,
-        "endRatio": 0.61
+        "endRatio": 0.61,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": false,
@@ -658,7 +734,9 @@
         "ratio": 2.02,
         "gain": 0.14,
         "detune": 8,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       }
     ]
   },
@@ -691,7 +769,9 @@
         "ratio": 1,
         "gain": 0.3,
         "detune": 0,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": true,
@@ -700,7 +780,9 @@
         "ratio": 2.03,
         "gain": 0.17,
         "detune": -8,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": true,
@@ -709,7 +791,9 @@
         "ratio": 0.5,
         "gain": 0.08,
         "detune": 5,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       }
     ]
   },
@@ -742,7 +826,9 @@
         "ratio": 1,
         "gain": 0.02,
         "detune": 0,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": false,
@@ -751,7 +837,9 @@
         "ratio": 2.05,
         "gain": 0.2,
         "detune": -9,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": true,
@@ -760,7 +848,9 @@
         "ratio": 0.5,
         "gain": 0.285,
         "detune": 7,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       }
     ]
   },
@@ -793,7 +883,9 @@
         "ratio": 1,
         "gain": 0.36,
         "detune": 0,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": true,
@@ -802,7 +894,9 @@
         "ratio": 2.01,
         "gain": 0.22,
         "detune": -6,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": true,
@@ -811,7 +905,9 @@
         "ratio": 0.5,
         "gain": 0.12,
         "detune": 4,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       }
     ]
   },
@@ -844,7 +940,9 @@
         "ratio": 1,
         "gain": 0.25,
         "detune": 0,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": true,
@@ -853,7 +951,9 @@
         "ratio": 0.805,
         "gain": 0,
         "detune": -8,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": true,
@@ -862,7 +962,9 @@
         "ratio": 3.66,
         "gain": 0.005,
         "detune": 5,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       }
     ]
   },
@@ -895,7 +997,9 @@
         "ratio": 4.1,
         "gain": 0.12,
         "detune": -1200,
-        "endRatio": 0.1
+        "endRatio": 0.1,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": false,
@@ -904,7 +1008,9 @@
         "ratio": 1,
         "gain": 0.05,
         "detune": 0,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       },
       {
         "enabled": false,
@@ -913,8 +1019,12 @@
         "ratio": 1,
         "gain": 0.04,
         "detune": 0,
-        "endRatio": 1
+        "endRatio": 1,
+        "pan": 0,
+        "phase": 0
       }
     ]
   }
 }
+
+
