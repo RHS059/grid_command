@@ -1,6 +1,6 @@
 import * as T from 'three'
 import { MercatorCoordinate, type Map as GeographicMap, type CustomLayerInterface } from 'maplibre-gl'
-import { BASES, AIRBASES, CENTER, CATALOG, SIDE_COLOR, isAir, isVehicle, lngLat, type BattleState, type Graphics, type Perspective, type Role, type Side } from './types'
+import { BASES, AIRBASES, CENTER, CATALOG, SIDE_COLOR, isAir, isVehicle, lngLat, local, type BattleState, type Graphics, type Perspective, type Role, type Side } from './types'
 import { addCarrierOccupants, updateCarrierOccupants } from './carrier-occupants'
 import { SoldierBatch, vehicleGeometry } from './unit-models'
 import { createAircraft, animateAircraft, disposeModel } from './aircraft-models'
@@ -9,6 +9,22 @@ import type { Unit } from './types'
 import { createBase, conformBase } from './base-models'
 
 export class BattlefieldRenderer {
+  private frustum = new T.Frustum()
+  private bounds = new T.Sphere()
+  private visibleUnits = new Set<string>()
+  private terrainRevision = 0
+  private terrainChanged = (event: { sourceId?: string; isSourceLoaded?: boolean }) => {
+    if (event.sourceId === 'elevation' && event.isSourceLoaded) {
+      this.terrainRevision++
+      this.ground.clear()
+    }
+  }
+  shouldAnimate(id: string) { return this.visibleUnits.has(id) }
+  private inView(x: number, y: number, z: number, radius: number) {
+    this.bounds.center.set(x, y, z)
+    this.bounds.radius = radius
+    return this.frustum.intersectsSphere(this.bounds)
+  }
   corpseBatches: Record<Side,SoldierBatch[]> = {BLU:[],RED:[]};
   aircraft=new Map<string,T.Group>();bases:{model:T.Group;point:{x:number;y:number;id:string}}[]=[]
   renderer!:T.WebGLRenderer;scene=new T.Scene();camera=new T.Camera();transform=new T.Matrix4();dummy=new T.Object3D();groups=new Map<string,T.InstancedMesh>();soldiers:Record<Side,SoldierBatch>;effects=new Map<string,T.InstancedMesh>();layer:CustomLayerInterface;disposed=false;previous=0;report=0;frames:number[]=[];ground=new Map<string,{x:number;y:number;z:number;time:number}>();snapshotTime=-1;arrival=0
@@ -22,6 +38,7 @@ export class BattlefieldRenderer {
     const shadow=new T.InstancedMesh(new T.CircleGeometry(1,12),new T.MeshBasicMaterial({color:'#0b1119',transparent:true,opacity:.3,depthWrite:false}),256);shadow.count=0;shadow.frustumCulled=false;this.effects.set('shadow',shadow);this.scene.add(shadow)
     const origin=MercatorCoordinate.fromLngLat(CENTER,0),s=origin.meterInMercatorCoordinateUnits();this.transform.makeTranslation(origin.x,origin.y,0).scale(new T.Vector3(s,-s,s))
     this.layer={id:'battlefield-projection',type:'custom',renderingMode:'3d',onAdd:(_map,gl)=>{this.renderer=new T.WebGLRenderer({canvas:map.getCanvas(),context:gl as WebGL2RenderingContext,antialias:false});this.renderer.autoClear=false;this.renderer.outputColorSpace=T.SRGBColorSpace},render:(_gl,matrix)=>this.render(matrix as number[])};map.addLayer(this.layer)
+    map.on('sourcedata', this.terrainChanged)
     if(process.env.NODE_ENV==='development') (window as unknown as {gridDebug:BattlefieldRenderer}).gridDebug=this
   }
   resize(){this.map.triggerRepaint()}
@@ -31,6 +48,11 @@ export class BattlefieldRenderer {
     // MapLibre 4 custom-layer matrices use a target-relative vertical origin; simulation and cached models use sea-level elevations.
     this.transform.elements[14]=-this.map.getCameraTargetElevation()*this.transform.elements[10]
     this.camera.projectionMatrix.fromArray(matrix).multiply(this.transform);this.camera.projectionMatrixInverse.copy(this.camera.projectionMatrix).invert();const counts=new Map<string,number>(),ec=new Map<string,number>(),center=this.map.getCenter(),zoom=this.map.getZoom();this.soldiers.BLU.begin();this.soldiers.RED.begin()
+    const performanceMode = !!graphics.performanceMode
+    const viewCenter = local([center.lng, center.lat])
+    const nearby = (x: number, y: number, radius = 0) => Math.hypot(x - viewCenter.x, y - viewCenter.y) <= 1000 + radius
+    this.frustum.setFromProjectionMatrix(this.camera.projectionMatrix)
+    this.visibleUnits.clear()
     for(const base of this.bases){
       const side = base.point.id.startsWith('BLU') ? 'BLU' : 'RED'
       if (base.model.name === 'AIRFIELD' && base.model.userData.tier !== state.airfields[side].tier) {
@@ -38,28 +60,31 @@ export class BattlefieldRenderer {
         base.model = createBase('AIRFIELD', side, state.airfields[side].tier); base.model.position.set(base.point.x, base.point.y, 0); this.scene.add(base.model)
       }
       const { model, point } = base
-      model.visible=graphics.models&&zoom>12&&Math.hypot((lngLat(point)[0]-center.lng)*93650,(lngLat(point)[1]-center.lat)*111320)<3000;const terrain=!!this.map.getTerrain();if(model.visible&&(model.userData.terrain!==terrain||!model.userData.conformedAt||now-model.userData.conformedAt>6000)){conformBase(model,(x,y)=>terrain?((this.map.queryTerrainElevation(lngLat({x:point.x+x,y:point.y+y}))||0)+this.map.getCameraTargetElevation()):0);model.userData.terrain=terrain;model.userData.conformedAt=now}model.position.z=1.2}
+      model.visible=graphics.models&&zoom>12&&(!performanceMode||nearby(point.x,point.y,model.name==='AIRFIELD'?650:65))&&Math.hypot((lngLat(point)[0]-center.lng)*93650,(lngLat(point)[1]-center.lat)*111320)<3000;const terrain=!!this.map.getTerrain();if(model.visible&&(model.userData.terrain!==terrain||!model.userData.conformedAt||(performanceMode ? model.userData.terrainRevision!==this.terrainRevision : now-model.userData.conformedAt>6000))){conformBase(model,(x,y)=>terrain?((this.map.queryTerrainElevation(lngLat({x:point.x+x,y:point.y+y}))||0)+this.map.getCameraTargetElevation()):0);model.userData.terrain=terrain;model.userData.conformedAt=now;model.userData.terrainRevision=this.terrainRevision}model.position.z=1.2}
     const liveAircraft=new Set([...state.units.filter(u=>isAir(u.role)||isSupportModel(u.role)).map(u=>u.id),...state.casualties.map(c=>`wreck-${c.id}`)]);for(const[id,model]of this.aircraft){if(!liveAircraft.has(id)){this.scene.remove(model);disposeModel(model);this.aircraft.delete(id)}else model.visible=false}
     for(const batches of Object.values(this.corpseBatches))for(const batch of batches)batch.begin()
     const corpseCounts={BLU:0,RED:0}
-    const visibleCasualties=state.casualties.filter(c=>perspective==='OBS'||c.observed.includes(perspective)).map(c=>({...c,id:`wreck-${c.id}`,hp:0,members:0,maxMembers:0,ammo:0,fuel:0,path:[],mission:'DESTROYED',target:'',name:'Wreck',kills:0,subcommand:'',firing:false,spotted:true,soldiers:c.soldier?[c.soldier]:[]} as Unit))
-    for(const u of [...state.units.filter(u=>(!u.carrier||u.soldiers?.some(s=>s.disembarked))&&(u.hp>0||u.soldiers?.some(s=>s.status==='downed'))),...visibleCasualties]){if(perspective!=='OBS'&&u.side!==perspective&&!u.spotted)continue;const ll=lngLat(u),dist=Math.hypot((ll[0]-center.lng)*93650,(ll[1]-center.lat)*111320);if(dist>1700&&u.id!==selected)continue;const z=this.altitude(u,now)
+    const visibleCasualties=!graphics.models?[]:state.casualties.filter(c=>(!performanceMode||zoom>12&&nearby(c.x,c.y))&&(perspective==='OBS'||c.observed.includes(perspective))).map(c=>({...c,id:`wreck-${c.id}`,hp:0,members:0,maxMembers:0,ammo:0,fuel:0,path:[],mission:'DESTROYED',target:'',name:'Wreck',kills:0,subcommand:'',firing:false,spotted:true,soldiers:c.soldier?[c.soldier]:[]} as Unit))
+    for(const u of !graphics.models?[]:[...state.units.filter(u=>(!u.carrier||u.soldiers?.some(s=>s.disembarked))&&(u.hp>0||u.soldiers?.some(s=>s.status==='downed'))),...visibleCasualties]){if(perspective!=='OBS'&&u.side!==perspective&&!u.spotted)continue;const ll=lngLat(u),dist=Math.hypot((ll[0]-center.lng)*93650,(ll[1]-center.lat)*111320);if((dist>(performanceMode?1000:1700)||performanceMode&&zoom<=12)&&u.id!==selected)continue;const z=this.altitude(u,now)
+      // Culling affects presentation only; the worker retains every unit and casualty.
+      if(performanceMode&&u.id!==selected&&!this.inView(u.x,u.y,z+(u.altitude||0),isVehicle(u.role)?100:Math.max(80,...(u.soldiers||[]).map(s=>Math.hypot(s.x-u.x,s.y-u.y)+20))))continue
+      this.visibleUnits.add(u.id)
       if(isAir(u.role)||isSupportModel(u.role)){let model=this.aircraft.get(u.id);if(!model){model=isAir(u.role)?createAircraft(u.role,u.side):createSupportModel(u.role,u.side);if(u.role==='TROOP_TRUCK')addCarrierOccupants(model,u.side);
         // Derivative flat normals lose precision at map-scale view positions.
         // Geometry already carries face normals; use those for stable lighting.
         model.traverse(o=>{if(o instanceof T.Mesh){for(const m of Array.isArray(o.material)?o.material:[o.material])if(m instanceof T.MeshStandardMaterial){m.flatShading=false;m.needsUpdate=true}}});if(u.hp<=0)model.traverse(o=>{if(o instanceof T.Mesh)(o.material as T.MeshStandardMaterial).color.multiplyScalar(.35)});this.aircraft.set(u.id,model);this.scene.add(model)}model.visible=graphics.models;model.position.set(u.x,u.y,z+(u.altitude||0)+.1);model.rotation.set(u.hp<=0?.18:0,(u.role==='JET'||u.role==='CAS_FIGHTER')?Math.sin(time)*.06:0,-u.heading);animateAircraft(model,u.hp>0&&u.engine?time:0,{x:u.x,y:u.y,heading:u.heading,aim:u.aim,time:state.time,active:u.hp>0&&!!u.engine});animateSupport(model,time,u.transport);if(u.role==='TROOP_TRUCK')updateCarrierOccupants(model,u,state);const chin=model.getObjectByName('chin-turret');if(chin)chin.rotation.z=u.heading-(u.aim??u.heading);const sling=model.getObjectByName('sling-cargo');if(sling)sling.visible=!!u.transport?.cargo&&(u.altitude||0)>8;const ramp=model.getObjectByName('cargo-ramp');if(ramp)ramp.rotation.x=u.transport?.phase==='unloading'?1.2:0;if(u.transport?.phase==='departed'||u.transport?.phase==='waiting'&&u.role==='CARGO_PLANE')model.visible=false}
       else if(isVehicle(u.role)){const key=`${u.side}-${u.role}`,mesh=this.groups.get(key)!,n=counts.get(key)||0;if(n>=64)continue;this.dummy.position.set(u.x,u.y,z+(u.altitude||0)+.1);this.dummy.rotation.set(u.hp<=0?.18:0,(u.role==='JET'||u.role==='CAS_FIGHTER')?Math.sin(time)*.06:0,-u.heading);this.dummy.scale.setScalar(1);this.dummy.updateMatrix();mesh.setMatrixAt(n,this.dummy.matrix);mesh.setColorAt(n,new T.Color(u.hp<=0?.3:1,u.hp<=0?.3:1,u.hp<=0?.3:1));if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;counts.set(key,n+1);const attachment=this.groups.get(`${key}-attachment`);if(attachment){this.dummy.rotation.z=u.role==='ATTACK_HELI'?time*35:-(u.aim??u.heading);this.dummy.updateMatrix();attachment.setMatrixAt(n,this.dummy.matrix);counts.set(`${key}-attachment`,n+1)}}
-      else for(const s of u.soldiers||[]){if(u.carrier&&!s.disembarked)continue;const ground=this.altitude(s,now);if(u.id.startsWith('wreck-')){const index=Math.floor(corpseCounts[u.side]++/400);if(!this.corpseBatches[u.side][index])this.corpseBatches[u.side][index]=new SoldierBatch(this.scene,u.side,new T.MeshStandardMaterial({vertexColors:true,roughness:.9}));this.corpseBatches[u.side][index].pose(s,u.role,time,ground+.05,zoom>17)}else this.soldiers[u.side].pose(s,u.role,time,ground+.05,zoom>17||u.id===selected);const n=ec.get('shadow')||0;if(graphics.shadows&&n<256){this.dummy.position.set(s.x,s.y,ground+.025);this.dummy.rotation.set(0,0,0);this.dummy.scale.set(.65,.45,1);this.dummy.updateMatrix();this.effects.get('shadow')!.setMatrixAt(n,this.dummy.matrix);ec.set('shadow',n+1)}}
+      else for(const s of u.soldiers||[]){if(u.carrier&&!s.disembarked)continue;const ground=this.altitude(s,now);if(performanceMode&&u.id!==selected&&!this.inView(s.x,s.y,ground+1,4))continue;if(u.id.startsWith('wreck-')){const index=Math.floor(corpseCounts[u.side]++/400);if(!this.corpseBatches[u.side][index])this.corpseBatches[u.side][index]=new SoldierBatch(this.scene,u.side,new T.MeshStandardMaterial({vertexColors:true,roughness:.9}));this.corpseBatches[u.side][index].pose(s,u.role,time,ground+.05,zoom>17&&(!performanceMode||dist<250))}else this.soldiers[u.side].pose(s,u.role,time,ground+.05,(zoom>17&&(!performanceMode||dist<250))||u.id===selected);const n=ec.get('shadow')||0;if(graphics.shadows&&n<256){this.dummy.position.set(s.x,s.y,ground+.025);this.dummy.rotation.set(0,0,0);this.dummy.scale.set(.65,.45,1);this.dummy.updateMatrix();this.effects.get('shadow')!.setMatrixAt(n,this.dummy.matrix);ec.set('shadow',n+1)}}
     }
-    const place=(key:string,x:number,y:number,z:number,sx:number,sy:number,sz:number,dir?:T.Vector3)=>{const mesh=this.effects.get(key)!,n=ec.get(key)||0;if(n>=mesh.instanceMatrix.count)return;this.dummy.position.set(x,y,z);this.dummy.rotation.set(0,0,0);if(dir)this.dummy.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),dir);this.dummy.scale.set(sx,sy,sz);this.dummy.updateMatrix();mesh.setMatrixAt(n,this.dummy.matrix);ec.set(key,n+1)}
+    const place=(key:string,x:number,y:number,z:number,sx:number,sy:number,sz:number,dir?:T.Vector3)=>{if(performanceMode&&(!nearby(x,y,Math.max(sx,sy,sz))||!this.inView(x,y,z,Math.max(sx,sy,sz))))return;const mesh=this.effects.get(key)!,n=ec.get(key)||0;if(n>=mesh.instanceMatrix.count)return;this.dummy.position.set(x,y,z);this.dummy.rotation.set(0,0,0);if(dir)this.dummy.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),dir);this.dummy.scale.set(sx,sy,sz);this.dummy.updateMatrix();mesh.setMatrixAt(n,this.dummy.matrix);ec.set(key,n+1)}
     for(const e of state.shots){if(perspective!=='OBS'&&e.side!==perspective&&!e.spotted)continue;const age=time-e.time;if(age<0)continue;const start=new T.Vector3(e.start.x,e.start.y,e.start.z),end=new T.Vector3(e.end.x,e.end.y,e.end.z);if(!graphics.terrain){start.z-=this.altitude({...e.start,id:`s${e.id}`},now);end.z-=this.altitude({...e.end,id:`e${e.id}`},now)}const length=start.distanceTo(end),duration=length/e.speed,p=Math.min(1,age/Math.max(.03,duration)),pos=start.clone().lerp(end,p),direction=end.clone().sub(start).normalize();if(e.weapon==='mortar')pos.z+=Math.sin(p*Math.PI)*length*.22
       if(age<duration){const size=Math.max(e.size,zoom<17?.25:.07);place(`${e.side}-core`,pos.x,pos.y,pos.z,size,size,e.size>.15?1.2:.65,direction);place(`${e.side}-glow`,pos.x,pos.y,pos.z,size*3,size*3,1.1,direction)}else{const impact=age-duration,life=e.blast?1.3:.16;if(impact<life){const r=e.blast?Math.max(.3,e.blast*Math.sin(impact/life*Math.PI/2)):.35;place(`${e.side}-blast`,end.x,end.y,end.z,r,r,r)}}
     }
-    for(const c of state.casualties){const age=time-c.time;if(isVehicle(c.role)&&c.altitude===0&&age<24&&(perspective==='OBS'||c.observed.includes(perspective))){const z=this.altitude(c,now);for(let i=0;i<3;i++)place('smoke',c.x+Math.sin(i)*2,c.y+Math.cos(i)*2,z+2+i*2,2+i,2+i,3+i)}}
-    for(const s of state.smokes){if(perspective!=='OBS'&&s.side!==perspective&&!state.units.some(u=>u.side===perspective&&Math.hypot(u.x-s.x,u.y-s.y)<600))continue;const age=time-s.time;if(age<1){const p=Math.max(0,age);place(`${s.side}-core`,s.from.x+(s.x-s.from.x)*p,s.from.y+(s.y-s.from.y)*p,s.from.z+(s.z-s.from.z)*p+Math.sin(p*Math.PI)*4,.12,.12,.12)}else{const r=Math.min(12,(age-1)*4)*Math.min(1,(s.expires-time)/4);for(let i=0;i<5;i++)place('smoke',s.x+Math.sin(i*2)*r*.4,s.y+Math.cos(i*2)*r*.4,s.z+3+i,r*.65,r*.65,r*.65)}}
+    for(const c of state.casualties){const age=time-c.time;if(isVehicle(c.role)&&c.altitude===0&&age<24&&(perspective==='OBS'||c.observed.includes(perspective))){if(performanceMode&&!nearby(c.x,c.y,12))continue;const z=this.altitude(c,now);for(let i=0;i<3;i++)place('smoke',c.x+Math.sin(i)*2,c.y+Math.cos(i)*2,z+2+i*2,2+i,2+i,3+i)}}
+    for(const s of state.smokes){if(performanceMode&&!nearby(s.x,s.y,16))continue;if(perspective!=='OBS'&&s.side!==perspective&&!state.units.some(u=>u.side===perspective&&Math.hypot(u.x-s.x,u.y-s.y)<600))continue;const age=time-s.time;if(age<1){const p=Math.max(0,age);place(`${s.side}-core`,s.from.x+(s.x-s.from.x)*p,s.from.y+(s.y-s.from.y)*p,s.from.z+(s.z-s.from.z)*p+Math.sin(p*Math.PI)*4,.12,.12,.12)}else{const r=Math.min(12,(age-1)*4)*Math.min(1,(s.expires-time)/4);for(let i=0;i<5;i++)place('smoke',s.x+Math.sin(i*2)*r*.4,s.y+Math.cos(i*2)*r*.4,s.z+3+i,r*.65,r*.65,r*.65)}}
     for(const batches of Object.values(this.corpseBatches))for(const batch of batches)batch.end(graphics.models)
-    this.soldiers.BLU.end(graphics.models);this.soldiers.RED.end(graphics.models);for(const[key,mesh]of this.groups){mesh.count=graphics.models?counts.get(key)||0:0;mesh.instanceMatrix.needsUpdate=true}for(const[key,mesh]of this.effects){mesh.count=ec.get(key)||0;mesh.instanceMatrix.needsUpdate=true}
+    this.soldiers.BLU.end(graphics.models);this.soldiers.RED.end(graphics.models);for(const[key,mesh]of this.groups){mesh.count=graphics.models?counts.get(key)||0:0;mesh.visible=mesh.count>0;if(mesh.count)mesh.instanceMatrix.needsUpdate=true}for(const[key,mesh]of this.effects){mesh.count=ec.get(key)||0;mesh.visible=mesh.count>0;if(mesh.count)mesh.instanceMatrix.needsUpdate=true}
     this.renderer.resetState();this.renderer.render(this.scene,this.camera);this.renderer.resetState();if(!state.paused&&!state.winner&&!document.hidden)this.map.triggerRepaint();if(this.ground.size>1500)this.ground.clear()
   }
-  dispose(){if(this.disposed)return;this.disposed=true;if(process.env.NODE_ENV==='development'){const debug=window as unknown as {gridDebug?:BattlefieldRenderer};if(debug.gridDebug===this)delete debug.gridDebug}if(this.map.getLayer(this.layer.id))this.map.removeLayer(this.layer.id);disposeModel(this.scene);this.aircraft.clear();this.bases=[];this.renderer?.dispose();this.ground.clear()}
+  dispose(){if(this.disposed)return;this.disposed=true;this.map.off('sourcedata',this.terrainChanged);if(process.env.NODE_ENV==='development'){const debug=window as unknown as {gridDebug?:BattlefieldRenderer};if(debug.gridDebug===this)delete debug.gridDebug}if(this.map.getLayer(this.layer.id))this.map.removeLayer(this.layer.id);disposeModel(this.scene);this.aircraft.clear();this.bases=[];this.renderer?.dispose();this.ground.clear()}
 }

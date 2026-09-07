@@ -8,23 +8,32 @@ export class DisplayPoses {
   private current?: BattleState
   private arrival = 0
   private interval = 50
-  sample(snapshot: BattleState, now: number): BattleState {
+  private oldUnits = new Map<string, Unit>()
+  private oldSoldiers = new Map<string, Map<string, NonNullable<Unit['soldiers']>[number]>>()
+  sample(snapshot: BattleState, now: number, shouldAnimate?: (unit: Unit) => boolean): BattleState {
     if (snapshot !== this.current) {
       const reset = !this.current || snapshot.tick <= this.current.tick || now - this.arrival > 250 || snapshot.paused || snapshot.speed !== this.current.speed
-      this.previous = reset ? snapshot : this.current
+      this.previous = reset ? snapshot : (this.current ?? snapshot)
       this.interval = reset ? 50 : Math.max(16, Math.min(100, now - this.arrival))
       this.current = snapshot
       this.arrival = now
+      this.oldUnits = new Map(this.previous.units.map(u => [u.id, u]))
+      this.oldSoldiers.clear()
     }
     if (snapshot.paused || !this.previous || this.previous === snapshot) return snapshot
     const t = Math.min(1, Math.max(0, (now - this.arrival) / this.interval))
-    const old = new Map(this.previous.units.map(u => [u.id, u]))
     return { ...snapshot, units: snapshot.units.map(u => {
-      const p = old.get(u.id)
+      // Keep the untouched simulation snapshot for units with no visible model.
+      if (shouldAnimate && !shouldAnimate(u)) return u
+      const p = this.oldUnits.get(u.id)
       if (!p || u.hp <= 0 || u.carrier !== p.carrier) return u
-      const soldiers = new Map(p.soldiers?.map(s => [s.id, s]))
+      let soldiers = this.oldSoldiers.get(u.id)
+      if (!soldiers) {
+        soldiers = new Map(p.soldiers?.map(s => [s.id, s]))
+        this.oldSoldiers.set(u.id, soldiers)
+      }
       return { ...u, x: mix(p.x, u.x, t), y: mix(p.y, u.y, t), altitude: mix(p.altitude || 0, u.altitude || 0, t), heading: p.heading + angleBetween(p.heading, u.heading) * t,
-        soldiers: u.soldiers?.map(s => { const b = soldiers.get(s.id); return !b || s.status !== b.status ? s : { ...s, x: mix(b.x, s.x, t), y: mix(b.y, s.y, t), heading: b.heading + angleBetween(b.heading, s.heading) * t } }) }
+        soldiers: u.soldiers?.map(s => { const b = soldiers!.get(s.id); return !b || s.status !== b.status ? s : { ...s, x: mix(b.x, s.x, t), y: mix(b.y, s.y, t), heading: b.heading + angleBetween(b.heading, s.heading) * t } }) }
     }) }
   }
 }

@@ -102,7 +102,7 @@ export class SoldierBatch {
     this.weapon.position.y=(prone?-.08:.4)-recoil*.055;this.weapon.position.z=prone?.65:.27;this.weapon.rotation.x=(prone?Math.PI/2:0)+recoil*-.065;this.root.updateMatrixWorld(true)
     for(const {key,node}of this.nodes){const equipment:Record<string,Role[]>={medic:['MEDIC'],radio:['COMMAND','SCOUT','AA_TEAM'],engineer:['ENGINEER'],supplies:['LOGISTICS'],pilot:['PILOT'],mortar:['MORTAR']};if(equipment[key]&&!equipment[key].includes(role))continue;if(key==='mortar'&&(walking||dead))continue;if(key==='aaLauncher'&&role!=='AA_TEAM'||key==='launcher'&&role!=='AT'||key==='mg'&&role!=='MG'||key==='rifle'&&['AT','MG','AA_TEAM'].includes(role))continue;const mesh=this.parts.get(key)!,n=this.counts.get(key)||0;if(n<1024){mesh.setMatrixAt(n,node.matrixWorld);this.counts.set(key,n+1)}}
   }
-  end(visible:boolean){for(const [key,mesh]of this.parts){mesh.count=visible?this.counts.get(key)||0:0;mesh.instanceMatrix.needsUpdate=true}}
+  end(visible:boolean){for(const [key,mesh]of this.parts){mesh.count=visible?this.counts.get(key)||0:0;mesh.visible=mesh.count>0;if(mesh.count)mesh.instanceMatrix.needsUpdate=true}}
 }
 export function vehicleGeometry(role:Role,side:Side,attachment=false){const parts:T.BufferGeometry[]=[]
   if(isAir(role)||isSupportModel(role)){const model=isAir(role)?createAircraft(role,side):createSupportModel(role,side);model.updateMatrixWorld(true);const source=attachment&&role==='ATTACK_HELI'?model.getObjectByName('main-rotor')!:model;source.traverse(o=>{if(o instanceof T.Mesh){const g=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();g.applyMatrix4(o.matrixWorld);parts.push(colored(g,`#${(o.material as T.MeshStandardMaterial).color.getHexString()}`))}});disposeModel(model);return combine(parts)}
