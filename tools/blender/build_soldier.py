@@ -7,6 +7,7 @@ import math
 import os
 import re
 import bpy
+import mathutils
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 SOLDIER_BLEND = os.path.join(ROOT, 'assets', 'blender', 'soldier.blend')
@@ -127,14 +128,79 @@ def box(name, location, size, material, rotation=(0, 0, 0), bevel=.008):
     return obj
 
 
-def tube(name, location, radius, length, material):
-    bpy.ops.mesh.primitive_cylinder_add(
-        vertices=8, radius=radius, depth=length, location=location,
-        rotation=(math.pi / 2, 0, 0))
+def tube_x(name, location, radius, length, material, radius2=None, vertices=8):
+    bpy.ops.mesh.primitive_cone_add(
+        vertices=vertices, radius1=radius, radius2=radius if radius2 is None else radius2,
+        depth=length, location=location, rotation=(0, math.pi / 2, 0))
     obj = bpy.context.object
     obj.name = name
     obj.data.materials.append(material)
     return obj
+
+
+def beam(name, start, end, width, material):
+    start, end = mathutils.Vector(start), mathutils.Vector(end)
+    middle = (start + end) / 2
+    direction = end - start
+    bpy.ops.mesh.primitive_cylinder_add(vertices=6, radius=width, depth=direction.length,
+                                        location=middle)
+    obj = bpy.context.object
+    obj.name = name
+    obj.rotation_mode = 'QUATERNION'
+    obj.rotation_quaternion = direction.to_track_quat('Z', 'Y')
+    obj.data.materials.append(material)
+    return obj
+
+
+def add_rail(parts, prefix, x0, x1, y, z, material, teeth=12):
+    parts.append(box(f'{prefix} rail bed', ((x0 + x1) / 2, y, z - .012),
+                     (x1 - x0, .055, .025), material, bevel=.004))
+    step = (x1 - x0) / teeth
+    for index in range(teeth):
+        parts.append(box(f'{prefix} tooth {index:02}',
+                         (x0 + step * (index + .5), y, z + .006),
+                         (step * .58, .062, .035), material, bevel=.003))
+
+
+def add_trigger_guard(parts, prefix, x, z, material):
+    parts.extend([
+        box(f'{prefix} trigger front', (x + .055, 0, z), (.018, .032, .105), material,
+            (0, -.36, 0), bevel=.003),
+        box(f'{prefix} trigger rear', (x - .055, 0, z), (.018, .032, .105), material,
+            (0, .36, 0), bevel=.003),
+        box(f'{prefix} trigger base', (x, 0, z - .045), (.12, .032, .018), material,
+            bevel=.003),
+        box(f'{prefix} trigger', (x + .015, 0, z + .005), (.012, .018, .06), material,
+            (0, -.25, 0), bevel=.002),
+    ])
+
+
+def add_curved_magazine(parts, prefix, x, material, trim):
+    segments = [
+        (x + .018, -.055, .105, .155, -.08),
+        (x + .002, -.155, .095, .145, -.15),
+        (x - .028, -.245, .082, .125, -.23),
+    ]
+    for index, (px, pz, width, height, angle) in enumerate(segments):
+        parts.append(box(f'{prefix} magazine {index}', (px, 0, pz),
+                         (width, .075, height), material, (0, angle, 0), bevel=.008))
+    parts.append(box(f'{prefix} magazine floor', (x - .05, 0, -.31),
+                     (.105, .086, .03), trim, (0, -.2, 0), bevel=.006))
+
+
+def add_frame_stock(parts, prefix, rear_x, z, material, trim):
+    parts.extend([
+        tube_x(f'{prefix} buffer', ((rear_x + .03) / 2, 0, z), .025,
+               abs(.03 - rear_x), trim, vertices=8),
+        beam(f'{prefix} stock top', (rear_x, 0, z + .02), (-.12, 0, z + .055),
+             .027, material),
+        beam(f'{prefix} stock lower', (rear_x, 0, z - .13), (-.12, 0, z + .015),
+             .025, material),
+        box(f'{prefix} butt', (rear_x - .015, 0, z - .045),
+            (.055, .105, .24), trim, (0, -.05, 0), bevel=.012),
+        box(f'{prefix} cheek', ((rear_x - .12) / 2, 0, z + .06),
+            (abs(rear_x + .12), .09, .065), material, bevel=.008),
+    ])
 
 
 def join(name, parts):
@@ -145,60 +211,207 @@ def join(name, parts):
     bpy.ops.object.join()
     weapon = bpy.context.object
     weapon.name = name
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
     bpy.context.scene.cursor.location = (0, 0, 0)
     bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
     weapon['weapon_role'] = name.removeprefix('Weapon_')
+    return weapon
+
+
+def fit_weapon(weapon, target_length):
+    """Set physical length while retaining the references' thin side profile."""
+    x_values = [vertex.co.x for vertex in weapon.data.vertices]
+    scale = target_length / (max(x_values) - min(x_values))
+    weapon.scale = (scale, scale * .70, scale)
+    bpy.context.view_layer.objects.active = weapon
+    weapon.select_set(True)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+
+
+def orient_for_rig(weapon, forward_offset, up_offset=-.10):
+    """Convert reference +X-forward geometry to the armature's +Y-forward datum."""
+    weapon.rotation_euler.z = math.pi / 2
+    bpy.context.view_layer.objects.active = weapon
+    weapon.select_set(True)
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+    offset = mathutils.Vector((0, forward_offset, up_offset))
+    for vertex in weapon.data.vertices:
+        vertex.co += offset
 
 
 def build_weapons():
     bpy.ops.wm.read_factory_settings(use_empty=True)
-    metal = mat('Weapon metal', (.115, .13, .12), .32)
-    polymer = mat('Weapon polymer', (.055, .07, .06))
-    olive = mat('Launcher olive', (.24, .28, .16))
-    optic = mat('Optic glass', (.06, .18, .18), .15)
+    main = mat('Main military polymer', (.12, .15, .105))
+    main_dark = mat('Main dark', (.035, .045, .04))
+    main_light = mat('Main edge', (.25, .285, .20))
+    metal = mat('Dark metal', (.07, .08, .075), .38)
+    steel = mat('Steel edges', (.18, .20, .19), .55)
+    rubber = mat('Rubber', (.018, .022, .02))
+    lens = mat('Desaturated lens', (.055, .16, .145), .18)
 
-    # Compact angular service rifle, using the supplied AssaultRifle2 family as
-    # the style reference while keeping a small in-game vertex budget.
-    join('Weapon_RIFLE', [
-        box('Rifle stock', (0, -.34, 0), (.13, .30, .14), polymer),
-        box('Rifle receiver', (0, -.08, .005), (.13, .28, .13), metal),
-        box('Rifle handguard', (0, .19, .01), (.10, .30, .10), polymer),
-        tube('Rifle barrel', (0, .43, .01), .024, .30, metal),
-        box('Rifle grip', (0, -.08, -.12), (.075, .11, .20), polymer,
-            (math.radians(-12), 0, 0)),
-        box('Rifle magazine', (0, .035, -.14), (.08, .13, .22), metal,
-            (math.radians(-8), 0, 0)),
-        box('Rifle optic', (0, -.02, .105), (.065, .12, .065), optic),
-        box('Rifle muzzle', (0, .60, .01), (.05, .08, .05), metal),
+    rifle = []
+    add_frame_stock(rifle, 'Rifle', -.54, .13, main, rubber)
+    rifle.extend([
+        box('Rifle lower receiver', (.055, 0, .075), (.37, .105, .19), main_dark,
+            bevel=.012),
+        box('Rifle upper receiver', (.08, 0, .19), (.43, .098, .085), metal,
+            bevel=.009),
+        box('Rifle receiver edge L', (.055, .058, .145), (.32, .012, .045),
+            main_light, bevel=.003),
+        box('Rifle receiver edge R', (.055, -.058, .145), (.32, .012, .045),
+            main_light, bevel=.003),
+        box('Rifle pistol grip', (-.035, 0, -.075), (.09, .09, .24), rubber,
+            (0, .24, 0), bevel=.012),
+        box('Rifle handguard core', (.43, 0, .175), (.34, .105, .13), main,
+            bevel=.01),
+        tube_x('Rifle barrel', (.76, 0, .17), .022, .36, metal, vertices=8),
+        tube_x('Rifle gas block', (.61, 0, .17), .04, .06, steel, vertices=8),
+        tube_x('Rifle muzzle body', (.955, 0, .17), .035, .11, steel, vertices=8),
+        tube_x('Rifle muzzle tip', (1.025, 0, .17), .027, .05, metal, vertices=8),
+        box('Rifle front sight L', (.61, .025, .245), (.024, .02, .14), metal,
+            (0, -.18, 0), bevel=.003),
+        box('Rifle front sight R', (.61, -.025, .245), (.024, .02, .14), metal,
+            (0, -.18, 0), bevel=.003),
+        box('Rifle front sight cap', (.61, 0, .305), (.045, .07, .025), metal,
+            bevel=.003),
+        box('Rifle rear sight', (-.07, 0, .275), (.055, .075, .065), metal,
+            bevel=.006),
     ])
-    join('Weapon_MG', [
-        box('MG stock', (0, -.38, 0), (.15, .30, .16), polymer),
-        box('MG receiver', (0, -.08, .01), (.16, .34, .16), metal),
-        box('MG handguard', (0, .22, .015), (.12, .30, .12), polymer),
-        tube('MG barrel', (0, .52, .015), .03, .42, metal),
-        box('MG grip', (0, -.09, -.14), (.08, .11, .22), polymer,
-            (math.radians(-12), 0, 0)),
-        tube('MG drum', (.105, .01, -.12), .12, .08, polymer),
-        box('MG bipod L', (.075, .45, -.16), (.025, .06, .34), metal,
-            (0, math.radians(-18), 0)),
-        box('MG bipod R', (-.075, .45, -.16), (.025, .06, .34), metal,
-            (0, math.radians(18), 0)),
+    add_trigger_guard(rifle, 'Rifle', .07, -.005, metal)
+    add_curved_magazine(rifle, 'Rifle', .13, main_dark, steel)
+    add_rail(rifle, 'Rifle receiver', -.1, .27, 0, .257, steel, 7)
+    add_rail(rifle, 'Rifle handguard', .29, .58, 0, .262, metal, 6)
+    for index in range(4):
+        x = .31 + index * .043
+        rifle.extend([
+            box(f'Rifle handguard rib L {index}', (x, .061, .175),
+                (.018, .018, .125), main_light, bevel=.002),
+            box(f'Rifle handguard rib R {index}', (x, -.061, .175),
+                (.018, .018, .125), main_light, bevel=.002),
+        ])
+    rifle_object = join('Weapon_RIFLE', rifle)
+    fit_weapon(rifle_object, 1.05)
+    orient_for_rig(rifle_object, -.165)
+
+    mg = []
+    add_frame_stock(mg, 'MG', -.62, .16, main, rubber)
+    mg.extend([
+        box('MG lower receiver', (.02, 0, .08), (.43, .13, .22), main_dark,
+            bevel=.014),
+        box('MG feed cover', (.08, 0, .225), (.48, .14, .09), metal,
+            bevel=.012),
+        box('MG cover edge L', (.08, .078, .225), (.39, .016, .045), steel,
+            bevel=.003),
+        box('MG cover edge R', (.08, -.078, .225), (.39, .016, .045), steel,
+            bevel=.003),
+        box('MG pistol grip', (-.055, 0, -.085), (.095, .095, .25), rubber,
+            (0, .24, 0), bevel=.012),
+        box('MG vented handguard', (.45, 0, .175), (.38, .135, .15), main,
+            bevel=.012),
+        tube_x('MG heavy barrel', (.80, 0, .18), .031, .40, metal, vertices=8),
+        tube_x('MG barrel collar', (.64, 0, .18), .052, .075, steel, vertices=8),
+        tube_x('MG flash hider', (1.025, 0, .18), .043, .11, steel,
+               radius2=.03, vertices=8),
+        box('MG belt box', (.08, -.115, -.075), (.25, .16, .25), main,
+            (0, -.05, 0), bevel=.018),
+        box('MG belt box lid', (.08, -.115, .058), (.27, .17, .035), main_light,
+            bevel=.006),
+        beam('MG carry front', (.15, 0, .27), (.24, 0, .40), .018, steel),
+        beam('MG carry top', (.24, 0, .40), (-.02, 0, .40), .018, steel),
+        beam('MG carry rear', (-.02, 0, .40), (-.08, 0, .28), .018, steel),
+        beam('MG bipod L', (.66, .045, .15), (.60, .22, -.28), .018, steel),
+        beam('MG bipod R', (.66, -.045, .15), (.60, -.22, -.28), .018, steel),
+        box('MG bipod foot L', (.585, .22, -.29), (.11, .045, .025), rubber,
+            bevel=.004),
+        box('MG bipod foot R', (.585, -.22, -.29), (.11, .045, .025), rubber,
+            bevel=.004),
     ])
-    join('Weapon_AT', [
-        tube('AT tube', (0, .02, .02), .085, 1.10, olive),
-        tube('AT muzzle', (0, .59, .02), .105, .08, metal),
-        tube('AT rear', (0, -.55, .02), .11, .10, metal),
-        box('AT grip', (0, -.08, -.13), (.07, .12, .22), polymer),
-        box('AT sight', (.105, .08, .10), (.09, .16, .10), optic),
-    ])
-    join('Weapon_AA_TEAM', [
-        tube('AA tube', (0, .04, .02), .09, 1.25, olive),
-        tube('AA muzzle', (0, .69, .02), .11, .10, metal),
-        tube('AA rear', (0, -.60, .02), .12, .12, metal),
-        box('AA grip', (0, -.02, -.14), (.08, .14, .24), polymer),
-        box('AA sight', (.12, .13, .11), (.10, .20, .12), optic),
-        box('AA battery', (0, -.32, -.12), (.15, .18, .16), polymer),
-    ])
+    add_trigger_guard(mg, 'MG', .045, -.015, metal)
+    add_rail(mg, 'MG', -.12, .32, 0, .30, steel, 12)
+    for index in range(8):
+        x = .29 + index * .046
+        mg.extend([
+            box(f'MG vent L {index}', (x, .073, .175), (.026, .014, .065),
+                main_dark, (0, .18, 0), bevel=.002),
+            box(f'MG vent R {index}', (x, -.073, .175), (.026, .014, .065),
+                main_dark, (0, .18, 0), bevel=.002),
+        ])
+    mg_object = join('Weapon_MG', mg)
+    fit_weapon(mg_object, 1.20)
+    orient_for_rig(mg_object, -.15)
+
+    at = [
+        tube_x('AT rear venturi', (-.46, 0, .16), .12, .18, metal,
+               radius2=.095, vertices=10),
+        tube_x('AT rear collar', (-.32, 0, .16), .105, .10, steel, vertices=10),
+        tube_x('AT main tube', (.12, 0, .16), .082, .82, main, vertices=10),
+        tube_x('AT forward shroud', (.58, 0, .16), .105, .20, main_dark,
+               radius2=.13, vertices=10),
+        tube_x('AT muzzle ring', (.72, 0, .16), .14, .09, steel, vertices=10),
+        box('AT shoulder pad', (-.22, 0, .035), (.22, .16, .13), rubber,
+            (0, -.08, 0), bevel=.018),
+        box('AT pistol grip', (-.02, 0, -.045), (.09, .09, .22), rubber,
+            (0, .22, 0), bevel=.012),
+        box('AT sight housing', (.16, -.115, .275), (.25, .11, .18), main_dark,
+            bevel=.015),
+        box('AT sight lens', (.19, -.174, .29), (.075, .012, .065), lens,
+            bevel=.004),
+        box('AT control panel', (-.06, -.105, .18), (.16, .07, .12), main_light,
+            bevel=.008),
+        box('AT front sling mount', (.49, 0, .03), (.025, .11, .13), steel,
+            bevel=.004),
+    ]
+    add_trigger_guard(at, 'AT', .07, .0, metal)
+    add_rail(at, 'AT', -.13, .40, 0, .266, steel, 13)
+    for index in range(7):
+        x = .29 + index * .05
+        at.append(box(f'AT shroud rib {index}', (x, 0, .16),
+                      (.018, .19, .19), main_light, bevel=.003))
+    at_object = join('Weapon_AT', at)
+    fit_weapon(at_object, 1.10)
+    orient_for_rig(at_object, -.18)
+
+    aa = [
+        tube_x('AA rear battery', (-.47, 0, .16), .13, .24, main_dark,
+               radius2=.105, vertices=10),
+        tube_x('AA rear collar', (-.30, 0, .16), .12, .10, steel, vertices=10),
+        tube_x('AA main tube', (.12, 0, .16), .09, .78, main, vertices=10),
+        tube_x('AA seeker neck', (.56, 0, .16), .11, .16, metal,
+               radius2=.14, vertices=10),
+        tube_x('AA seeker head', (.72, 0, .16), .16, .20, main_dark,
+               radius2=.095, vertices=10),
+        tube_x('AA nose cap', (.85, 0, .16), .10, .08, steel,
+               radius2=.055, vertices=10),
+        box('AA shoulder rest', (-.17, 0, .025), (.30, .17, .14), rubber,
+            (0, -.06, 0), bevel=.018),
+        box('AA pistol grip', (-.015, 0, -.05), (.095, .095, .23), rubber,
+            (0, .22, 0), bevel=.012),
+        box('AA battery housing', (-.35, -.12, .0), (.26, .16, .22), main_dark,
+            bevel=.018),
+        box('AA battery edge', (-.35, -.205, .0), (.20, .02, .15), main_light,
+            bevel=.004),
+        box('AA folding sight arm', (.18, -.13, .27), (.035, .04, .24), steel,
+            (0, -.42, 0), bevel=.004),
+        box('AA sight housing', (.23, -.14, .36), (.18, .11, .13), main_dark,
+            bevel=.012),
+        box('AA sight lens', (.26, -.201, .37), (.065, .012, .055), lens,
+            bevel=.003),
+        box('AA control pad', (-.03, -.12, .17), (.16, .08, .12), main_light,
+            bevel=.008),
+    ]
+    add_trigger_guard(aa, 'AA', .055, -.005, metal)
+    add_rail(aa, 'AA', -.10, .35, 0, .27, steel, 11)
+    for index in range(6):
+        x = .27 + index * .052
+        aa.extend([
+            box(f'AA tube band top {index}', (x, 0, .253), (.017, .12, .025),
+                main_light, bevel=.003),
+            box(f'AA tube band bottom {index}', (x, 0, .067), (.017, .12, .025),
+                main_light, bevel=.003),
+        ])
+    aa_object = join('Weapon_AA_TEAM', aa)
+    fit_weapon(aa_object, 1.25)
+    orient_for_rig(aa_object, -.185)
     bpy.ops.wm.save_as_mainfile(filepath=WEAPONS_BLEND, compress=True)
     bpy.ops.export_scene.gltf(
         filepath=WEAPONS_GLB, export_format='GLB', export_animations=False,
