@@ -1,4 +1,4 @@
-import { isAir, isVehicle, type BattleState, type Point, type Soldier, type Unit } from './types'
+import { AIRBASES, BASES, isAir, isVehicle, type BattleState, type Point, type Soldier, type Unit } from './types'
 import type { Navigation } from './navigation'
 import { sectorKey } from './theater'
 
@@ -49,7 +49,12 @@ class Traffic {
         continue
       }
       if (isVehicle(unit.role)) {
-        if (unit.hp > 0 && !(unit.role === 'CARGO_PLANE' && ['waiting','departed'].includes(unit.transport?.phase || ''))) this.add(unit, unit, previous)
+        if (unit.hp > 0 && !(unit.role === 'CARGO_PLANE' && ['waiting','departed'].includes(unit.transport?.phase || ''))) {
+          const home=isAir(unit.role)?AIRBASES[unit.side]:BASES[unit.side]
+          const parkedService=!!unit.servicing&&(unit.altitude||0)<=.5&&length(unit,home)<=100
+          const garage=Object.values(state.mobs||{}).find(m=>m.garage?.unitId===unit.id)?.garage
+          this.add(unit, unit, previous, parkedService || (unit.deployment==='garage' && garage?.phase!=='rollout'))
+        }
       } else for (const s of unit.soldiers || []) if (s.status !== 'dead') this.add(unit, s, previous)
     }
   }
@@ -59,7 +64,7 @@ class Traffic {
       for (let y=Math.floor((body.y-reach)/CELL);y<=Math.floor((body.y+reach)/CELL);y++) keys.push(`${x},${y}`)
     return keys
   }
-  private add(unit: Unit, mover: Mover, previous?: Traffic) {
+  private add(unit: Unit, mover: Mover, previous?: Traffic, parked = false) {
     const vehicle = mover === unit, air = vehicle && isAir(unit.role), old = previous?.bodies.get(mover.id)
     const shape = footprint(unit, air)
     const body: Body = { id: mover.id, mover, unit, x: mover.x, y: mover.y,
@@ -68,7 +73,7 @@ class Traffic {
       front: vehicle ? shape.front : 0,
       back: vehicle ? shape.back : 0,
       height: vehicle ? air ? 5 : 3 : 1.8, airborne: air && (unit.altitude || 0) > .5,
-      fixed: vehicle ? unit.crewBailed === true || unit.role === 'UAV_JAMMER' || (LOGISTICS_ROLES.has(unit.role) && STATIONARY_LOGISTICS_PHASES.has(unit.transport?.phase || '')) : (mover as Soldier).status === 'downed',
+      fixed: vehicle ? parked || unit.crewBailed === true || unit.role === 'UAV_JAMMER' || (LOGISTICS_ROLES.has(unit.role) && STATIONARY_LOGISTICS_PHASES.has(unit.transport?.phase || '')) : unit.role === 'COMMAND' || (mover as Soldier).status === 'downed',
       vx: old ? (mover.x-old.x)/DT : 0, vy: old ? (mover.y-old.y)/DT : 0 }
     this.bodies.set(body.id, body)
     for (const key of this.keys(body)) { if (!this.cells.has(key)) this.cells.set(key,new Set()); this.cells.get(key)!.add(body) }
