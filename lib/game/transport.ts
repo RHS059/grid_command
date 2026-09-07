@@ -2,6 +2,7 @@ import { createUnit, prepareUnit, troopSeats, isVehicle, isAir, type BattleState
 import { Navigation } from './navigation'
 import { distance, travel } from './movement'
 import { missionFuel, serviceBase } from './sustainment'
+import { mobHelipad, mobHelipadHold, releaseMobHelipad, reserveMobHelipad } from './mob'
 
 export const UNLOAD_INTERVAL = 1
 export const MAX_WALK_DISTANCE = 500
@@ -39,7 +40,7 @@ export function manualGetIn(state: BattleState, side: Side, squadId: string, car
   if (squad.path.length || !squad.transportIntent) squad.transportIntent = { destination: { ...destination }, mission: intendedMission(squad), target: squad.target }
   carrier.attachedSquad = squad.id
   squad.attachedVehicles = [...new Set([...(squad.attachedVehicles || []), carrier.id])]
-  carrier.transport = { phase: 'pickup', since: state.time, destination: { ...destination }, passengers: [squad.id], home: { ...serviceBase(carrier) }, manual: true }
+  carrier.transport = { phase: 'pickup', since: state.time, destination: { ...destination }, passengers: [squad.id], home: { ...serviceBase(carrier) }, manual: true, mobPad: squad.target === 'MOB' }
   carrier.path = []; carrier.target = squad.target; squad.path = []; squad.mission = 'WAITING FOR TRANSPORT'
   return true
 }
@@ -117,7 +118,7 @@ export function assignTransports(state: BattleState, nav?: Navigation) {
       }
       if (occupied < (carrier.role === 'TRANSPORT_HELI' ? seats / 2 : 1)) continue
       for (const squad of passengers) { reserved.add(squad.id); squad.path = []; squad.mission = 'WAITING FOR TRANSPORT' }
-      carrier.transport = { phase: 'pickup', since: state.time, destination: { ...destination }, passengers: passengers.map(s => s.id), home: { ...serviceBase(carrier) } }
+      carrier.transport = { phase: 'pickup', since: state.time, destination: { ...destination }, passengers: passengers.map(s => s.id), home: { ...serviceBase(carrier) }, mobPad: lead.target === 'MOB' }
       carrier.path = []; carrier.target = lead.target
       break
     }
@@ -154,12 +155,17 @@ export function updateTransports(state: BattleState, nav: Navigation) {
         else { m.dispatchTroops = troops; phase('transit') }
       }
     } else if (m.phase === 'transit' && m.destination) {
-      if (travel(u, m.destination, nav, state.time, undefined, isAir(u.role) ? 85 : 0)) phase(m.manual ? 'attached-hold' : 'landing')
+      const pad=helicopter&&m.mobPad?mobHelipad(u.side):undefined
+      if(pad&&distance(u,pad)<=180&&!reserveMobHelipad(state,u.side,u.id)){u.travelStatus='HOLDING FOR MOB HELIPAD';travel(u,mobHelipadHold(u.side,u.id),nav,state.time,undefined,85);continue}
+      if (travel(u, pad||m.destination, nav, state.time, undefined, isAir(u.role) ? 85 : 0)) phase(m.manual ? 'attached-hold' : 'landing')
     } else if (m.phase === 'attached-hold') {
       u.engine = helicopter; u.path = []; u.mission = helicopter ? 'HOLDING FOR DISMOUNT' : 'AWAITING DISMOUNT'
     } else if (m.phase === 'landing' && m.destination) {
       if (helicopter && !m.manual && (aboard < 12 || (m.dispatchTroops || 0) < 12)) { phase('return'); continue }
-      const landing = nav.nearest(m.destination)
+      if(helicopter&&m.mobPad&&distance(u,mobHelipad(u.side))>180){travel(u,mobHelipad(u.side),nav,state.time,undefined,85);continue}
+      if(helicopter&&m.mobPad&&!reserveMobHelipad(state,u.side,u.id)){u.travelStatus='HOLDING FOR MOB HELIPAD';travel(u,mobHelipadHold(u.side,u.id),nav,state.time,undefined,85);continue}
+      const landing = m.mobPad ? mobHelipad(u.side) : nav.nearest(m.destination)
+      if(helicopter&&m.mobPad&&distance(u,landing)>3){travel(u,landing,nav,state.time,undefined,85);continue}
       if (!nav.covered(landing) || !nav.clear(landing, landing)) { u.travelStatus = 'WAITING FOR LANDING ZONE'; continue }
       if (travel(u, landing, nav, state.time, undefined, 0)) { phase('disembarking'); m.unloaded = 0; m.lastUnload = state.time }
     } else if (m.phase === 'disembarking') {
@@ -180,7 +186,7 @@ export function updateTransports(state: BattleState, nav: Navigation) {
         m.passengers = []
         if (m.dismountCrew) { if (!bailCrew(state, u, nav)) continue; continue }
         if (m.manual && !helicopter && !u.crewBailed) phase('escort')
-        else { detach(state, u); phase('return') }
+        else { releaseMobHelipad(state,u.side,u.id); detach(state, u); phase('return') }
       }
     } else if (m.phase === 'escort') {
       const squad = state.units.find(s => s.id === u.attachedSquad && s.hp > 0)
@@ -191,7 +197,7 @@ export function updateTransports(state: BattleState, nav: Navigation) {
         if (distance(u, follow) > 22) travel(u, follow, nav, state.time, undefined, 0, 4)
         else { u.path = []; u.engine = false }
       }
-    } else if (m.phase === 'return') { u.servicing = true; u.target = isAir(u.role) ? 'AIRFIELD' : 'MOB' }
+    } else if (m.phase === 'return') { releaseMobHelipad(state,u.side,u.id); u.servicing = true; u.target = isAir(u.role) ? 'AIRFIELD' : 'MOB' }
     for (const squad of passengers) if (squad.carrier === u.id) {
       squad.x = u.x; squad.y = u.y
       for (const body of squad.soldiers || []) if (body.status === 'active' && !body.disembarked) { body.x = u.x; body.y = u.y }
