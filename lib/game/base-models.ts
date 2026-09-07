@@ -22,18 +22,11 @@ export function createBase(kind: BaseKind, side: Side, tier: AirfieldTier = 1) {
   }
   if (kind === 'MOB') {
     b(MOB_YARD.halfWidth*2,MOB_YARD.maxY-MOB_YARD.minY,.35,0,(MOB_YARD.maxY+MOB_YARD.minY)/2,-.2,2)
-    root.add(createMobYard(tier))
+    root.add(createMobYard(tier,side))
     shelter(-16, -13, 27, 17, 7)
     for (let i = 0; i < 5; i++) b(2.3, .18, 1.6, -26 + i * 4.8, -21.6, 4, 4)
     b(5, 4, 1.4, -23, -14, 7.8, 1); b(5, 4, 1.4, -13, -14, 7.8, 1)
     shelter(23, -17, 15, 22, 5)
-    if(tier===3){
-      b(32,32,.12,-60,12,.04,1)
-      const ring=new T.RingGeometry(12,12.4,40).toNonIndexed();put(ring,-60,12,.13,2)
-      b(2,14,.05,-65,12,.15,2);b(2,14,.05,-55,12,.15,2);b(10,2,.05,-60,12,.15,2)
-      shelter(-60,-22,30,24,9)
-      b(27,.2,6,-60,-9.8,3,1)
-    }
     for (let i = 0; i < 4; i++) { b(2, 2, 1.8, -25 + i * 3, 22, .9); b(2.1, 2.1, .12, -25 + i * 3, 22, 1.8, 1) }
     pole(.3, 22, -34, -23); pole(.12, 14, -31, -23)
     for (let i = 0; i < 4; i++) { b(5, .15, .15, -34, -23, 14 + i * 2); b(.15, 4, .15, -34, -23, 14 + i * 2) }

@@ -1,4 +1,4 @@
-import { completeMobUpgrades } from './mob'
+import { completeMobUpgrades, mobHelipad, mobHelipadHold, releaseMobHelipad, reserveMobHelipad } from './mob'
 import { updateMobTruck } from './mob-logistics'
 import { AIRBASES, AIRFIELD_TIERS, BASES, createUnit, emptyStock, stockTotal, type AirfieldTier, type BattleState, type Role, type Side, type Stock, type Unit } from './types'
 import { Navigation } from './navigation'
@@ -120,9 +120,13 @@ export function updateSupplyMissions(state: BattleState, nav: Navigation) {
         phase('pickup')
       } else if (m.phase === 'pickup' && travel(u, at(18, -135), nav, state.time, speed, helicopter ? 3 : 0)) phase('loading')
       else if (m.phase === 'loading' && state.time - m.since > 8 && stockTotal(depot.airfield) > 0) { load(u, depot.airfield, capacity, u.external ? 1 : .5, AIRFIELD_TIERS[state.airfields[u.side].tier].supplyMultiplier); if (m.cargo) phase('delivery'); else if (u.external) retired.add(u.id) }
-      else if (m.phase === 'delivery' && travel(u, { x: home.x + 20, y: home.y + 25 }, nav, state.time, speed, helicopter ? 55 : 0)) phase('lowering')
-      else if (m.phase === 'lowering' && travel(u, { x: home.x + 20, y: home.y + 25 }, nav, state.time, speed, helicopter ? 3 : 0)) phase('unloading')
-      else if (m.phase === 'unloading' && state.time - m.since > 8) { unload(u, depot.mob); if (u.external) retired.add(u.id); else { phase('waiting'); u.servicing = true } }
+      else if (m.phase === 'delivery') {
+        const destination=helicopter?mobHelipad(u.side):{ x: home.x + 20, y: home.y + 25 }
+        if(helicopter&&distance(u,destination)<=180&&!reserveMobHelipad(state,u.side,u.id)){u.travelStatus='HOLDING FOR MOB HELIPAD';travel(u,mobHelipadHold(u.side,u.id),nav,state.time,speed,70)}
+        else if(travel(u,destination,nav,state.time,speed,helicopter?55:0))phase('lowering')
+      }
+      else if (m.phase === 'lowering' && travel(u, helicopter?mobHelipad(u.side):{ x: home.x + 20, y: home.y + 25 }, nav, state.time, speed, 0)) phase('unloading')
+      else if (m.phase === 'unloading' && state.time - m.since > 8) { unload(u, depot.mob); releaseMobHelipad(state,u.side,u.id); if (u.external) retired.add(u.id); else { phase('waiting'); u.servicing = true } }
     }
   }
   state.units = state.units.filter(u => !retired.has(u.id) && !(u.external && u.lossProcessed))

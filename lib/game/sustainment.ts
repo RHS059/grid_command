@@ -47,7 +47,7 @@ export function serviceVehicle(state: BattleState, u: Unit, dt = DT) {
 export function updateVehicleService(state: BattleState, nav: Navigation) {
   for (const u of state.units) {
     u.engine = false
-    if (u.crewBailed || !isVehicle(u.role) || u.external || u.hp <= 0 || u.emergency || u.role === 'UAV_JAMMER') continue
+    if (u.crewBailed || u.deployment || !isVehicle(u.role) || u.external || u.hp <= 0 || u.emergency || u.role === 'UAV_JAMMER') continue
     if (u.role === 'TRANSPORT_HELI' && u.transport?.phase === 'disembarking' && (u.altitude || 0) <= .1 && u.fuel > vehicleResources(u.role).burn * 25) continue
     const armed = vehicleResources(u.role).ammo > 0
     const reserve = vehicleResources(u.role).burn * (distance(u, serviceBase(u)) / Math.max(1, CATALOG[u.role].speed) * (isAir(u.role) ? 1.2 : 1.8) + 45) + 8
