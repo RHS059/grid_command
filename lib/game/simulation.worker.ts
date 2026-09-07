@@ -24,6 +24,8 @@ let state = initialState(), nav = new Navigation(), seed = 3701, eventId = 1, se
 const sides: Side[] = ['BLU', 'RED']
 const deliveries: { side: Side; role: Role; due: number; unitId?: string }[] = []
 const seen = new Set<string>()
+const INFANTRY_STAGING_X = [-15, 5, 25, 45] as const
+const INFANTRY_STAGING_Y = { BLU: [88, 110] as const, RED: [-22, 0] as const }
 const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y)
 const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296 }
 function log(side: Side | 'SYS', text: string, type: 'command' | 'combat' | 'logistics' | 'system' = 'command') { state.events.unshift({ id: ++eventId, time: state.time, side, text, type }); state.events.length = Math.min(80, state.events.length) }
@@ -82,7 +84,8 @@ function commanders() {
 }
 function spawn(side: Side, role: Role) {
   const base = isAir(role) ? AIRBASES[side] : BASES[side]
-  const p = isAir(role) ? base : nav.nearest(base)
+  const staging=INFANTRY_STAGING_Y[side].flatMap(y=>INFANTRY_STAGING_X.map(x=>mobWorld(side,{x,y})))
+  const p = isAir(role) ? base : nav.nearest(staging.find(candidate=>!state.units.some(u=>u.hp>0&&!isVehicle(u.role)&&distance(u,candidate)<14))||staging[serial%staging.length])
   state.units.push(createUnit(side, role, `${side}-${serial++}`, p))
   log(side, `${role.replaceAll('_', ' ')} assembled at ${isAir(role) ? 'airfield' : 'MOB'}.${isVehicle(role) ? ' Awaiting fuel and ammunition from depot stock.' : ' Ready for orders.'}`, 'logistics')
 }
