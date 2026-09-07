@@ -134,7 +134,7 @@ function tick() {
   deliverRequisitions()
   updateVehicleService(state, nav)
   if (state.tick % 600 === 1) commanders()
-  if (state.tick % 20 === 1) assignTransports(state)
+  if (state.tick % 20 === 1) assignTransports(state,nav)
   updateJammers(state,nav)
   updateTransports(state,nav)
   updateSupplyMissions(state,nav)

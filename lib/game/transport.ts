@@ -4,22 +4,60 @@ import { distance, travel } from './movement'
 import { missionFuel, serviceBase } from './sustainment'
 
 export const UNLOAD_INTERVAL = 1
+export const MAX_WALK_DISTANCE = 500
 export const activeTroops = (squad: Unit) => squad.soldiers?.filter(s => s.status === 'active').length || 0
-export function assignTransports(state: BattleState) {
+const transportSquad = (squad: Unit) => squad.hp > 0 && !isVehicle(squad.role) && !['COMMAND', 'PILOT', 'LOGISTICS'].includes(squad.role) && activeTroops(squad) > 0
+const intendedMission = (squad: Unit) => !['REPATH', 'WAITING FOR TRANSPORT', 'EMBARKED'].includes(squad.mission) ? squad.mission
+  : squad.target === 'MOB' ? 'RESUPPLY' : squad.role === 'MEDIC' ? 'SUPPORT' : ['RIFLE', 'SCOUT', 'AT'].includes(squad.role) ? 'CAPTURE' : 'OVERWATCH'
+function destinationFor(state: BattleState, squad: Unit) {
+  return squad.path.at(-1) || squad.transportIntent?.destination || (squad.target === 'MOB' ? serviceBase(squad) : state.objectives.find(o => o.id === squad.target))
+}
+function restoreSquad(squad: Unit, nav?: Navigation) {
+  const intent = squad.transportIntent
+  squad.carrier = undefined
+  squad.mission = intent?.mission || (squad.target === 'MOB' ? 'RESUPPLY' : 'CAPTURE')
+  squad.target = intent?.target || squad.target
+  const first = squad.soldiers?.find(s => s.status === 'active')
+  if (first) { squad.x = first.x; squad.y = first.y }
+  squad.path = intent ? nav ? nav.route(squad, intent.destination) : [{ ...intent.destination }] : []
+  squad.transportIntent = undefined
+  for (const body of squad.soldiers || []) body.disembarked = undefined
+}
+export function assignTransports(state: BattleState, nav?: Navigation) {
+  // Recover living passengers whose carrier was destroyed or removed.
+  for (const squad of state.units.filter(s => s.carrier && transportSquad(s))) {
+    const carrier = state.units.find(c => c.id === squad.carrier)
+    if (!carrier || carrier.hp <= 0 || carrier.crewBailed) {
+      if (carrier) { squad.x = carrier.x; squad.y = carrier.y; for (const body of squad.soldiers || []) if (body.status === 'active') { body.x = carrier.x; body.y = carrier.y } }
+      squad.carrier = undefined; squad.mission = 'WAITING FOR TRANSPORT'; squad.path = []
+    }
+  }
   const reserved = new Set(state.units.filter(c => c.hp > 0).flatMap(c => c.transport?.passengers || []))
-  const eligible = state.units.filter(s => s.hp > 0 && !isVehicle(s.role) && !s.carrier && !reserved.has(s.id) && !['COMMAND', 'PILOT', 'LOGISTICS'].includes(s.role) && activeTroops(s) > 0)
+  const eligible = state.units.filter(s => transportSquad(s) && !s.carrier && !reserved.has(s.id))
+  for (const squad of eligible) {
+    if (squad.path.length && squad.mission !== 'WAITING FOR TRANSPORT') squad.transportIntent = undefined
+    const destination = destinationFor(state, squad)
+    if (!destination) continue
+    if (squad.mission === 'WAITING FOR TRANSPORT' && !squad.transportIntent) squad.transportIntent = { destination: { ...destination }, mission: intendedMission(squad), target: squad.target }
+    if (distance(squad, destination) <= MAX_WALK_DISTANCE) {
+      if (squad.transportIntent && !squad.path.length) restoreSquad(squad, nav)
+      continue
+    }
+    if (squad.path.length || !squad.transportIntent) squad.transportIntent = { destination: { ...destination }, mission: intendedMission(squad), target: squad.target }
+    squad.path = []; squad.mission = 'WAITING FOR TRANSPORT'
+  }
   const available = state.units.filter(c => c.hp > 0 && !c.crewBailed && !c.external && !c.servicing && !c.emergency && troopSeats(c.role) && (!c.transport || c.transport.phase === 'available'))
-    .sort((a, b) => Number(b.role === 'TRANSPORT_HELI') - Number(a.role === 'TRANSPORT_HELI'))
+    .sort((a, b) => Number(b.role === 'TRANSPORT_HELI') - Number(a.role === 'TRANSPORT_HELI') || a.id.localeCompare(b.id))
   for (const carrier of available) {
     const seats = troopSeats(carrier.role)
-    for (const lead of [...eligible].sort((a, b) => distance(carrier, a) - distance(carrier, b))) {
-      const destination = state.objectives.find(o => o.id === lead.target)
-      if (reserved.has(lead.id) || lead.side !== carrier.side || !destination || distance(lead, destination) < 700 || carrier.fuel < missionFuel(carrier, destination, lead)) continue
+    for (const lead of [...eligible].sort((a, b) => distance(carrier, a) - distance(carrier, b) || a.id.localeCompare(b.id))) {
+      const destination = destinationFor(state, lead)
+      if (reserved.has(lead.id) || lead.side !== carrier.side || !destination || distance(lead, destination) <= MAX_WALK_DISTANCE || carrier.fuel < missionFuel(carrier, destination, lead)) continue
       let occupied = 0
       const passengers: Unit[] = []
       for (const squad of [lead, ...eligible.filter(s => s !== lead)]) {
         const troops = activeTroops(squad)
-        if (squad.side !== carrier.side || squad.target !== lead.target || reserved.has(squad.id) || distance(squad, lead) > 150 || occupied + troops > seats) continue
+        if (squad.side !== carrier.side || squad.target !== lead.target || reserved.has(squad.id) || !squad.transportIntent || distance(squad, lead) > 150 || occupied + troops > seats) continue
         passengers.push(squad); occupied += troops
       }
       if (occupied < (carrier.role === 'TRANSPORT_HELI' ? seats / 2 : 1)) continue
@@ -79,9 +117,7 @@ export function updateTransports(state: BattleState, nav: Navigation) {
       }
       if (!boarded.some(s => s.soldiers?.some(b => b.status === 'active' && !b.disembarked))) {
         for (const squad of boarded) {
-          squad.carrier = undefined; squad.mission = 'CAPTURE'
-          const first = squad.soldiers?.find(s => s.status === 'active'); if (first) { squad.x = first.x; squad.y = first.y }
-          for (const s of squad.soldiers || []) s.disembarked = undefined
+          restoreSquad(squad, nav)
         }
         m.passengers = []; phase('return')
       }
@@ -92,3 +128,4 @@ export function updateTransports(state: BattleState, nav: Navigation) {
     }
   }
 }
+
