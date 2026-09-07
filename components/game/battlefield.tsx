@@ -5,6 +5,7 @@ import maplibregl, { type GeoJSONSource, type Map as GeoMap } from 'maplibre-gl'
 import type { FeatureCollection, Feature, Geometry } from 'geojson'
 import { DisplayPoses, followSubject, chaseView, angleBetween } from '@/lib/game/chase-camera'
 import { THEATER_BOUNDS } from '@/lib/game/theater'
+import { effectiveGraphics } from '@/lib/game/graphics'
 import { tacticalStyle, zoneFeatures } from '@/lib/game/map-style'
 import { loadBattleGeometry } from '@/lib/game/geometry-loader'
 import type { GeometryPacket } from '@/lib/game/types'
@@ -19,7 +20,7 @@ interface Props {
 }
 export function Battlefield(props: Props) {
   const container = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement>(null), miniContainer = useRef<HTMLDivElement>(null)
-  const latest = useRef(props); latest.current = props
+  const latest = useRef(props); latest.current = { ...props, graphics: effectiveGraphics(props.graphics) }
   const mapRef = useRef<GeoMap | null>(null)
   const renderRef = useRef<import('@/lib/game/renderer').BattlefieldRenderer | null>(null)
   const [loading, setLoading] = useState(true), [error, setError] = useState('')
@@ -35,7 +36,7 @@ export function Battlefield(props: Props) {
     mapRef.current = map
     const markers = new Map<string, maplibregl.Marker>(), objectives = new Map<string, maplibregl.Marker>()
     const imported = new Set<string>(), fixed: maplibregl.Marker[] = []
-    let minimap: GeoMap | null = null, lastData = 0, lastDataTick = -1, lastPerspective = '', overlayStarted = false
+    let minimap: GeoMap | null = null, lastMarkers = 0, lastData = 0, lastDataTick = -1, lastRoutes = false, lastPerspective = '', overlayStarted = false
     const poses = new DisplayPoses()
     let chaseOptions: ReturnType<NonNullable<GeoMap['transformCameraUpdate']>> | null = null
     // Pinned MapLibre 4.7 overwrites target elevation during terrain rendering after transformCameraUpdate.
@@ -48,7 +49,11 @@ export function Battlefield(props: Props) {
     const followFrame = (now: number) => {
       frame = requestAnimationFrame(followFrame)
       if (disposed || !latest.current.active || document.hidden) { previousFrame = 0; return }
-      displayState = poses.sample(latest.current.stateRef.current, now)
+      const snapshot = latest.current.stateRef.current
+      const selected = snapshot.units.find(u => u.id === latest.current.selected)
+      displayState = poses.sample(snapshot, now, latest.current.graphics.performanceMode
+        ? u => u.id === selected?.id || u.id === selected?.carrier || !!renderRef.current?.shouldAnimate(u.id)
+        : undefined)
       const subject = followSubject(displayState, latest.current.selected)
       if (!subject || (latest.current.perspective !== 'OBS' && subject.unit.side !== latest.current.perspective && !subject.unit.spotted)) {
         if (latest.current.selected) latest.current.onSelect(null)
@@ -58,7 +63,7 @@ export function Battlefield(props: Props) {
       const dt = previousFrame ? Math.min(.1, (now - previousFrame) / 1000) : 1
       previousFrame = now
       heading += angleBetween(heading, subject.heading) * (1 - Math.exp(-12 * dt))
-      const ground = (p: { x: number; y: number }) => renderRef.current?.altitude({ ...p, id: `camera-${p.x.toFixed(1)}-${p.y.toFixed(1)}` }, now) ?? ((map.queryTerrainElevation(lngLat(p)) || 0) + map.getCameraTargetElevation())
+      const ground = (p: { x: number; y: number }) => renderRef.current?.altitude({ ...p, id: p === subject.point ? 'camera-target' : 'camera-from' }, now) ?? ((map.queryTerrainElevation(lngLat(p)) || 0) + map.getCameraTargetElevation())
       const view = chaseView(subject.unit, subject.point, heading, chaseScale, ground)
       if (!map.getTerrain()) {
         const ratio = view.fromZ / Math.max(.1, view.fromZ - view.toZ)
@@ -103,9 +108,25 @@ export function Battlefield(props: Props) {
     map.on('sourcedata', e => { if (e.sourceId === 'openmaptiles' && e.isSourceLoaded) { if (importTimer) clearTimeout(importTimer); importTimer = setTimeout(clearCompoundBuildings, 250) } })
     map.on('resize', () => { if(!latest.current.selected&&map.getZoom()<12)map.fitBounds(THEATER_BOUNDS,{padding:{top:85,bottom:45,left:35,right:35},duration:0,pitch:0,bearing:0}) })
     map.on('click', () => latest.current.onSelect(null))
+    const syncMinimap = () => {
+      if (latest.current.graphics.performanceMode) {
+        minimap?.remove(); minimap = null; return
+      }
+      if (!minimap && miniContainer.current) {
+        const style = tacticalStyle(); style.layers = style.layers.filter(l => !['hillshade', 'buildings-3d', 'road-labels', 'unit-routes', 'tactical-grid'].includes(l.id)); delete style.sources.elevation; delete style.sources.hillshadeDem
+        style.sources['mini-units'] = { type: 'geojson', data: { type: 'FeatureCollection', features: [] } }
+        style.layers.push({ id: 'mini-units', type: 'circle', source: 'mini-units', paint: { 'circle-radius': 2, 'circle-color': ['get', 'color'] } })
+        minimap = new maplibregl.Map({ container: miniContainer.current, style, center: CENTER, zoom: 7.9, interactive: false, attributionControl: false, antialias: false, pixelRatio: 1 })
+        minimap.fitBounds(THEATER_BOUNDS,{padding:8,duration:0})
+        lastDataTick = -1
+      }
+    }
     map.on('load', () => {
       if (disposed) return
       setLoading(false); latest.current.onStatus('Geographic renderer online')
+      const initialGraphics = latest.current.graphics
+      for (const [id, enabled] of [['buildings-3d', initialGraphics.buildings], ['tactical-grid', initialGraphics.grid], ['unit-routes', initialGraphics.routes], ['road-labels', initialGraphics.labels], ['hillshade', initialGraphics.shadows]] as const) map.setLayoutProperty(id, 'visibility', enabled ? 'visible' : 'none')
+      map.setPixelRatio(Math.min(window.devicePixelRatio, initialGraphics.quality === 'performance' ? 1 : initialGraphics.quality === 'balanced' ? 1.5 : 2))
       if (latest.current.graphics.terrain) map.setTerrain({ source: 'elevation', exaggeration: 1 })
       for (const side of ['BLU', 'RED'] as Side[]) for (const base of [{ ...BASES[side], label: `${side} MOB` }, { ...AIRBASES[side], label: `${side} AIRBASE` }]) {
         const el = document.createElement('button'); el.className = `base-marker ${side.toLowerCase()}`; el.textContent = base.label; el.setAttribute('aria-label', `Focus ${base.label}`)
@@ -121,16 +142,13 @@ export function Battlefield(props: Props) {
           catch { latest.current.onStatus('3D overlay unavailable · tactical map active') }
         }).catch(() => latest.current.onStatus('3D overlay unavailable · tactical map active'))
       }
-      if (miniContainer.current) {
-        const style = tacticalStyle(); style.layers = style.layers.filter(l => !['hillshade', 'buildings-3d', 'road-labels', 'unit-routes', 'tactical-grid'].includes(l.id)); delete style.sources.elevation; delete style.sources.hillshadeDem
-        style.sources['mini-units'] = { type: 'geojson', data: { type: 'FeatureCollection', features: [] } }
-        style.layers.push({ id: 'mini-units', type: 'circle', source: 'mini-units', paint: { 'circle-radius': 2, 'circle-color': ['get', 'color'] } })
-        minimap = new maplibregl.Map({ container: miniContainer.current, style, center: CENTER, zoom: 7.9, interactive: false, attributionControl: false, antialias: false, pixelRatio: 1 })
-        minimap.fitBounds(THEATER_BOUNDS,{padding:8,duration:0})
-      }
+      syncMinimap()
       interval = setInterval(() => {
-        if (disposed || !latest.current.active || !map.getSource('tactical')) return
+        if (disposed || !latest.current.active || document.hidden || !map.getSource('tactical')) return
         const { stateRef, graphics, perspective, selected } = latest.current, state = stateRef.current, center = map.getCenter(), now = performance.now()
+        syncMinimap()
+        if (graphics.performanceMode && now - lastMarkers < 300) return
+        lastMarkers = now
         fixed.forEach((marker,i)=>{marker.setOffset(map.getZoom()<12?[i%2===0?-85:85,0]:[0,0]);marker.getElement().style.zIndex='4'})
         const liveIds = new Set<string>()
         for (const o of state.objectives) {
@@ -162,10 +180,10 @@ export function Battlefield(props: Props) {
           ;(el.querySelector('.marker-health i') as HTMLElement).style.width = `${u.hp}%`; marker.setLngLat(ll)
         }
         for (const [id, marker] of markers) if (!liveIds.has(id)) { marker.remove(); markers.delete(id) }
-        if (now - lastData > 900 && (lastDataTick !== state.tick || lastPerspective !== perspective)) {
-          lastData = now; lastDataTick = state.tick; lastPerspective = perspective
-          const routes: Feature<Geometry>[] = state.units.filter(u => u.hp > 0 && u.path.length && (perspective === 'OBS' || u.side === perspective) && (u.id === selected || ['RIFLE', 'TANK'].includes(u.role))).map(u => ({ type: 'Feature', properties: { color: SIDE_COLOR[u.side] }, geometry: { type: 'LineString', coordinates: [lngLat(u), ...u.path.map(lngLat)] } }))
-          ;(map.getSource('tactical') as GeoJSONSource).setData(zoneFeatures(state, perspective)); (map.getSource('routes') as GeoJSONSource).setData({ type: 'FeatureCollection', features: routes })
+        if (now - lastData > 900 && (lastDataTick !== state.tick || lastPerspective !== perspective || lastRoutes !== graphics.routes)) {
+          lastData = now; lastDataTick = state.tick; lastPerspective = perspective; lastRoutes = graphics.routes
+          const routes: Feature<Geometry>[] = !graphics.routes ? [] : state.units.filter(u => u.hp > 0 && u.path.length && (perspective === 'OBS' || u.side === perspective) && (u.id === selected || ['RIFLE', 'TANK'].includes(u.role))).map(u => ({ type: 'Feature', properties: { color: SIDE_COLOR[u.side] }, geometry: { type: 'LineString', coordinates: [lngLat(u), ...u.path.map(lngLat)] } }))
+          ;(map.getSource('tactical') as GeoJSONSource).setData(zoneFeatures(state, perspective)); if (graphics.routes) (map.getSource('routes') as GeoJSONSource).setData({ type: 'FeatureCollection', features: routes })
           if (minimap?.isStyleLoaded()) { (minimap.getSource('tactical') as GeoJSONSource).setData(zoneFeatures(state, perspective)); (minimap.getSource('mini-units') as GeoJSONSource).setData({ type: 'FeatureCollection', features: state.units.filter(u => u.hp > 0 && (perspective === 'OBS' || u.side === perspective || u.spotted)).map(u => ({ type: 'Feature', properties: { color: SIDE_COLOR[u.side] }, geometry: { type: 'Point', coordinates: lngLat(u) } })) } as FeatureCollection) }
         }
         if(state.paused && lastDataTick !== state.tick) map.triggerRepaint()
@@ -182,9 +200,10 @@ export function Battlefield(props: Props) {
   useEffect(() => {
     const map = mapRef.current
     if (!map?.getLayer('buildings-3d')) return
-    for (const [id, enabled] of [['buildings-3d', props.graphics.buildings], ['tactical-grid', props.graphics.grid], ['unit-routes', props.graphics.routes], ['road-labels', props.graphics.labels], ['hillshade', props.graphics.shadows]] as const) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', enabled ? 'visible' : 'none')
-    map.setTerrain(props.graphics.terrain ? { source: 'elevation', exaggeration: 1 } : null)
-    map.setPixelRatio(Math.min(window.devicePixelRatio, props.graphics.quality === 'performance' ? 1 : props.graphics.quality === 'balanced' ? 1.5 : 2))
+    const graphics = effectiveGraphics(props.graphics)
+    for (const [id, enabled] of [['buildings-3d', graphics.buildings], ['tactical-grid', graphics.grid], ['unit-routes', graphics.routes], ['road-labels', graphics.labels], ['hillshade', graphics.shadows]] as const) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', enabled ? 'visible' : 'none')
+    map.setTerrain(graphics.terrain ? { source: 'elevation', exaggeration: 1 } : null)
+    map.setPixelRatio(Math.min(window.devicePixelRatio, graphics.quality === 'performance' ? 1 : graphics.quality === 'balanced' ? 1.5 : 2))
     renderRef.current?.resize()
   }, [props.graphics])
 
@@ -194,7 +213,7 @@ export function Battlefield(props: Props) {
     <div ref={container} className="map-root" aria-label="Interactive geographic battlefield of San Diego" />
     <canvas ref={canvas} className="map-canvas" aria-hidden="true" />
     <div className="map-vignette" />
-    <div className="minimap-card desktop-only"><div className="minimap-header"><span>THEATER OVERVIEW</span><span>N ↑</span></div><div ref={miniContainer} className="minimap-map" /></div>
+    <div className="minimap-card desktop-only" style={props.graphics.performanceMode ? { display: 'none' } : undefined}><div className="minimap-header"><span>THEATER OVERVIEW</span><span>N ↑</span></div><div ref={miniContainer} className="minimap-map" /></div>
     {loading && <div className="map-loading" role="status"><div className="loading-ring" /><span className="font-mono text-sm">CONNECTING TO SAN DIEGO</span><span className="text-sm">Loading real terrain and vector geometry</span></div>}
     {error && <div className="map-loading" role="alert"><span className="max-w-sm text-center text-sm">{error}</span><button className="map-control" onClick={() => window.location.reload()}>Reload battlefield</button></div>}
   </>

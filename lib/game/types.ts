@@ -43,8 +43,8 @@ export interface Objective extends Point { id: string; name: string; owner: Side
 export interface RadioEvent { id: number; time: number; side: Side | 'SYS'; text: string; type: 'command' | 'combat' | 'logistics' | 'system' }
 export interface Force { sp: number; tempo: number; action: string; target: string; cycles: number; casualties: number; fuel: number; ammo: number; manpower: number; queue: number; purchase: string; hold: number; delivered: number }
 export interface BattleState { airfields: Record<Side, AirfieldState>; nextSupply: Record<Side, number>; depots: Record<Side, Depot>; missiles: Missile[]; casualties: Casualty[]; shipmentSerial: number; shots: ShotEvent[]; smokes: Smoke[]; geometryReady: boolean; workerMs: number; time: number; tick: number; seed: number; paused: boolean; speed: number; units: Unit[]; objectives: Objective[]; forces: Record<Side, Force>; events: RadioEvent[]; winner: Side | 'DRAW' | null; navCells: number; buildings: number }
-export interface Graphics { quality: 'performance' | 'balanced' | 'high'; terrain: boolean; buildings: boolean; shadows: boolean; labels: boolean; routes: boolean; grid: boolean; models: boolean }
-export const DEFAULT_GRAPHICS: Graphics = { quality: 'balanced', terrain: true, buildings: true, shadows: true, labels: true, routes: true, grid: true, models: true }
+export interface Graphics { performanceMode?: boolean; quality: 'performance' | 'balanced' | 'high'; terrain: boolean; buildings: boolean; shadows: boolean; labels: boolean; routes: boolean; grid: boolean; models: boolean }
+export const DEFAULT_GRAPHICS: Graphics = { performanceMode: false, quality: 'balanced', terrain: true, buildings: true, shadows: true, labels: true, routes: true, grid: true, models: true }
 export const CENTER = ORIGIN
 export const SIDE_COLOR = { BLU: '#54b7ff', RED: '#ee777b' }
 export const BASES = CITY_BASES
