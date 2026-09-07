@@ -1,23 +1,27 @@
-import { DEFAULT_BANK, parseSoundBank, type SoundBank, type SoundPreset } from './sfx-schema'
+import { clonePreset, DEFAULT_BANK, parseSoundBank, type SoundBank, type SoundPreset } from './sfx-schema'
 import { isVehicle, type BattleState, type Perspective, type Point } from './types'
 interface Voice {stop:()=>void;update:(speed:number,gain:number,pan:number)=>void}
 export class BattlefieldAudio {
-  bank:SoundBank=DEFAULT_BANK;filename='grid-command_sfx.json';enabled=false;volume=.4;context:AudioContext|null=null;master:GainNode|null=null;voices=new Set<Voice>();previews=new Set<Voice>();loops=new Map<string,Voice>();lastEvent=0;lastTime=0;lastRadio=0;lastStep=0;status='Original 18-preset sound bank';noise:AudioBuffer|null=null;pending:{time:number;x:number;y:number}[]=[]
+  bank:SoundBank=DEFAULT_BANK;filename='_sfx.json';enabled=false;volume=.4;context:AudioContext|null=null;master:GainNode|null=null;voices=new Set<Voice>();previews=new Set<Voice>();loops=new Map<string,Voice>();lastEvent=0;lastTime=0;lastRadio=0;lastStep=0;status='Original 18-preset sound bank';noise:AudioBuffer|null=null;pending:{time:number;x:number;y:number}[]=[]
   restore(){try{const saved=localStorage.getItem('grid-command-sfx');if(saved){const d=JSON.parse(saved);this.bank=parseSoundBank(JSON.stringify(d.bank)).bank;this.filename=typeof d.filename==='string'?d.filename.slice(0,120):'Saved bank';this.volume=typeof d.volume==='number'?Math.max(0,Math.min(1,d.volume)):.4;this.status='Restored local sound bank · enable SFX to listen'}}catch{this.status='Local settings unavailable; using supplied defaults'}}
   save(){try{localStorage.setItem('grid-command-sfx',JSON.stringify({bank:this.bank,filename:this.filename,volume:this.volume}))}catch{this.status+=' · local storage unavailable'}}
   import(text:string,name:string){if(!/_sfx\.json$/i.test(name))throw new Error('Choose a filename ending in _sfx.json.');const result=parseSoundBank(text,this.bank);this.stop();this.bank=result.bank;this.filename=name;this.status=`Loaded ${result.replaced} presets · ${result.retained} retained`;this.save();return this.status}
-  reset(){this.stop();this.bank=DEFAULT_BANK;this.filename='grid-command_sfx.json';this.status='Restored supplied sound bank';this.save()}
+  reset(){this.stop();this.bank=DEFAULT_BANK;this.filename='_sfx.json';this.status='Restored supplied sound bank';this.save()}
+  updatePreset(key:string,value:SoundPreset){if(!DEFAULT_BANK[key])return;this.stop();this.bank={...this.bank,[key]:clonePreset(value)};this.filename='Edited sound bank';this.status=`Saved ${value.name}`;this.save()}
+  resetPreset(key:string){if(!DEFAULT_BANK[key])return;this.stop();this.bank={...this.bank,[key]:clonePreset(DEFAULT_BANK[key])};this.status=`Reset ${DEFAULT_BANK[key].name}`;this.save()}
+  exportBank(){return JSON.stringify(this.bank,null,2)+'\n'}
+  stopPreviews(){for(const voice of [...this.previews])voice.stop();this.previews.clear()}
   async enable(value:boolean){if(!value){this.enabled=false;this.stop();return}if(!this.context){this.context=new AudioContext();this.master=this.context.createGain();const limiter=this.context.createDynamicsCompressor();limiter.threshold.value=-12;limiter.knee.value=8;limiter.ratio.value=12;limiter.attack.value=.003;limiter.release.value=.15;this.master.connect(limiter);limiter.connect(this.context.destination);this.noise=this.context.createBuffer(1,this.context.sampleRate*2,this.context.sampleRate);const a=this.noise.getChannelData(0);for(let i=0;i<a.length;i++)a[i]=Math.random()*2-1}await this.context.resume();this.enabled=true;this.master!.gain.value=this.volume}
   setVolume(value:number){this.volume=Math.max(0,Math.min(1,value));if(this.master&&this.context)this.master.gain.setTargetAtTime(this.volume,this.context.currentTime,.03);this.save()}
   stop(includePreviews=true){for(const voice of this.voices)if(includePreviews||!this.previews.has(voice))voice.stop();this.loops.clear();this.pending=[]}
-  async preview(key:string){await this.enable(true);const voice=this.play(key,.5,0,0);if(voice)this.previews.add(voice);if(this.bank[key]?.loop)setTimeout(()=>voice?.stop(),2000)}
+  async preview(key:string){this.stopPreviews();await this.enable(true);const voice=this.play(key,.5,0,0);if(voice)this.previews.add(voice);if(this.bank[key]?.loop)setTimeout(()=>voice?.stop(),2000)}
   play(key:string,gain=1,pan=0,speed=0):Voice|null {
     const ctx=this.context,p=this.bank[key];if(!ctx||!this.master||!this.enabled||!p||this.voices.size>=32)return null;const now=ctx.currentTime,nodes:AudioNode[]=[],sources:AudioScheduledSourceNode[]=[],oscillators:OscillatorNode[]=[]
     const bus=ctx.createGain(),filter=ctx.createBiquadFilter(),distortion=ctx.createWaveShaper(),envelope=ctx.createGain(),spatial=ctx.createGain(),stereo=ctx.createStereoPanner();nodes.push(bus,filter,distortion,envelope,spatial,stereo)
     filter.type=p.filterType;filter.Q.value=p.filterQ;const curve=new Float32Array(512);for(let i=0;i<512;i++){const x=i/255.5-1;curve[i]=(1+p.distortion)*x/(1+p.distortion*Math.abs(x))}distortion.curve=curve
     bus.connect(filter);filter.connect(distortion);distortion.connect(envelope);envelope.connect(spatial);spatial.connect(stereo);stereo.connect(this.master)
     const sustain=Math.max(p.duration,p.attack+p.decay),end=now+sustain+p.release;envelope.gain.setValueAtTime(0,now);envelope.gain.linearRampToValueAtTime(p.output,now+Math.max(.001,p.attack));envelope.gain.linearRampToValueAtTime(p.output*p.sustain,now+Math.max(.002,p.attack+p.decay));if(!p.loop){envelope.gain.setValueAtTime(p.output*p.sustain,now+sustain);envelope.gain.linearRampToValueAtTime(0,end)}
-    for(const o of p.oscillators){if(!o.enabled)continue;const osc=ctx.createOscillator(),g=ctx.createGain();osc.type=o.wave;osc.detune.value=o.detune;g.gain.value=o.gain;osc.connect(g);g.connect(bus);sources.push(osc);nodes.push(osc,g);oscillators.push(osc)}
+    for(const o of p.oscillators){if(!o.enabled)continue;const osc=ctx.createOscillator(),delay=ctx.createDelay(1),g=ctx.createGain(),pan=ctx.createStereoPanner();osc.type=o.wave;osc.detune.value=o.detune;delay.delayTime.value=o.phase/360/Math.max(1,o.freq*o.ratio);g.gain.value=o.gain;pan.pan.value=o.pan;osc.connect(delay);delay.connect(g);g.connect(pan);pan.connect(bus);sources.push(osc);nodes.push(osc,delay,g,pan);oscillators.push(osc)}
     if(p.noiseGain>0){const noise=ctx.createBufferSource(),nf=ctx.createBiquadFilter(),ng=ctx.createGain();noise.buffer=this.noise;noise.loop=true;nf.type='lowpass';nf.frequency.value=p.noiseFreq;ng.gain.value=p.noiseGain;noise.connect(nf);nf.connect(ng);ng.connect(bus);sources.push(noise);nodes.push(noise,nf,ng)}
     let repeat:OscillatorNode|undefined;if(p.repeatHz>0){repeat=ctx.createOscillator();const depth=ctx.createGain();depth.gain.value=p.repeatDepth*.5;bus.gain.value=1-p.repeatDepth*.5;repeat.connect(depth);depth.connect(bus.gain);sources.push(repeat);nodes.push(repeat,depth)}
     let stopped=false;const cleanup=()=>{nodes.forEach(n=>n.disconnect());this.voices.delete(voice);this.previews.delete(voice)}
@@ -36,3 +40,4 @@ export class BattlefieldAudio {
   }
   dispose(){this.stop();void this.context?.close();this.context=null}
 }
+
