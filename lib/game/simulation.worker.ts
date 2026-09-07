@@ -1,3 +1,5 @@
+import { startMobUpgrade, requisitionCost, requisitionDelay } from './mob'
+import { beginTraffic, moveWithTraffic } from './traffic'
 import { initialState, CATALOG, BASES, AIRBASES, type BattleState, type Side, type Unit, type Point, type Role } from './types'
 import { Navigation } from './navigation'
 import { Visibility } from './visibility'
@@ -74,7 +76,8 @@ function commanders() {
     log(p.side, `${p.side === 'BLU' ? 'SABER' : 'VIPER'} elements, ${p.action.toLowerCase()} objective ${p.target.id}. ${assault} maneuver groups committed. OUT.`)
     const role = nextPurchase(state, p.side, deliveries)
     if (role === 'AIRFIELD_UPGRADE') { if (startAirfieldUpgrade(state, p.side)) log(p.side, f.purchase, 'logistics') }
-    else if (role) { f.sp -= CATALOG[role].cost; f.queue++; f.purchase = `${role.replaceAll('_', ' ')} · ${CATALOG[role].cost} SP`; deliveries.push({ side: p.side, role, due: Math.ceil((state.time + 1) / 60) * 60 + 35 }); log(p.side, `${role.replaceAll('_', ' ')} requisition approved. Assembly queued.`, 'logistics') }
+    else if (role === 'MOB_UPGRADE') { if(startMobUpgrade(state,p.side))log(p.side,f.purchase,'logistics') }
+    else if (role) { const cost=requisitionCost(state,p.side,role),delay=requisitionDelay(state,p.side,role,Math.ceil((state.time+1)/60)*60+35-state.time); f.sp -= cost; f.queue++; f.purchase = `${role.replaceAll('_', ' ')} · ${cost} SP · ${Math.ceil(delay)}s`; deliveries.push({ side: p.side, role, due: state.time+delay }); log(p.side, `${role.replaceAll('_', ' ')} requisition approved. Assembly queued.`, 'logistics') }
   }
 }
 function spawn(side: Side, role: Role) {
@@ -121,10 +124,14 @@ function logistics() {
     if (!isVehicle(u.role) && distance(u, BASES[u.side]) < 110) { const stock = state.depots[u.side].mob; const amount = Math.min(4, 100 - u.ammo, stock.ammo); u.ammo += amount; stock.ammo -= amount }
     if (u.role === 'MEDIC') for (const friend of state.units) if (!isVehicle(friend.role) && friend.side === u.side && friend.hp > 0 && distance(u, friend) < 80) friend.hp = Math.min(100, friend.hp + 1)
   }
+}
+function deliverRequisitions() {
   for (let i = deliveries.length - 1; i >= 0; i--) if (deliveries[i].due <= state.time) { const d = deliveries[i]; state.forces[d.side].queue--; state.forces[d.side].delivered++; spawn(d.side, d.role); deliveries.splice(i, 1) }
 }
 function tick() {
   state.tick++; state.time = state.tick * .05
+  beginTraffic(state,nav)
+  deliverRequisitions()
   updateVehicleService(state, nav)
   if (state.tick % 600 === 1) commanders()
   if (state.tick % 20 === 1) assignTransports(state)
@@ -136,7 +143,7 @@ function tick() {
     if (isAir(u.role)) {
       if (u.fuel <= 0 || (u.serviceStatus === 'INSUFFICIENT MISSION FUEL RESERVE' && (u.altitude || 0) <= .5)) continue
       const target=u.path[0]||state.objectives[Math.floor(state.objectives.length / 2)];u.mission=u.role==='RECON_UAV'?'RECON':'CAS';const angle=Math.atan2(target.x-u.x,target.y-u.y),delta=Math.atan2(Math.sin(angle-u.heading),Math.cos(angle-u.heading));u.heading+=Math.max(-.035,Math.min(.035,delta));
-      const speed=CATALOG[u.role].speed*(u.role==='ATTACK_HELI'&&distance(u,target)<350?.15:1);u.engine=true;u.x+=Math.sin(u.heading)*speed*.05;u.y+=Math.cos(u.heading)*speed*.05;u.altitude=Math.min(u.role==='JET'?230:u.role==='CAS_FIGHTER'?140:95,(u.altitude||0)+.5)
+      const speed=CATALOG[u.role].speed*(u.role==='ATTACK_HELI'&&distance(u,target)<350?.15:1);u.engine=true;const altitude=Math.min(u.role==='JET'?230:u.role==='CAS_FIGHTER'?140:95,(u.altitude||0)+.5);if(moveWithTraffic(u,{x:u.x+Math.sin(u.heading)*speed*.05,y:u.y+Math.cos(u.heading)*speed*.05},nav,altitude)){u.altitude=altitude;u.travelStatus=undefined}else u.travelStatus='YIELDING TO AIR TRAFFIC'
       if(Math.abs(u.x)>18000||Math.abs(u.y)>35000)u.path=[AIRBASES[u.side]];continue
     }
     if (u.path.length) travel(u,u.path.at(-1)!,nav,state.time,CATALOG[u.role].speed*(u.hp<30?.65:1),0)
@@ -154,6 +161,7 @@ self.onmessage = (event: MessageEvent) => {
   const msg = event.data
   if (msg.type === 'init' || msg.type === 'restart') { state = initialState(msg.seed || 3701); seed = state.seed; nav = new Navigation(); nav.strict=true; visibility=new Visibility(); serial = 100; eventId = 1; shotId = 0; seen.clear(); deliveries.length = 0; ready = true; for(const packet of geometry.values()) applyGeometry({...packet,evict:undefined}); publish() }
   if (msg.type === 'deploy-jammer' && !state.winner && (msg.side==='BLU'||msg.side==='RED')) { const error=deployJammer(state,nav,String(msg.builder),msg.side); log(msg.side,error||'UAV jammer construction started. Coverage online in 15 seconds.',error?'system':'logistics');publish() }
+  if(msg.type==='upgrade-mob'&&!state.winner&&(msg.side==='BLU'||msg.side==='RED')){if(startMobUpgrade(state,msg.side))log(msg.side,state.forces[msg.side].purchase,'logistics');publish()}
   if (msg.type === 'pause') { state.paused = Boolean(msg.value); publish() }
   if (msg.type === 'speed') { state.speed = [1, 2, 4, 8, 16].includes(msg.value) ? msg.value : 1; publish() }
   if (msg.type === 'step' && state.paused && !state.winner) { tick(); publish() }
@@ -175,3 +183,4 @@ setInterval(() => {
   publish()
 }, 50)
 export type { BattleState }
+

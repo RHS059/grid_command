@@ -1,3 +1,5 @@
+import { completeMobUpgrades } from './mob'
+import { updateMobTruck } from './mob-logistics'
 import { AIRBASES, AIRFIELD_TIERS, BASES, createUnit, emptyStock, stockTotal, type AirfieldTier, type BattleState, type Role, type Side, type Stock, type Unit } from './types'
 import { Navigation } from './navigation'
 import { RUNWAY } from './theater'
@@ -31,6 +33,11 @@ function load(u: Unit, stock: Stock, capacity: number, fraction = 1, reserveMult
   transferStock(available, manifest, total > 0 ? Math.min(fraction, capacity / total) : 0)
   for (const key of ['fuel', 'ammo', 'repair'] as const) stock[key] -= manifest[key]
   u.transport!.manifest = manifest; u.transport!.cargo = stockTotal(manifest)
+  if(u.role==='TRUCK'){
+    u.transport!.containerState=stockTotal(manifest)>0?'loaded':'empty'
+    u.transport!.containerCount=1+(u.transport!.trailers||0)
+    u.transport!.unloadedContainers=0
+  }
 }
 function unload(u: Unit, stock: Stock) {
   if (u.transport?.manifest) transferStock(u.transport.manifest, stock)
@@ -38,6 +45,7 @@ function unload(u: Unit, stock: Stock) {
 }
 export function scheduleSupplies(state: BattleState) {
   completeAirfieldUpgrades(state)
+  completeMobUpgrades(state)
   for (const side of ['BLU', 'RED'] as Side[]) {
     const own = state.units.filter(u => u.side === side && u.hp > 0)
     const tier = state.airfields[side].tier, specs = AIRFIELD_TIERS[tier]
@@ -76,6 +84,11 @@ export function updateSupplyMissions(state: BattleState, nav: Navigation) {
     const m = u.transport, phase = (p: string) => { m.phase = p; m.since = state.time; u.path = [] }, at = (x: number, y: number) => ({ x: air.x + x, y: air.y + y })
     u.mission = m.phase.toUpperCase()
     if (!['waiting', 'departed'].includes(m.phase)) u.engine = true
+    if(u.role==='TRUCK'){
+      const handled=updateMobTruck(u,state,nav)
+      if(handled==='retire')retired.add(u.id)
+      if(handled)continue
+    }
     if (u.role === 'CARGO_PLANE') {
       const slots = AIRFIELD_TIERS[state.airfields[u.side].tier].runways
       const freeRunway = Array.from({ length: slots }, (_, i) => i).find(i => !state.units.some(v => v.id !== u.id && v.side === u.side && v.role === 'CARGO_PLANE' && v.hp > 0 && v.transport && !['waiting', 'departed'].includes(v.transport.phase) && (v.transport.runway ?? 0) === i))
@@ -115,3 +128,4 @@ export function updateSupplyMissions(state: BattleState, nav: Navigation) {
   state.units = state.units.filter(u => !retired.has(u.id) && !(u.external && u.lossProcessed))
   syncDepotTotals(state)
 }
+

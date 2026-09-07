@@ -1,3 +1,4 @@
+import type { MobState } from './mob'
 import { ORIGIN, CITY_BASES, CITY_AIRBASES, CITY_OBJECTIVES, toPoint, fromPoint } from './theater'
 export type Side = 'BLU' | 'RED'
 export type AirfieldTier = 1 | 2 | 3
@@ -7,7 +8,7 @@ export const AIRFIELD_TIERS = {
   3: { runways: 2, forklifts: 4, trucks: 4, trailers: 2, supplyMultiplier: 4, income: 40, cost: 1200, buildSeconds: 90 },
 } as const
 export interface AirfieldState { tier: AirfieldTier; upgrade?: { tier: AirfieldTier; due: number } }
-export interface MissionState { phase: string; since: number; destination?: Point; passengers?: string[]; cargo?: number; manifest?: Stock; shipment?: string; home?: Point; location?: 'MOB' | 'AIRBASE'; runway?: number; trailers?: number; dispatchTroops?: number; unloaded?: number; lastUnload?: number }
+export interface MissionState { containerState?: 'loaded' | 'empty'; containerCount?: number; unloadedContainers?: number; mobDock?: number; queuedAt?: number; unloadStarted?: number; unloadSeconds?: number; phase: string; since: number; destination?: Point; passengers?: string[]; cargo?: number; manifest?: Stock; shipment?: string; home?: Point; location?: 'MOB' | 'AIRBASE'; runway?: number; trailers?: number; dispatchTroops?: number; unloaded?: number; lastUnload?: number }
 export interface Stock { fuel: number; ammo: number; repair: number }
 export const emptyStock = (): Stock => ({ fuel: 0, ammo: 0, repair: 0 })
 export const stockTotal = (s: Stock) => s.fuel + s.ammo + s.repair
@@ -42,7 +43,7 @@ export interface Unit extends Point {
 export interface Objective extends Point { id: string; name: string; owner: Side | null; contested: boolean; progress: number; capturing: Side | null }
 export interface RadioEvent { id: number; time: number; side: Side | 'SYS'; text: string; type: 'command' | 'combat' | 'logistics' | 'system' }
 export interface Force { sp: number; tempo: number; action: string; target: string; cycles: number; casualties: number; fuel: number; ammo: number; manpower: number; queue: number; purchase: string; hold: number; delivered: number }
-export interface BattleState { airfields: Record<Side, AirfieldState>; nextSupply: Record<Side, number>; depots: Record<Side, Depot>; missiles: Missile[]; casualties: Casualty[]; shipmentSerial: number; shots: ShotEvent[]; smokes: Smoke[]; geometryReady: boolean; workerMs: number; time: number; tick: number; seed: number; paused: boolean; speed: number; units: Unit[]; objectives: Objective[]; forces: Record<Side, Force>; events: RadioEvent[]; winner: Side | 'DRAW' | null; navCells: number; buildings: number }
+export interface BattleState { mobs?: Record<Side, MobState>; airfields: Record<Side, AirfieldState>; nextSupply: Record<Side, number>; depots: Record<Side, Depot>; missiles: Missile[]; casualties: Casualty[]; shipmentSerial: number; shots: ShotEvent[]; smokes: Smoke[]; geometryReady: boolean; workerMs: number; time: number; tick: number; seed: number; paused: boolean; speed: number; units: Unit[]; objectives: Objective[]; forces: Record<Side, Force>; events: RadioEvent[]; winner: Side | 'DRAW' | null; navCells: number; buildings: number }
 export interface Graphics { performanceMode?: boolean; quality: 'performance' | 'balanced' | 'high'; terrain: boolean; buildings: boolean; shadows: boolean; labels: boolean; routes: boolean; grid: boolean; models: boolean }
 export const DEFAULT_GRAPHICS: Graphics = { performanceMode: false, quality: 'balanced', terrain: true, buildings: true, shadows: true, labels: true, routes: true, grid: true, models: true }
 export const CENTER = ORIGIN
@@ -89,5 +90,6 @@ export function initialState(seed = 3701): BattleState {
   const depot = (): Depot => ({ airfield: emptyStock(), pending: emptyStock(), mob: emptyStock() })
   const objectives: Objective[] = CITY_OBJECTIVES.map(o => ({ ...o, owner: null, contested: false, progress: 0, capturing: null }))
   const units = (['BLU', 'RED'] as Side[]).map(side => createUnit(side, 'COMMAND', `${side}-command`))
-  return { airfields: { BLU: { tier: 1 }, RED: { tier: 1 } }, nextSupply: { BLU: 30, RED: 30 }, depots: { BLU: depot(), RED: depot() }, missiles: [], casualties: [], shipmentSerial: 0, shots: [], smokes: [], geometryReady: false, workerMs: 0, time: 0, tick: 0, seed, paused: false, speed: 1, units, objectives, forces: { BLU: force(), RED: force() }, events: [{ id: 1, time: 0, side: 'SYS', type: 'system', text: 'Commanders online. Depots empty. Scheduled airfield supplies inbound; all force assets must be purchased.' }], winner: null, navCells: 0, buildings: 0 }
+  return { mobs: { BLU: { tier: 1 }, RED: { tier: 1 } }, airfields: { BLU: { tier: 1 }, RED: { tier: 1 } }, nextSupply: { BLU: 30, RED: 30 }, depots: { BLU: depot(), RED: depot() }, missiles: [], casualties: [], shipmentSerial: 0, shots: [], smokes: [], geometryReady: false, workerMs: 0, time: 0, tick: 0, seed, paused: false, speed: 1, units, objectives, forces: { BLU: force(), RED: force() }, events: [{ id: 1, time: 0, side: 'SYS', type: 'system', text: 'Commanders online. Depots empty. Scheduled airfield supplies inbound; all force assets must be purchased.' }], winner: null, navCells: 0, buildings: 0 }
 }
+

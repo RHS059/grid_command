@@ -1,3 +1,4 @@
+import { moveWithTraffic } from './traffic'
 import { isVehicle, type BattleState, type Soldier } from './types'
 import { Visibility } from './visibility'
 import { Navigation } from './navigation'
@@ -24,5 +25,6 @@ export function updateSoldiers(state:BattleState,v:Visibility,nav:Navigation,nex
 function move(s:Soldier,p:{x:number;y:number},nav:Navigation,speed:number){
   let target=p
   if(!nav.clear(s,p)){if(!s.path?.length||dist(s.path.at(-1)!,p)>20)s.path=nav.route(s,p);if(!s.path.length)return;target=s.path[0]}
-  const d=dist(s,target);if(d<.1){s.path?.shift();return}const step=Math.min(d,speed*.05),next={x:s.x+(target.x-s.x)/d*step,y:s.y+(target.y-s.y)/d*step};if(nav.clear(s,next)){s.heading=Math.atan2(target.x-s.x,target.y-s.y);s.x=next.x;s.y=next.y}
+  const d=dist(s,target);if(d<.1){s.path?.shift();return}const step=Math.min(d,speed*.05),next={x:s.x+(target.x-s.x)/d*step,y:s.y+(target.y-s.y)/d*step};if(nav.clear(s,next))moveWithTraffic(s,next,nav)
 }
+
