@@ -1,6 +1,6 @@
 import { MOB_GARAGE, MOB_GARAGE_STAGING, mobWorld, startMobUpgrade, requisitionCost, requisitionDelay } from './mob'
 import { beginTraffic, moveWithTraffic } from './traffic'
-import { initialState, CATALOG, BASES, AIRBASES, type BattleState, type Side, type Unit, type Point, type Role } from './types'
+import { initialState, CATALOG, BASES, AIRBASES, type BattleState, type Side, type Unit, type Point, type Role, type StrategicAction } from './types'
 import { Navigation } from './navigation'
 import { Visibility } from './visibility'
 import { canSee, resolveCombat } from './combat'
@@ -17,10 +17,12 @@ import { captureBodies } from './capture'
 import { nextPurchase, startAirfieldUpgrade } from './requisitions'
 import { AIRFIELD_TIERS } from './types'
 import { updateVehicleService, consumeFuel, missionFuel, syncDepotTotals } from './sustainment'
+import { aiInfantry, InfantryDirector, issueInfantryOrder } from './infantry-ai'
+import { Perception } from './perception'
 let visibility = new Visibility(), geometry = new Map<string,GeometryPacket>(), shotId = 0
 const nextShot = () => ++shotId
 
-let state = initialState(), nav = new Navigation(), seed = 3701, eventId = 1, serial = 31, ready = false
+let state = initialState(), nav = new Navigation(), perception = new Perception(), infantryAI = new InfantryDirector(), seed = 3701, eventId = 1, serial = 31, ready = false
 const sides: Side[] = ['BLU', 'RED']
 const deliveries: { side: Side; role: Role; due: number; unitId?: string }[] = []
 const seen = new Set<string>()
@@ -45,7 +47,7 @@ function plan(side: Side) {
     const score = (o: typeof a) => distance(BASES[side], o) / 100 + contacts.filter(e => distance(e, o) < 250).length * (1.3 - tempo / 100)
     return score(a) - score(b)
   })[0] || state.objectives[Math.floor(state.objectives.length / 2)]
-  const action = f.cycles > 0 && f.cycles % 3 === 0 ? 'FLANK' : own.filter(u => u.ammo < 20).length > 3 ? 'RESUPPLY' : held < 2 ? 'MASS' : 'SEIZE'
+  const action: StrategicAction = f.cycles > 0 && f.cycles % 3 === 0 ? 'FLANK' : own.filter(u => u.ammo < 20).length > 3 ? 'RESUPPLY' : held < 2 ? 'MASS' : 'SEIZE'
   return { side, own, target, tempo, action }
 }
 function commanders() {
@@ -65,6 +67,7 @@ function commanders() {
       if (['RIFLE', 'SCOUT', 'TANK', 'APC', 'CANNON_APC', 'IFV', 'AT'].includes(u.role)) {
         u.mission = 'CAPTURE'; u.target = p.target.id; u.subcommand = `MANEUVER ${Math.floor(assault / 3) + 1}`
         const destination = { x: p.target.x + ((assault % 3) - 1) * 30, y: p.target.y + sign * (assault % 2) * 25 }
+        if (!isVehicle(u.role)) issueInfantryOrder(u, p.action, 'CAPTURE', p.target.id, destination, f.cycles, state.time)
         if (p.action === 'FLANK' && assault === 0 && distance(u, destination) > 220) {
           const flank = nav.nearest({ x: destination.x + sign * 280, y: destination.y + sign * 190 })
           route(u, flank)
@@ -76,7 +79,9 @@ function commanders() {
         assault++
       } else {
         u.mission = u.role === 'MEDIC' ? 'SUPPORT' : 'OVERWATCH'; u.target = p.target.id; u.subcommand = 'FIRE SUPPORT'
-        route(u, { x: p.target.x + (u.role === 'MG' ? -120 : 150) * sign, y: p.target.y + (u.role === 'MORTAR' ? 420 : 180) * sign })
+        const destination = { x: p.target.x + (u.role === 'MG' ? -120 : 150) * sign, y: p.target.y + (u.role === 'MORTAR' ? 420 : 180) * sign }
+        if (!isVehicle(u.role)) issueInfantryOrder(u, p.action, u.role === 'MEDIC' ? 'SUPPORT' : 'OVERWATCH', p.target.id, destination, f.cycles, state.time)
+        route(u, destination)
       }
     }
     log(p.side, `${p.side === 'BLU' ? 'SABER' : 'VIPER'} elements, ${p.action.toLowerCase()} objective ${p.target.id}. ${assault} maneuver groups committed. OUT.`)
@@ -123,15 +128,13 @@ function updateGarageDeployments() {
   }
 }
 function sense() {
-  const living = state.units.filter(u => u.hp > 0 && !u.carrier)
-  for (const u of living) {
-    const detected = visibility.ready && living.some(v => v.side !== u.side && canSee(v, u, visibility, state))
-    u.spotted = detected
-    if (detected && !seen.has(u.id)) { seen.add(u.id); log(u.side === 'BLU' ? 'RED' : 'BLU', `Contact report: enemy ${u.role.toLowerCase().replace('_', ' ')} observed near ${[...state.objectives].sort((a, b) => distance(u, a) - distance(u, b))[0].id}.`, 'combat') }
+  perception.update(state, (observer, target) => visibility.ready && canSee(observer, target, visibility, state))
+  for (const u of state.units.filter(u => u.hp > 0 && u.spotted)) {
+    if (!seen.has(u.id)) { seen.add(u.id); log(u.side === 'BLU' ? 'RED' : 'BLU', `Contact report: enemy ${u.role.toLowerCase().replace('_', ' ')} observed near ${[...state.objectives].sort((a, b) => distance(u, a) - distance(u, b))[0].id}.`, 'combat') }
   }
 }
 function combat() {
-  if (visibility.ready) resolveCombat(state, visibility, random, nextShot)
+  if (visibility.ready) resolveCombat(state, visibility, random, nextShot, (unit, range) => perception.enemies(unit.side, unit, range))
   const commandersLost = sides.filter(s => state.units.some(u => u.side === s && u.role === 'COMMAND' && u.hp === 0))
   if (commandersLost.length) state.winner = commandersLost.length === 2 ? 'DRAW' : commandersLost[0] === 'BLU' ? 'RED' : 'BLU'
 }
@@ -171,11 +174,14 @@ function tick() {
   deliverRequisitions()
   updateVehicleService(state, nav)
   if (state.tick % 600 === 1) commanders()
+  perception.rebuild(state)
+  infantryAI.update(state,perception,visibility,nav)
   if (state.tick % 20 === 1) assignTransports(state,nav)
   updateJammers(state,nav)
   updateTransports(state,nav)
   updateSupplyMissions(state,nav)
   for (const u of state.units) {
+    if (aiInfantry(u)) { const intent=infantryAI.movement(state,u);if(intent)travel(u,intent.destination,nav,state.time,intent.speed,0,intent.arrival);continue }
     if (u.hp <= 0 || u.crewBailed || u.servicing || u.emergency || u.deployment || u.external || u.carrier || u.attachedSquad || (troopSeats(u.role)>0&&u.transport&&u.transport.phase!=='available') || missionAsset(u.role) || u.mission==='WAITING FOR TRANSPORT') continue
     if (isAir(u.role)) {
       if (u.fuel <= 0 || (u.serviceStatus === 'INSUFFICIENT MISSION FUEL RESERVE' && (u.altitude || 0) <= .5)) continue
@@ -185,7 +191,7 @@ function tick() {
     }
     if (u.path.length) travel(u,u.path.at(-1)!,nav,state.time,CATALOG[u.role].speed*(u.hp<30?.65:1),0)
   }
-  if (visibility.ready) updateSoldiers(state, visibility, nav, nextShot)
+  if (visibility.ready) updateSoldiers(state, visibility, nav, nextShot, perception)
   if (state.tick % 10 === 0) sense()
   if (state.tick % 4 === 0) combat()
   if (state.tick % 100 === 0) logistics()
@@ -196,7 +202,7 @@ function tick() {
 }
 self.onmessage = (event: MessageEvent) => {
   const msg = event.data
-  if (msg.type === 'init' || msg.type === 'restart') { state = initialState(msg.seed || 3701); seed = state.seed; nav = new Navigation(); nav.strict=true; visibility=new Visibility(); serial = 100; eventId = 1; shotId = 0; seen.clear(); deliveries.length = 0; ready = true; for(const packet of geometry.values()) applyGeometry({...packet,evict:undefined}); publish() }
+  if (msg.type === 'init' || msg.type === 'restart') { state = initialState(msg.seed || 3701); seed = state.seed; nav = new Navigation(); nav.strict=true; visibility=new Visibility(); perception=new Perception(); infantryAI=new InfantryDirector(); serial = 100; eventId = 1; shotId = 0; seen.clear(); deliveries.length = 0; ready = true; for(const packet of geometry.values()) applyGeometry({...packet,evict:undefined}); publish() }
   if (msg.type === 'deploy-jammer' && !state.winner && (msg.side==='BLU'||msg.side==='RED')) { const error=deployJammer(state,nav,String(msg.builder),msg.side); log(msg.side,error||'UAV jammer construction started. Coverage online in 15 seconds.',error?'system':'logistics');publish() }
   if(msg.type==='upgrade-mob'&&!state.winner&&(msg.side==='BLU'||msg.side==='RED')){const side=msg.side as Side;if(startMobUpgrade(state,side))log(side,state.forces[side].purchase,'logistics');publish()}
   if(msg.type==='transport-action'&&!state.winner&&(msg.side==='BLU'||msg.side==='RED')&&typeof msg.unitId==='string'&&['get-in','dismount','dismount-all'].includes(msg.action)){
