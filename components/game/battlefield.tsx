@@ -65,7 +65,7 @@ export function Battlefield(props: Props) {
       previousFrame = now
       heading += angleBetween(heading, subject.heading) * (1 - Math.exp(-12 * dt))
       if (orbiting) return
-      const ground = (p: { x: number; y: number }) => renderRef.current?.altitude({ ...p, id: p === subject.point ? 'camera-target' : 'camera-from' }, now) ?? ((map.queryTerrainElevation(lngLat(p)) || 0) + map.getCameraTargetElevation())
+      const ground = (p: { x: number; y: number }) => renderRef.current?.altitude({ ...p, id: p === subject.point ? 'camera-target' : 'camera-from' }, now) ?? (map.queryTerrainElevation(lngLat(p)) ?? 0)
       const view = chaseView(subject.unit, subject.point, heading + orbitYaw, chaseScale, ground)
       if (!map.getTerrain()) {
         const ratio = view.fromZ / Math.max(.1, view.fromZ - view.toZ)
