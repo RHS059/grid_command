@@ -6,10 +6,20 @@ import { mobHelipad, mobHelipadHold, releaseMobHelipad, reserveMobHelipad } from
 
 export const UNLOAD_INTERVAL = 1
 export const MAX_WALK_DISTANCE = 500
+const PICKUP_STANDOFF = 14
+const PICKUP_BOARDING_RANGE = 18
 // APCs and IFVs can carry a squad through explicit Get In orders, but remain
 // maneuver units under autonomous command. Dedicated carriers service the
 // automatic transport pool.
 const automaticCarrier = (unit: Unit) => unit.role === 'TROOP_TRUCK' || unit.role === 'TRANSPORT_HELI'
+const pickupPoint = (carrier: Unit, squad: Unit, nav: Navigation) => {
+  const offset = [...`${carrier.id}:${squad.id}`].reduce((value, char) => (value + char.charCodeAt(0)) % 8, 0)
+  const candidates = Array.from({ length: 8 }, (_, index) => {
+    const angle = (index + offset) * Math.PI / 4
+    return nav.nearest({ x: squad.x + Math.sin(angle) * PICKUP_STANDOFF, y: squad.y + Math.cos(angle) * PICKUP_STANDOFF })
+  }).filter(point => nav.covered(point) && nav.clear(point, point) && distance(point, squad) <= PICKUP_BOARDING_RANGE)
+  return candidates.sort((a, b) => distance(carrier, a) - distance(carrier, b) || a.x - b.x || a.y - b.y)[0]
+}
 export const activeTroops = (squad: Unit) => squad.soldiers?.filter(s => s.status === 'active').length || 0
 export const transportSquad = (squad: Unit) => squad.hp > 0 && !isVehicle(squad.role) && !['COMMAND', 'PILOT', 'LOGISTICS'].includes(squad.role) && activeTroops(squad) > 0
 const intendedMission = (squad: Unit) => !['REPATH', 'WAITING FOR TRANSPORT', 'EMBARKED'].includes(squad.mission) ? squad.mission
@@ -154,7 +164,10 @@ export function updateTransports(state: BattleState, nav: Navigation) {
     const passengers = state.units.filter(s => m.passengers?.includes(s.id) && s.hp > 0 && s.side === u.side)
     const boarded = passengers.filter(s => s.carrier === u.id), aboard = boarded.reduce((n, s) => n + activeTroops(s), 0)
     const lead = passengers.find(s => !s.carrier)
-    const phase = (name: string) => { m.phase = name; m.since = state.time; u.path = [] }
+    const phase = (name: string) => {
+      m.phase = name; m.since = state.time; u.path = []
+      if (!['pickup', 'boarding'].includes(name)) { m.pickup = undefined; m.pickupFor = undefined }
+    }
     u.engine = true; u.mission = m.phase.toUpperCase()
     if (!passengers.length && !['return', 'escort'].includes(m.phase)) phase('return')
     if (!lead && ['pickup', 'boarding'].includes(m.phase)) {
@@ -162,10 +175,15 @@ export function updateTransports(state: BattleState, nav: Navigation) {
       else { m.dispatchTroops = aboard; phase('transit') }
     }
     if (m.phase === 'pickup' && lead) {
-      if (travel(u, lead, nav, state.time, undefined, 0)) phase('boarding')
+      if (m.pickupFor !== lead.id || !m.pickup) { m.pickup = pickupPoint(u, lead, nav); m.pickupFor = lead.id }
+      if (!m.pickup) {
+        u.travelStatus = 'WAITING FOR SAFE PICKUP POINT'
+        if (state.time - m.since > 180) phase('return')
+      }
+      else if (travel(u, m.pickup, nav, state.time, undefined, 0)) phase('boarding')
       else if (state.time - m.since > 180) phase('return')
     } else if (m.phase === 'boarding' && lead && state.time - m.since >= 5) {
-      if (distance(u, lead) > 5 || (u.altitude || 0) > .1) { phase('pickup'); continue }
+      if (distance(u, lead) > PICKUP_BOARDING_RANGE || (u.altitude || 0) > .1) { m.pickup = undefined; m.pickupFor = undefined; phase('pickup'); continue }
       if (aboard + activeTroops(lead) > troopSeats(u.role)) { phase('return'); continue }
       lead.carrier = u.id; lead.path = []; lead.mission = 'EMBARKED'
       for (const body of lead.soldiers || []) body.disembarked = undefined
