@@ -8,7 +8,7 @@ export const AIRFIELD_TIERS = {
   3: { runways: 2, forklifts: 4, trucks: 4, trailers: 2, supplyMultiplier: 4, income: 40, cost: 1200, buildSeconds: 90 },
 } as const
 export interface AirfieldState { tier: AirfieldTier; upgrade?: { tier: AirfieldTier; due: number } }
-export interface MissionState { containerState?: 'loaded' | 'empty'; containerCount?: number; unloadedContainers?: number; mobDock?: number; queuedAt?: number; unloadStarted?: number; unloadSeconds?: number; phase: string; since: number; destination?: Point; passengers?: string[]; cargo?: number; manifest?: Stock; shipment?: string; home?: Point; location?: 'MOB' | 'AIRBASE'; runway?: number; trailers?: number; dispatchTroops?: number; unloaded?: number; lastUnload?: number }
+export interface MissionState { manual?: boolean; dismountCrew?: boolean; containerState?: 'loaded' | 'empty'; containerCount?: number; unloadedContainers?: number; mobDock?: number; queuedAt?: number; unloadStarted?: number; unloadSeconds?: number; phase: string; since: number; destination?: Point; passengers?: string[]; cargo?: number; manifest?: Stock; shipment?: string; home?: Point; location?: 'MOB' | 'AIRBASE'; runway?: number; trailers?: number; dispatchTroops?: number; unloaded?: number; lastUnload?: number }
 export interface Stock { fuel: number; ammo: number; repair: number }
 export const emptyStock = (): Stock => ({ fuel: 0, ammo: 0, repair: 0 })
 export const stockTotal = (s: Stock) => s.fuel + s.ammo + s.repair
@@ -30,11 +30,11 @@ export interface Smoke extends Vec3 { id: number; side: Side; time: number; expi
 export const isAir = (r: Role) => ['RECON_UAV', 'CAS_FIGHTER', 'JET', 'ATTACK_HELI', 'CARGO_PLANE', 'TRANSPORT_HELI', 'HEAVY_LIFT_HELI'].includes(r)
 export const isVehicle = (r: Role) => ['TANK', 'APC', 'CANNON_APC', 'IFV', 'TRUCK', 'TROOP_TRUCK', 'FORKLIFT', 'UAV_JAMMER'].includes(r) || isAir(r)
 export const isArmored = (r: Role) => ['TANK', 'APC', 'CANNON_APC', 'IFV'].includes(r)
-export const troopSeats = (r: Role) => r === 'TRANSPORT_HELI' ? 24 : r === 'TROOP_TRUCK' ? 6 : 0
+export const troopSeats = (r: Role) => r === 'TRANSPORT_HELI' ? 24 : r === 'APC' ? 8 : ['TROOP_TRUCK', 'CANNON_APC', 'IFV'].includes(r) ? 6 : 0
 export const missionAsset = (r: Role) => ['FORKLIFT','CARGO_PLANE','UAV_JAMMER','TRANSPORT_HELI','HEAVY_LIFT_HELI','TROOP_TRUCK','TRUCK'].includes(r)
 export interface Unit extends Point {
   crewBailed?: boolean; external?: boolean; engine?: boolean; servicing?: boolean; serviceStatus?: string; emergency?: boolean;
-  travelStatus?: string; routeRetry?: number; transport?: MissionState; carrier?: string; transportIntent?: { destination: Point; mission: string; target: string }; destroyedAt?: number; lossProcessed?: boolean; lock?: { target: string; since: number }; construction?: { builder: string; due: number };
+  travelStatus?: string; routeRetry?: number; transport?: MissionState; carrier?: string; transportIntent?: { destination: Point; mission: string; target: string }; attachedSquad?: string; attachedVehicles?: string[]; destroyedAt?: number; lossProcessed?: boolean; lock?: { target: string; since: number }; construction?: { builder: string; due: number };
   soldiers?: Soldier[]; aim?: number; altitude?: number; cooldown?: number; suppression?: number; smoke?: number; airPhase?: 'attack' | 'return' | 'rearm';
   id: string; name: string; side: Side; role: Role; members: number; maxMembers: number;
   hp: number; ammo: number; fuel: number; heading: number; mission: string; target: string;

@@ -5,8 +5,8 @@ import { Navigation } from './navigation'
 import { Visibility } from './visibility'
 import { canSee, resolveCombat } from './combat'
 import { updateSoldiers } from './behaviors'
-import { isAir, isVehicle, type GeometryPacket } from './types'
-import { assignTransports, updateTransports } from './transport'
+import { isAir, isVehicle, troopSeats, type GeometryPacket } from './types'
+import { assignTransports, manualGetIn, requestDismount, updateTransports } from './transport'
 import { updateSupplyMissions } from './logistics'
 import { deployJammer, updateJammers } from './electronic-warfare'
 import { recordCasualties } from './casualties'
@@ -53,7 +53,7 @@ function commanders() {
     const f = state.forces[p.side]; f.action = p.action; f.target = p.target.id; f.tempo = p.tempo; f.cycles++
     let assault = 0
     for (const u of p.own) {
-      if (u.crewBailed || u.servicing || u.emergency || missionAsset(u.role) || u.carrier || state.units.some(c=>c.hp>0&&c.transport?.passengers?.includes(u.id)) || state.units.some(j=>j.hp>0&&j.construction?.builder===u.id) || ['COMMAND', 'PILOT', 'LOGISTICS'].includes(u.role)) continue
+      if (u.crewBailed || u.servicing || u.emergency || missionAsset(u.role) || u.carrier || u.attachedSquad || (troopSeats(u.role)>0&&u.transport&&!['available','escort'].includes(u.transport.phase)) || state.units.some(c=>c.hp>0&&c.transport?.passengers?.includes(u.id)) || state.units.some(j=>j.hp>0&&j.construction?.builder===u.id) || ['COMMAND', 'PILOT', 'LOGISTICS'].includes(u.role)) continue
       if (isVehicle(u.role) && u.fuel < missionFuel(u, p.target)) { u.path = []; u.mission = 'HOLD'; u.serviceStatus = 'INSUFFICIENT MISSION FUEL RESERVE'; continue }
       u.serviceStatus = undefined
       if (u.role === 'CAS_FIGHTER' || u.role === 'JET' || u.role === 'ATTACK_HELI') { if(u.airPhase === 'attack') { u.mission = 'CAS'; u.target = p.target.id; route(u,p.target) } continue }
@@ -139,7 +139,7 @@ function tick() {
   updateTransports(state,nav)
   updateSupplyMissions(state,nav)
   for (const u of state.units) {
-    if (u.hp <= 0 || u.crewBailed || u.servicing || u.emergency || u.external || u.carrier || missionAsset(u.role) || u.mission==='WAITING FOR TRANSPORT') continue
+    if (u.hp <= 0 || u.crewBailed || u.servicing || u.emergency || u.external || u.carrier || u.attachedSquad || (troopSeats(u.role)>0&&u.transport&&u.transport.phase!=='available') || missionAsset(u.role) || u.mission==='WAITING FOR TRANSPORT') continue
     if (isAir(u.role)) {
       if (u.fuel <= 0 || (u.serviceStatus === 'INSUFFICIENT MISSION FUEL RESERVE' && (u.altitude || 0) <= .5)) continue
       const target=u.path[0]||state.objectives[Math.floor(state.objectives.length / 2)];u.mission=u.role==='RECON_UAV'?'RECON':'CAS';const angle=Math.atan2(target.x-u.x,target.y-u.y),delta=Math.atan2(Math.sin(angle-u.heading),Math.cos(angle-u.heading));u.heading+=Math.max(-.035,Math.min(.035,delta));
@@ -162,6 +162,10 @@ self.onmessage = (event: MessageEvent) => {
   if (msg.type === 'init' || msg.type === 'restart') { state = initialState(msg.seed || 3701); seed = state.seed; nav = new Navigation(); nav.strict=true; visibility=new Visibility(); serial = 100; eventId = 1; shotId = 0; seen.clear(); deliveries.length = 0; ready = true; for(const packet of geometry.values()) applyGeometry({...packet,evict:undefined}); publish() }
   if (msg.type === 'deploy-jammer' && !state.winner && (msg.side==='BLU'||msg.side==='RED')) { const error=deployJammer(state,nav,String(msg.builder),msg.side); log(msg.side,error||'UAV jammer construction started. Coverage online in 15 seconds.',error?'system':'logistics');publish() }
   if(msg.type==='upgrade-mob'&&!state.winner&&(msg.side==='BLU'||msg.side==='RED')){const side=msg.side as Side;if(startMobUpgrade(state,side))log(side,state.forces[side].purchase,'logistics');publish()}
+  if(msg.type==='transport-action'&&!state.winner&&(msg.side==='BLU'||msg.side==='RED')&&typeof msg.unitId==='string'&&['get-in','dismount','dismount-all'].includes(msg.action)){
+    const side=msg.side as Side,ok=msg.action==='get-in'?manualGetIn(state,side,msg.unitId,typeof msg.carrierId==='string'?msg.carrierId:undefined):requestDismount(state,nav,side,msg.unitId,msg.action==='dismount-all')
+    if(ok)log(side,msg.action==='get-in'?'Manual vehicle pickup ordered.':msg.action==='dismount-all'?'Passenger and crew dismount ordered.':'Passenger dismount ordered.','command');publish()
+  }
   if (msg.type === 'pause') { state.paused = Boolean(msg.value); publish() }
   if (msg.type === 'speed') { state.speed = [1, 2, 4, 8, 16].includes(msg.value) ? msg.value : 1; publish() }
   if (msg.type === 'step' && state.paused && !state.winner) { tick(); publish() }

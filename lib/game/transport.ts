@@ -1,4 +1,4 @@
-import { troopSeats, isVehicle, isAir, type BattleState, type Unit } from './types'
+import { createUnit, prepareUnit, troopSeats, isVehicle, isAir, type BattleState, type Side, type Unit } from './types'
 import { Navigation } from './navigation'
 import { distance, travel } from './movement'
 import { missionFuel, serviceBase } from './sustainment'
@@ -6,7 +6,7 @@ import { missionFuel, serviceBase } from './sustainment'
 export const UNLOAD_INTERVAL = 1
 export const MAX_WALK_DISTANCE = 500
 export const activeTroops = (squad: Unit) => squad.soldiers?.filter(s => s.status === 'active').length || 0
-const transportSquad = (squad: Unit) => squad.hp > 0 && !isVehicle(squad.role) && !['COMMAND', 'PILOT', 'LOGISTICS'].includes(squad.role) && activeTroops(squad) > 0
+export const transportSquad = (squad: Unit) => squad.hp > 0 && !isVehicle(squad.role) && !['COMMAND', 'PILOT', 'LOGISTICS'].includes(squad.role) && activeTroops(squad) > 0
 const intendedMission = (squad: Unit) => !['REPATH', 'WAITING FOR TRANSPORT', 'EMBARKED'].includes(squad.mission) ? squad.mission
   : squad.target === 'MOB' ? 'RESUPPLY' : squad.role === 'MEDIC' ? 'SUPPORT' : ['RIFLE', 'SCOUT', 'AT'].includes(squad.role) ? 'CAPTURE' : 'OVERWATCH'
 function destinationFor(state: BattleState, squad: Unit) {
@@ -22,6 +22,61 @@ function restoreSquad(squad: Unit, nav?: Navigation) {
   squad.path = intent ? nav ? nav.route(squad, intent.destination) : [{ ...intent.destination }] : []
   squad.transportIntent = undefined
   for (const body of squad.soldiers || []) body.disembarked = undefined
+}
+export function nearestPersonnelCarrier(state: BattleState, squad: Unit, range = 150) {
+  if (!transportSquad(squad) || squad.carrier) return undefined
+  const destination = destinationFor(state, squad) || squad
+  return state.units.filter(carrier => carrier.side === squad.side && carrier.hp > 0 && !carrier.crewBailed && !carrier.external && !carrier.servicing && !carrier.emergency && troopSeats(carrier.role) >= activeTroops(squad)
+    && (!carrier.attachedSquad || carrier.attachedSquad === squad.id) && (!carrier.transport || ['available', 'escort'].includes(carrier.transport.phase)) && !carrier.transport?.passengers?.length
+    && carrier.fuel >= missionFuel(carrier, destination, squad) && distance(carrier, squad) <= range).sort((a, b) => distance(a, squad) - distance(b, squad) || a.id.localeCompare(b.id))[0]
+}
+export function manualGetIn(state: BattleState, side: Side, squadId: string, carrierId?: string) {
+  const squad = state.units.find(u => u.id === squadId)
+  if (!squad || squad.side !== side || !transportSquad(squad) || squad.carrier) return false
+  const carrier = nearestPersonnelCarrier(state, squad)
+  if (!carrier || carrierId && carrier.id !== carrierId) return false
+  const destination = destinationFor(state, squad) || { x: squad.x, y: squad.y }
+  if (squad.path.length || !squad.transportIntent) squad.transportIntent = { destination: { ...destination }, mission: intendedMission(squad), target: squad.target }
+  carrier.attachedSquad = squad.id
+  squad.attachedVehicles = [...new Set([...(squad.attachedVehicles || []), carrier.id])]
+  carrier.transport = { phase: 'pickup', since: state.time, destination: { ...destination }, passengers: [squad.id], home: { ...serviceBase(carrier) }, manual: true }
+  carrier.path = []; carrier.target = squad.target; squad.path = []; squad.mission = 'WAITING FOR TRANSPORT'
+  return true
+}
+function detach(state: BattleState, carrier: Unit) {
+  if (carrier.attachedSquad) {
+    const squad = state.units.find(u => u.id === carrier.attachedSquad)
+    if (squad) squad.attachedVehicles = squad.attachedVehicles?.filter(id => id !== carrier.id)
+  }
+  carrier.attachedSquad = undefined
+}
+function bailCrew(state: BattleState, carrier: Unit, nav: Navigation) {
+  if (carrier.crewBailed || carrier.members <= 0) return true
+  const exit = nav.nearest({ x: carrier.x - Math.cos(carrier.heading) * 6, y: carrier.y + Math.sin(carrier.heading) * 6 })
+  if (!nav.covered(exit) || !nav.clear(exit, exit)) { carrier.travelStatus = 'WAITING FOR SAFE CREW EXIT'; return false }
+  const count = carrier.members, crew = createUnit(carrier.side, 'PILOT', `${carrier.id}-crew-${Math.floor(state.time * 20)}`, exit)
+  crew.name = `${carrier.name} crew`; crew.maxMembers = count; crew.members = count; crew.heading = carrier.heading; crew.mission = 'DISMOUNTED CREW'; crew.subcommand = 'VEHICLE CREW'
+  prepareUnit(crew); crew.altitude = 0
+  for (const soldier of crew.soldiers || []) Object.assign(soldier, exit, { heading: carrier.heading, aim: carrier.heading })
+  state.units.push(crew); carrier.crewBailed = true; carrier.members = 0; carrier.engine = false; carrier.path = []; carrier.mission = 'CREW DISMOUNTED'; carrier.serviceStatus = 'CREW DISMOUNTED'
+  if (carrier.transport) { carrier.transport.phase = 'abandoned'; carrier.transport.passengers = []; carrier.transport.dismountCrew = undefined }
+  detach(state, carrier)
+  return true
+}
+export function requestDismount(state: BattleState, nav: Navigation, side: Side, unitId: string, includeCrew = false) {
+  const selected = state.units.find(u => u.id === unitId)
+  if (!selected || selected.side !== side || selected.hp <= 0) return false
+  const carrier = troopSeats(selected.role) ? selected : selected.carrier ? state.units.find(u => u.id === selected.carrier) : state.units.find(u => selected.attachedVehicles?.includes(u.id))
+  if (!carrier || carrier.side !== side || carrier.hp <= 0 || carrier.crewBailed || !troopSeats(carrier.role)) return false
+  const passengers = state.units.filter(s => s.carrier === carrier.id && s.hp > 0)
+  if (!passengers.length) return includeCrew && !isAir(carrier.role) ? bailCrew(state, carrier, nav) : false
+  if (carrier.transport && ['landing', 'disembarking'].includes(carrier.transport.phase)) { if (includeCrew) carrier.transport.dismountCrew = true; return false }
+  carrier.path = []; carrier.engine = isAir(carrier.role); carrier.transport ??= { phase: 'available', since: state.time, passengers: [] }
+  carrier.transport.passengers = passengers.map(s => s.id); carrier.transport.dismountCrew = includeCrew; carrier.transport.unloaded = 0; carrier.transport.lastUnload = state.time
+  if (isAir(carrier.role)) { carrier.transport.destination = { x: carrier.x, y: carrier.y }; carrier.transport.phase = 'landing' }
+  else { carrier.engine = false; carrier.transport.phase = 'disembarking' }
+  carrier.transport.since = state.time
+  return true
 }
 export function assignTransports(state: BattleState, nav?: Navigation) {
   // Recover living passengers whose carrier was destroyed or removed.
@@ -46,7 +101,7 @@ export function assignTransports(state: BattleState, nav?: Navigation) {
     if (squad.path.length || !squad.transportIntent) squad.transportIntent = { destination: { ...destination }, mission: intendedMission(squad), target: squad.target }
     squad.path = []; squad.mission = 'WAITING FOR TRANSPORT'
   }
-  const available = state.units.filter(c => c.hp > 0 && !c.crewBailed && !c.external && !c.servicing && !c.emergency && troopSeats(c.role) && (!c.transport || c.transport.phase === 'available'))
+  const available = state.units.filter(c => c.hp > 0 && !c.crewBailed && !c.external && !c.servicing && !c.emergency && !c.attachedSquad && troopSeats(c.role) && (!c.transport || c.transport.phase === 'available'))
     .sort((a, b) => Number(b.role === 'TRANSPORT_HELI') - Number(a.role === 'TRANSPORT_HELI') || a.id.localeCompare(b.id))
   for (const carrier of available) {
     const seats = troopSeats(carrier.role)
@@ -79,9 +134,9 @@ export function updateTransports(state: BattleState, nav: Navigation) {
     const lead = passengers.find(s => !s.carrier)
     const phase = (name: string) => { m.phase = name; m.since = state.time; u.path = [] }
     u.engine = true; u.mission = m.phase.toUpperCase()
-    if (!passengers.length && m.phase !== 'return') phase('return')
+    if (!passengers.length && !['return', 'escort'].includes(m.phase)) phase('return')
     if (!lead && ['pickup', 'boarding'].includes(m.phase)) {
-      if (!aboard || (helicopter && aboard < 12)) phase('return')
+      if (!aboard || (helicopter && aboard < 12 && !m.manual)) phase('return')
       else { m.dispatchTroops = aboard; phase('transit') }
     }
     if (m.phase === 'pickup' && lead) {
@@ -95,18 +150,21 @@ export function updateTransports(state: BattleState, nav: Navigation) {
       if (passengers.some(s => !s.carrier)) phase('pickup')
       else {
         const troops = aboard + activeTroops(lead)
-        if (helicopter && troops < troopSeats(u.role) / 2) phase('return')
+        if (helicopter && troops < troopSeats(u.role) / 2 && !m.manual) phase('return')
         else { m.dispatchTroops = troops; phase('transit') }
       }
     } else if (m.phase === 'transit' && m.destination) {
-      if (travel(u, m.destination, nav, state.time, undefined, isAir(u.role) ? 85 : 0)) phase('landing')
+      if (travel(u, m.destination, nav, state.time, undefined, isAir(u.role) ? 85 : 0)) phase(m.manual ? 'attached-hold' : 'landing')
+    } else if (m.phase === 'attached-hold') {
+      u.engine = helicopter; u.path = []; u.mission = helicopter ? 'HOLDING FOR DISMOUNT' : 'AWAITING DISMOUNT'
     } else if (m.phase === 'landing' && m.destination) {
-      if (helicopter && (aboard < 12 || (m.dispatchTroops || 0) < 12)) { phase('return'); continue }
+      if (helicopter && !m.manual && (aboard < 12 || (m.dispatchTroops || 0) < 12)) { phase('return'); continue }
       const landing = nav.nearest(m.destination)
       if (!nav.covered(landing) || !nav.clear(landing, landing)) { u.travelStatus = 'WAITING FOR LANDING ZONE'; continue }
       if (travel(u, landing, nav, state.time, undefined, 0)) { phase('disembarking'); m.unloaded = 0; m.lastUnload = state.time }
     } else if (m.phase === 'disembarking') {
-      if ((u.altitude || 0) > .1 || (helicopter && (m.dispatchTroops || 0) < 12)) { phase('return'); continue }
+      u.engine = false
+      if ((u.altitude || 0) > .1 || (helicopter && !m.manual && (m.dispatchTroops || 0) < 12)) { phase('return'); continue }
       if (state.time - (m.lastUnload ?? m.since) < UNLOAD_INTERVAL) continue
       const body = boarded.flatMap(s => s.soldiers || []).find(s => s.status === 'active' && !s.disembarked)
       if (body) {
@@ -119,7 +177,19 @@ export function updateTransports(state: BattleState, nav: Navigation) {
         for (const squad of boarded) {
           restoreSquad(squad, nav)
         }
-        m.passengers = []; phase('return')
+        m.passengers = []
+        if (m.dismountCrew) { if (!bailCrew(state, u, nav)) continue; continue }
+        if (m.manual && !helicopter && !u.crewBailed) phase('escort')
+        else { detach(state, u); phase('return') }
+      }
+    } else if (m.phase === 'escort') {
+      const squad = state.units.find(s => s.id === u.attachedSquad && s.hp > 0)
+      if (!squad) { detach(state, u); m.manual = undefined; phase('available') }
+      else {
+        u.target = squad.target; u.mission = `SUPPORTING ${squad.name}`
+        const follow = nav.nearest({ x: squad.x - Math.sin(squad.heading) * 18, y: squad.y - Math.cos(squad.heading) * 18 })
+        if (distance(u, follow) > 22) travel(u, follow, nav, state.time, undefined, 0, 4)
+        else { u.path = []; u.engine = false }
       }
     } else if (m.phase === 'return') { u.servicing = true; u.target = isAir(u.role) ? 'AIRFIELD' : 'MOB' }
     for (const squad of passengers) if (squad.carrier === u.id) {

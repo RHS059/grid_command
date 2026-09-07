@@ -9,7 +9,7 @@ export function resolveCombat(state:BattleState,v:Visibility,random:()=>number,n
   const living=state.units.filter(u=>u.hp>0&&!u.carrier&&(u.members>0||isVehicle(u.role))),hits=new Map<string,{amount:number;soldier?:string}>()
   for(const missile of state.missiles)if(missile.due<=state.time){const target=living.find(u=>u.id===missile.target);if(target)hits.set(target.id,{amount:(hits.get(target.id)?.amount||0)+missile.damage})}
   state.missiles=state.missiles.filter(m=>m.due>state.time)
-  for(const u of living){u.firing=false;const w=weaponFor(u.role);if(!w||u.external||u.servicing||u.emergency||u.ammo<(w.id==='aa'?25:w.armor?2:.3)||u.airPhase==='return'||u.airPhase==='rearm')continue
+  for(const u of living){u.firing=false;const w=weaponFor(u.role);if(!w||u.crewBailed||u.external||u.servicing||u.emergency||u.ammo<(w.id==='aa'?25:w.armor?2:.3)||u.airPhase==='return'||u.airPhase==='rearm')continue
     if((u.cooldown||0)>state.time&&u.role!=='ATTACK_HELI')continue
     const targets=living.filter(e=>e.side!==u.side&&eligible(w,e)&&Math.hypot(e.x-u.x,e.y-u.y)<=w.range&&canSee(u,e,v,state)).sort((a,b)=>Math.hypot(a.x-u.x,a.y-u.y)-Math.hypot(b.x-u.x,b.y-u.y));const target=targets[0];if(!target){u.lock=undefined;continue}
     u.aim=Math.atan2(target.x-u.x,target.y-u.y)
@@ -45,3 +45,4 @@ export function resolveCombat(state:BattleState,v:Visibility,random:()=>number,n
   }
   state.shots=state.shots.filter(e=>state.time-e.time<8).slice(-512)
 }
+

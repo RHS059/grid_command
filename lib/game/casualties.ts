@@ -9,6 +9,7 @@ export function recordCasualties(state:BattleState,nav:Navigation,v:Visibility,r
     const exit=nav.nearest({x:carrier.x-Math.cos(carrier.heading)*4,y:carrier.y+Math.sin(carrier.heading)*4})
     if(!nav.covered(exit)||!nav.clear(exit,exit))continue
     carrier.crewBailed=true;carrier.members=0;carrier.path=[];carrier.engine=false;carrier.servicing=false;carrier.mission='ABANDONED';carrier.serviceStatus='DRIVER BAILED OUT'
+    if(carrier.attachedSquad){const attached=state.units.find(s=>s.id===carrier.attachedSquad);if(attached)attached.attachedVehicles=attached.attachedVehicles?.filter(id=>id!==carrier.id);carrier.attachedSquad=undefined}
     const driver=createUnit(carrier.side,'PILOT',`${carrier.id}-driver`,exit)
     driver.name=`${carrier.name} driver`;driver.maxMembers=1;driver.members=1;driver.soldiers=driver.soldiers?.slice(0,1);driver.mission='BAILED OUT';driver.heading=carrier.heading
     for(const soldier of driver.soldiers||[])Object.assign(soldier,exit,{heading:carrier.heading,aim:carrier.heading})
@@ -20,6 +21,7 @@ export function recordCasualties(state:BattleState,nav:Navigation,v:Visibility,r
     if(carrier.transport){carrier.transport.passengers=[];carrier.transport.phase='abandoned'}
   }
   for(const carrier of state.units){if(carrier.hp>0||carrier.lossProcessed)continue;carrier.lossProcessed=true;carrier.destroyedAt=state.time;carrier.path=[];carrier.firing=false
+    if(carrier.attachedSquad){const attached=state.units.find(s=>s.id===carrier.attachedSquad);if(attached)attached.attachedVehicles=attached.attachedVehicles?.filter(id=>id!==carrier.id);carrier.attachedSquad=undefined}
     for(const squad of state.units.filter(u=>u.carrier===carrier.id)){
       squad.carrier=undefined;squad.path=[];const before=squad.members
       for(const [i,s] of (squad.soldiers||[]).entries())if(s.status==='active'){
@@ -39,3 +41,4 @@ export function recordCasualties(state:BattleState,nav:Navigation,v:Visibility,r
     if(state.tick%20===0)for(const side of ['BLU','RED'] as Side[])if(!c.observed.includes(side)&&state.units.some(u=>u.hp>0&&!u.carrier&&u.side===side&&distance(u,c)<700&&v.ray({x:u.x,y:u.y,z:v.height(u)+1.7},{x:c.x,y:c.y,z:v.height(c)+.5}).kind==='clear'))c.observed.push(side)
   }
 }
+
