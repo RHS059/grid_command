@@ -6,6 +6,7 @@ import { SIDE_COLOR, type AirfieldTier, type Side } from './types'
 import { RUNWAY } from './theater'
 
 export type BaseKind = 'MOB' | 'AIRFIELD'
+export const airfieldPlatform = (tier: AirfieldTier) => ({ width: tier === 3 ? 240 : 170, depth: RUNWAY.halfLength * 2, x: tier === 3 ? -35 : 0 })
 export function createBase(kind: BaseKind, side: Side, tier: AirfieldTier = 1) {
   const root = new T.Group(); root.name = kind; root.userData.tier = tier
   const colors = ['#65716a', '#18222b', '#a4afb4', SIDE_COLOR[side], '#293e4c']
@@ -42,7 +43,8 @@ export function createBase(kind: BaseKind, side: Side, tier: AirfieldTier = 1) {
     pole(.12, 10, -9, 24); b(3, .08, 1.6, -7.5, 24, 9, 3)
     b(14, 1, .05, 0, 29, .04, 1)
   } else {
-    b(170, 420, .45, 0, 0, -.3, 2)
+    const platform = airfieldPlatform(tier)
+    b(platform.width, platform.depth, .45, platform.x, 0, -.3, 2)
     if (tier === 3) {
       const x = RUNWAY.x - RUNWAY.spacing
       b(32, 1200, .12, x, 0, .02, 1)
@@ -74,8 +76,9 @@ export function createBase(kind: BaseKind, side: Side, tier: AirfieldTier = 1) {
 }
 
 export function conformBase(root: T.Group, elevation: (x: number, y: number) => number) {
-  const width = root.name === 'MOB' ? MOB_YARD.halfWidth*2 : root.userData.tier === 3 ? 240 : 170, depth = root.name === 'MOB' ? MOB_YARD.maxY-MOB_YARD.minY : 1200
-  const offset = root.name === 'AIRFIELD' && root.userData.tier === 3 ? -35 : 0
+  const platform = airfieldPlatform(root.userData.tier as AirfieldTier)
+  const width = root.name === 'MOB' ? MOB_YARD.halfWidth*2 : platform.width, depth = root.name === 'MOB' ? MOB_YARD.maxY-MOB_YARD.minY : platform.depth
+  const offset = root.name === 'AIRFIELD' ? platform.x : 0
   const offsetY=root.name==='MOB'?(MOB_YARD.maxY+MOB_YARD.minY)/2:0
   let high = -Infinity, low = Infinity
   for (let x = -width / 2 + offset; x <= width / 2 + offset; x += width / 10) for (let y = -depth / 2+offsetY; y <= depth / 2+offsetY; y += depth / 24) {
