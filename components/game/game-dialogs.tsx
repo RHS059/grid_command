@@ -10,7 +10,7 @@ import { SoundSettings } from './sound-settings'
 
 export function GameDialogs({ soundEngine, modal, onClose, graphics, setGraphics, restart }: { soundEngine: BattlefieldAudio; modal: string | null; onClose: () => void; graphics: Graphics; setGraphics: (g: Graphics) => void; restart: () => void }) {
   const displayedGraphics = effectiveGraphics(graphics)
-  return <Dialog open={!!modal} onOpenChange={v => !v && onClose()}><DialogContent className="sm:max-w-lg max-h-[85dvh] overflow-y-auto">
+  return <Dialog open={!!modal} onOpenChange={v => !v && onClose()}><DialogContent className={`${modal==='settings'?'sm:max-w-2xl':'sm:max-w-lg'} max-h-[85dvh] overflow-y-auto`}>
     <DialogHeader><DialogTitle>{modal === 'settings' ? 'Graphics & battlefield' : modal === 'restart' ? 'Start a new operation?' : 'Welcome to Grid Command'}</DialogTitle><DialogDescription>{modal === 'settings' ? 'Balance visual detail with your device’s rendering budget.' : modal === 'restart' ? 'The current battle will be discarded. Both sides reset to one commander, 2,000 SP, and empty depots with a new simulation seed.' : 'An autonomous battlefield. Two commanders. One theater of operations.'}</DialogDescription></DialogHeader>
     {modal === 'settings' && <div>
       <div className="settings-row"><label htmlFor="performance-mode">Performance mode<p>Nearby models only; off-screen units keep simulating.</p></label><input id="performance-mode" type="checkbox" checked={!!graphics.performanceMode} onChange={e => setGraphics({ ...graphics, performanceMode: e.target.checked })} /></div>
