@@ -8,16 +8,14 @@ import { SoldierBatch, vehicleGeometry } from './unit-models'
 import { createAircraft, animateAircraft, disposeModel } from './aircraft-models'
 import { createSupportModel, isSupportModel, animateSupport } from './support-models'
 import type { Unit } from './types'
-import { airfieldPlatform, createBase, conformBase } from './base-models'
+import { airfieldPlatform, createBase, conformBase, type BaseElevation } from './base-models'
 
 export class BattlefieldRenderer {
   private frustum = new T.Frustum()
   private bounds = new T.Sphere()
   private visibleUnits = new Set<string>()
-  private terrainRevision = 0
   private terrainChanged = (event: { sourceId?: string; isSourceLoaded?: boolean }) => {
     if (event.sourceId === 'elevation' && event.isSourceLoaded) {
-      this.terrainRevision++
       this.ground.clear()
     }
   }
@@ -28,7 +26,7 @@ export class BattlefieldRenderer {
     return this.frustum.intersectsSphere(this.bounds)
   }
   corpseBatches: Record<Side,SoldierBatch[]> = {BLU:[],RED:[]};
-  aircraft=new Map<string,T.Group>();bases:{model:T.Group;point:{x:number;y:number;id:string}}[]=[]
+  aircraft=new Map<string,T.Group>();bases:{model:T.Group;point:{x:number;y:number;id:string};elevation?:BaseElevation}[]=[]
   renderer!:T.WebGLRenderer;scene=new T.Scene();camera=new T.Camera();transform=new T.Matrix4();dummy=new T.Object3D();groups=new Map<string,T.InstancedMesh>();soldiers:Record<Side,SoldierBatch>;effects=new Map<string,T.InstancedMesh>();layer:CustomLayerInterface;disposed=false;previous=0;report=0;frames:number[]=[];ground=new Map<string,{x:number;y:number;z:number;time:number}>();snapshotTime=-1;arrival=0
   constructor(public map:GeographicMap,_canvas:HTMLCanvasElement|null,public getState:()=>BattleState,public getSettings:()=>{graphics:Graphics;perspective:Perspective;selected:string|null;active?:boolean},public onFPS:(n:number)=>void){
     const material=new T.MeshStandardMaterial({vertexColors:true,roughness:.85,metalness:.08,flatShading:false});this.soldiers={BLU:new SoldierBatch(this.scene,'BLU',material),RED:new SoldierBatch(this.scene,'RED',material)}
@@ -44,7 +42,7 @@ export class BattlefieldRenderer {
     if(process.env.NODE_ENV==='development') (window as unknown as {gridDebug:BattlefieldRenderer}).gridDebug=this
   }
   resize(){this.map.triggerRepaint()}
-  altitude(p:{x:number;y:number;id:string},now:number){const terrain=!!this.map.getTerrain();for(const {model,point}of this.bases){const x=p.x-point.x,y=p.y-point.y,platform=airfieldPlatform(model.userData.tier),inside=model.name==='MOB'?Math.abs(x)<MOB_YARD.halfWidth&&y>MOB_YARD.minY&&y<MOB_YARD.maxY:Math.abs(x-platform.x)<platform.width/2&&Math.abs(y)<platform.depth/2;if(inside&&(!terrain||Number.isFinite(model.userData.platformHeight)))return (terrain?model.userData.platformHeight:0)+1.3+(model.name==='MOB'&&onMobHelipad(point.id.startsWith('BLU')?'BLU':'RED',p)?mobHelipadRise(model.userData.tier):0)}if(!terrain)return 0;const old=this.ground.get(p.id);if(old&&now-old.time<600&&Math.hypot(old.x-p.x,old.y-p.y)<5)return old.z;const z=(this.map.queryTerrainElevation(lngLat(p))||0)+this.map.getCameraTargetElevation();this.ground.set(p.id,{x:p.x,y:p.y,z,time:now});return z}
+  altitude(p:{x:number;y:number;id:string},now:number){const terrain=!!this.map.getTerrain();for(const {model,point,elevation}of this.bases){const x=p.x-point.x,y=p.y-point.y,platform=airfieldPlatform(model.userData.tier),inside=model.name==='MOB'?Math.abs(x)<MOB_YARD.halfWidth&&y>MOB_YARD.minY&&y<MOB_YARD.maxY:Math.abs(x-platform.x)<platform.width/2&&Math.abs(y)<platform.depth/2;if(inside&&(!terrain||elevation))return (terrain?elevation!.high:0)+1.3+(model.name==='MOB'&&onMobHelipad(point.id.startsWith('BLU')?'BLU':'RED',p)?mobHelipadRise(model.userData.tier):0)}if(!terrain)return 0;const old=this.ground.get(p.id);if(old&&now-old.time<600&&Math.hypot(old.x-p.x,old.y-p.y)<5)return old.z;const z=(this.map.queryTerrainElevation(lngLat(p))||0)+this.map.getCameraTargetElevation();this.ground.set(p.id,{x:p.x,y:p.y,z,time:now});return z}
   render(matrix:number[]){if(this.disposed||this.getSettings().active===false){this.previous=0;return;}const now=performance.now(),state=this.getState(),{graphics,perspective,selected}=this.getSettings();if(this.previous)this.frames.push(now-this.previous);this.previous=now;if(now-this.report>1500&&this.frames.length){this.onFPS(Math.round(1000/(this.frames.reduce((a,b)=>a+b,0)/this.frames.length)));this.frames=[];this.report=now}
     if(state.time!==this.snapshotTime){this.snapshotTime=state.time;this.arrival=now}const time=state.time+(state.paused?0:Math.min(.1,(now-this.arrival)/1000)*state.speed)
     // MapLibre 4 custom-layer matrices use a target-relative vertical origin; simulation and cached models use sea-level elevations.
@@ -63,7 +61,16 @@ export class BattlefieldRenderer {
         base.model = createBase(kind, side, tier); base.model.position.set(base.point.x, base.point.y, 0); this.scene.add(base.model)
       }
       const { model, point } = base
-      model.visible=graphics.models&&zoom>12&&(!performanceMode||nearby(point.x,point.y,model.name==='AIRFIELD'?650:Math.hypot(MOB_YARD.halfWidth,Math.max(Math.abs(MOB_YARD.minY),Math.abs(MOB_YARD.maxY)))))&&Math.hypot((lngLat(point)[0]-center.lng)*93650,(lngLat(point)[1]-center.lat)*111320)<3000;const terrain=!!this.map.getTerrain();if(model.visible&&(model.userData.terrain!==terrain||!model.userData.conformedAt||(performanceMode ? model.userData.terrainRevision!==this.terrainRevision : now-model.userData.conformedAt>6000))){conformBase(model,(x,y)=>terrain?((this.map.queryTerrainElevation(lngLat({x:point.x+x,y:point.y+y}))||0)+this.map.getCameraTargetElevation()):0);model.userData.terrain=terrain;model.userData.conformedAt=now;model.userData.terrainRevision=this.terrainRevision}model.position.z=1.2;if(model.visible&&model.name==='MOB')animateMob(model,state,side,time)}
+      const terrain=!!this.map.getTerrain()
+      // Source events and camera target elevation can change repeatedly; accept one complete footprint sample only.
+      if(terrain&&!base.elevation&&this.map.isSourceLoaded('elevation')){
+        const targetElevation=this.map.getCameraTargetElevation()
+        const sampled=conformBase(model,(x,y)=>{const z=this.map.queryTerrainElevation(lngLat({x:point.x+x,y:point.y+y}));return z===null?undefined:z+targetElevation})
+        if(sampled){base.elevation=sampled;model.userData.elevationMode='locked'}
+      }
+      if(terrain&&base.elevation&&model.userData.elevationMode!=='locked'){conformBase(model,undefined,base.elevation);model.userData.elevationMode='locked'}
+      else if(!terrain&&model.userData.elevationMode!=='flat'){conformBase(model,undefined,{high:0,low:0});model.userData.elevationMode='flat'}
+      model.visible=graphics.models&&zoom>12&&(!terrain||!!base.elevation)&&(!performanceMode||nearby(point.x,point.y,model.name==='AIRFIELD'?650:Math.hypot(MOB_YARD.halfWidth,Math.max(Math.abs(MOB_YARD.minY),Math.abs(MOB_YARD.maxY)))))&&Math.hypot((lngLat(point)[0]-center.lng)*93650,(lngLat(point)[1]-center.lat)*111320)<3000;model.position.z=1.2;if(model.visible&&model.name==='MOB')animateMob(model,state,side,time)}
     const liveAircraft=new Set([...state.units.filter(u=>isAir(u.role)||isSupportModel(u.role)).map(u=>u.id),...state.casualties.map(c=>`wreck-${c.id}`)]);for(const[id,model]of this.aircraft){if(!liveAircraft.has(id)){this.scene.remove(model);disposeModel(model);this.aircraft.delete(id)}else model.visible=false}
     for(const batches of Object.values(this.corpseBatches))for(const batch of batches)batch.begin()
     const corpseCounts={BLU:0,RED:0}
