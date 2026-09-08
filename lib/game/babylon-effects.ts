@@ -55,11 +55,15 @@ export class BattlefieldEffects {
       // Babylon requires TAA to be the first camera postprocess.
       this.taa=new TAARenderingPipeline('grid-temporal-aa',this.scene,[this.camera],Constants.TEXTURETYPE_HALF_FLOAT)
       this.taa.samples=8;this.taa.reprojectHistory=false;this.taa.clampHistory=true;this.taa.disableOnCameraMove=false
-      this.contact=new SSAO2RenderingPipeline('grid-contact-shading',this.scene,{ssaoRatio:.5,blurRatio:.5},[this.camera],false,Constants.TEXTURETYPE_HALF_FLOAT)
-      this.contact.radius=2;this.contact.totalStrength=.75;this.contact.samples=8
-      this.reflections=new SSRRenderingPipeline('grid-reflections',this.scene,[this.camera],false,Constants.TEXTURETYPE_HALF_FLOAT)
-      this.reflections.strength=.45;this.reflections.maxDistance=80;this.reflections.maxSteps=48;this.reflections.step=2;this.reflections.thickness=.5;this.reflections.ssrDownsample=1;this.reflections.blurDownsample=1
-      this.reflections.inputTextureColorIsInGammaSpace=false;this.reflections.generateOutputInGammaSpace=false
+      // Babylon 9.25's WebGPU prepass exposes no MRT texture array in Firefox. SSAO2 and
+      // SSR dereference those missing attachments every frame, so retain them on WebGL only.
+      if(!this.scene.getEngine().isWebGPU){
+        this.contact=new SSAO2RenderingPipeline('grid-contact-shading',this.scene,{ssaoRatio:.5,blurRatio:.5},[this.camera],false,Constants.TEXTURETYPE_HALF_FLOAT)
+        this.contact.radius=2;this.contact.totalStrength=.75;this.contact.samples=8
+        this.reflections=new SSRRenderingPipeline('grid-reflections',this.scene,[this.camera],false,Constants.TEXTURETYPE_HALF_FLOAT)
+        this.reflections.strength=.45;this.reflections.maxDistance=80;this.reflections.maxSteps=48;this.reflections.step=2;this.reflections.thickness=.5;this.reflections.ssrDownsample=1;this.reflections.blurDownsample=1
+        this.reflections.inputTextureColorIsInGammaSpace=false;this.reflections.generateOutputInGammaSpace=false
+      }
       this.bloom=new DefaultRenderingPipeline('grid-bloom',true,this.scene,[this.camera])
       this.bloom.imageProcessingEnabled=false;this.bloom.bloomEnabled=true;this.bloom.bloomWeight=.2;this.bloom.bloomThreshold=1;this.bloom.bloomKernel=32
     }
