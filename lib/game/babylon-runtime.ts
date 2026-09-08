@@ -77,7 +77,7 @@ export class BabylonRuntime {
   getViewProjection(){return this.camera.getViewMatrix().multiply(this.camera.getProjectionMatrix())}
   private getMaterial(source:D.Material){
     let material=this.materials.get(source);if(!material){material=new PBRMaterial(source.name||`material-${source.id}`,this.scene);this.materials.set(source,material);if(source.name==='interior-window')new InteriorRoomPlugin(material);material.maxSimultaneousLights=8;material.backFaceCulling=source.side!==D.DoubleSide;material.twoSidedLighting=source.side===D.DoubleSide;material.unlit=source instanceof D.MeshBasicMaterial;material.wireframe=source.wireframe;material.disableDepthWrite=!source.depthWrite;material.alphaMode=source.blending===D.AdditiveBlending?Engine.ALPHA_ADD:Engine.ALPHA_COMBINE;material.transparencyMode=source.transparent?PBRMaterial.PBRMATERIAL_ALPHABLEND:PBRMaterial.PBRMATERIAL_OPAQUE}
-    material.albedoColor=color(source.color);material.emissiveColor=color(source.emissive);material.roughness=source.roughness;material.metallic=source.metalness;material.alpha=source.opacity;if(source.uniforms.wireColor)material.albedoColor=color(source.uniforms.wireColor.value)
+    material.albedoColor=color(source.color);material.emissiveColor=color(source.emissive).scale(source.emissiveIntensity);material.roughness=source.roughness;material.metallic=source.metalness;material.alpha=source.opacity;if(source.uniforms.wireColor)material.albedoColor=color(source.uniforms.wireColor.value)
     if(source.name==='interior-window'){material.albedoColor=color(source.uniforms.windowTint?.value||new D.Color('#35596b'));material.roughness=.2;material.metallic=.45;material.emissiveColor=new Color3(.025,.03,.035)}
     return material
   }
@@ -132,7 +132,7 @@ export class BabylonRuntime {
     record.pivot.setEnabled(source.visible)
     if(record.entries){
       const filter=source.userData.nativeNodeName as string|undefined
-      if(filter)for(const root of record.entries.rootNodes)for(const node of root.getChildTransformNodes(false)){if(node.name.startsWith('Weapon_'))node.setEnabled(node.name===filter)}
+      if(filter)for(const root of record.entries.rootNodes)for(const node of root.getDescendants(false)){if(node instanceof TransformNode&&node.name.startsWith('Weapon_'))node.setEnabled(node.name===filter)}
       source.traverse(node=>{if(node.name.startsWith('Gear_')||node.name.startsWith('Weapon_'))this.nativeNodes.get(node.id)?.setEnabled(node.visible)})
       const actions=(source.userData.animationState||[])as{name:string;time:number;weight:number;clip:D.AnimationClip}[]
       for(const action of actions)if(action.name.startsWith('__')&&!record.entries.animationGroups.some(group=>group.name===action.name)){
