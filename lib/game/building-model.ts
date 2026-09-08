@@ -1,10 +1,11 @@
 import * as T from 'three'
 import { generateBuilding, type BuildingPart, type BuildingPartKind, type BuildingPreset } from './building-system'
+import { createInteriorWindowMaterial } from './interior-window-material'
 
 const X_AXIS = new T.Vector3(1, 0, 0), Z_AXIS = new T.Vector3(0, 0, 1), PART_TILT = new T.Quaternion()
 
 export const BUILDING_PART_CAPACITY: Record<BuildingPartKind, number> = {
-  wall: 18000, gable: 2000, window: 18000, door: 2000, floor: 6000, roof: 5000,
+  wall: 18000, gable: 2000, window: 18000, 'window-frame': 18000, door: 2000, floor: 6000, roof: 5000,
   trim: 26000, accent: 18000, awning: 3000, rooftop: 1500,
 }
 
@@ -19,7 +20,12 @@ export function applyBuildingPartTransform(target: T.Object3D, item: BuildingPar
 }
 
 export function buildingGeometry(kind: BuildingPartKind) {
-  if (kind === 'wall') { const geometry = new T.PlaneGeometry(1, 1); geometry.rotateX(Math.PI / 2); return geometry }
+  if (kind === 'wall' || kind === 'window') { const geometry = new T.PlaneGeometry(1, 1); geometry.rotateX(Math.PI / 2); return geometry }
+  if (kind === 'window-frame') {
+    const shape = new T.Shape(); shape.moveTo(-.5, -.5); shape.lineTo(.5, -.5); shape.lineTo(.5, .5); shape.lineTo(-.5, .5); shape.closePath()
+    const opening = new T.Path(); opening.moveTo(-.41, -.41); opening.lineTo(-.41, .41); opening.lineTo(.41, .41); opening.lineTo(.41, -.41); opening.closePath(); shape.holes.push(opening)
+    const geometry = new T.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: false, curveSegments: 1 }); geometry.translate(0, 0, -.5); geometry.rotateX(Math.PI / 2); return geometry
+  }
   if (kind === 'gable') { const geometry = new T.BufferGeometry(); geometry.setAttribute('position', new T.Float32BufferAttribute([-.5, 0, -1/3, .5, 0, -1/3, 0, 0, 2/3], 3)); geometry.setIndex([0, 1, 2]); geometry.computeVertexNormals(); return geometry }
   if (kind === 'floor') return new T.PlaneGeometry(1, 1)
   return new T.BoxGeometry(1, 1, 1)
@@ -37,11 +43,11 @@ const materialFor = (kind: BuildingPartKind, color: string, material: string) =>
 })
 
 export function createBuildingModel(preset: BuildingPreset) {
-  const group = new T.Group(), geometries = new Map<BuildingPartKind, T.BufferGeometry>(), materials = new Map<string, T.MeshStandardMaterial>()
+  const group = new T.Group(), geometries = new Map<BuildingPartKind, T.BufferGeometry>(), materials = new Map<string, T.Material>()
   group.name = `building:${preset.id}`
   for (const item of generateBuilding(preset).parts) {
     let geometry = geometries.get(item.kind); if (!geometry) { geometry = buildingGeometry(item.kind); geometries.set(item.kind, geometry) }
-    const materialKey = `${item.kind}:${item.material}:${item.color}`; let material = materials.get(materialKey); if (!material) { material = materialFor(item.kind, item.color, item.material); materials.set(materialKey, material) }
+    const materialKey = `${item.kind}:${item.material}:${item.color}`; let material = materials.get(materialKey); if (!material) { material = item.kind === 'window' ? createInteriorWindowMaterial(item.color) : materialFor(item.kind, item.color, item.material); materials.set(materialKey, material) }
     const mesh = new T.Mesh(geometry, material)
     mesh.name = item.id
     mesh.userData.buildingPart = item
