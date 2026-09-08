@@ -5,7 +5,6 @@
   "scripts": {
     "dev": "next dev",
     "build:building-catalog": "node scripts/build-building-catalog.mjs",
-    "prebuild": "pnpm build:building-catalog",
     "build": "next build --webpack",
     "test": "tsx --test tests/*.test.ts",
     "start": "next start"

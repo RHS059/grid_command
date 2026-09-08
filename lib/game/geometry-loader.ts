@@ -6,6 +6,10 @@ import type { BuildingAssessmentProgress } from './building-consolidation'
 
 type Catalog = { schema: number; region: string; complete: boolean; records: PlacedBuilding[] }
 
+// Temporary performance switch: keep flat navigation coverage without fetching or
+// constructing the San Diego building catalog.
+export const BATTLE_BUILDINGS_ENABLED = false
+
 const validRecord = (record: PlacedBuilding) => typeof record?.key === 'string'
   && Number.isFinite(record.x) && Number.isFinite(record.y) && Number.isFinite(record.rotation)
   && Number.isFinite(record.elevation) && /^\d{16}$/.test(record.preset?.seed || '')
@@ -71,6 +75,30 @@ export function loadBattleGeometry(
   _buildingsReady?: (features: GeometryFeature[]) => void,
   catalogReady?: (records: PlacedBuilding[]) => void,
 ) {
+  if (!BATTLE_BUILDINGS_ENABLED) {
+    let disposed = false, timer: ReturnType<typeof setTimeout> | undefined, cursor = 0, version = 0
+    const keys = theaterSectors()
+    const emitEmptySectors = () => {
+      if (disposed) return
+      const started = performance.now()
+      while (cursor < keys.length && performance.now() - started < 7) {
+        const key = keys[cursor++], origin = sectorOrigin(key)
+        done({
+          sector: key,
+          features: [],
+          terrain: { ...origin, step: 50, width: 41, height: 41, values: new Array(41 * 41).fill(0) },
+          version: ++version,
+          complete: true,
+        })
+      }
+      progress?.({ done: cursor, total: keys.length, phase: cursor === keys.length ? 'ready' : 'discovering' })
+      if (cursor < keys.length) timer = setTimeout(emitEmptySectors, 0)
+      else status('Building loading disabled')
+    }
+    timer = setTimeout(emitEmptySectors, 0)
+    return () => { disposed = true; if (timer) clearTimeout(timer) }
+  }
+
   const controller = new AbortController()
   let disposed = false, timer: ReturnType<typeof setTimeout> | undefined
   void fetch(assetPath('/san-diego-buildings.json'), { signal: controller.signal })

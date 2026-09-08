@@ -9,7 +9,7 @@ import { DisplayPoses, followSubject, chaseView, angleBetween } from '@/lib/game
 import { THEATER_BOUNDS } from '@/lib/game/theater'
 import { effectiveGraphics } from '@/lib/game/graphics'
 import { tacticalStyle, zoneFeatures } from '@/lib/game/map-style'
-import { loadBattleGeometry } from '@/lib/game/geometry-loader'
+import { BATTLE_BUILDINGS_ENABLED, loadBattleGeometry } from '@/lib/game/geometry-loader'
 import type { GeometryPacket } from '@/lib/game/types'
 import type { BuildingAssessmentProgress } from '@/lib/game/building-consolidation'
 import type { PlacedBuilding } from '@/lib/game/building-system'
@@ -37,7 +37,7 @@ export function Battlefield(props: Props) {
     const homeZoom = () => 10
     let map: GeoMap
     try { map = new geographic.GeoMap({ container: container.current, style: tacticalStyle(), center: CENTER, zoom: homeZoom(), pitch: 45, bearing: -18, minZoom: 8, maxZoom: 22, maxPitch: 75, antialias: false, pixelRatio: Math.min(window.devicePixelRatio, 1.5), attributionControl: { compact: true }, maxBounds: [[-118.5,31.5],[-115.5,34.2]], fadeDuration: 0, refreshExpiredTiles: false }) }
-    catch { setError('Graphics initialization failed. Enable hardware acceleration in your browser and reload.'); setLoading(false); return }
+    catch { setError('The geographic map renderer could not start. Restart the app, then check browser graphics support if the problem continues.'); setLoading(false); return }
     map.fitBounds(THEATER_BOUNDS, { padding: { top: 100, bottom: 65, left: 40, right: 40 }, duration: 0, pitch: 0, bearing: 0 })
     mapRef.current = map
     const markers = new Map<string, geographic.Marker>(), objectives = new Map<string, geographic.Marker>()
@@ -101,9 +101,10 @@ export function Battlefield(props: Props) {
     map.on('rotate', () => { if (orbiting && latest.current.selected) updateOrbit() })
     map.on('rotateend', () => { if (!orbiting) return; updateOrbit(); orbiting = false })
     let collision: GeometryPacket | null = null
-    let mapLoaded = false, buildingsLoaded = false, readySent = false, catalogReceived = false, consolidatedBuildings: GeometryPacket['features'] = [], cachedBuildings: PlacedBuilding[] = []
-    const finishLoading = () => { if (!mapLoaded || !buildingsLoaded || readySent) return; readySent = true; setLoading(false); latest.current.onWorldReady(); latest.current.onStatus('San Diego building catalog ready') }
+    let mapLoaded = false, buildingsLoaded = !BATTLE_BUILDINGS_ENABLED, readySent = false, catalogReceived = false, consolidatedBuildings: GeometryPacket['features'] = [], cachedBuildings: PlacedBuilding[] = []
+    const finishLoading = () => { if (!mapLoaded || !buildingsLoaded || readySent) return; readySent = true; setLoading(false); latest.current.onWorldReady(); latest.current.onStatus(BATTLE_BUILDINGS_ENABLED ? 'San Diego building catalog ready' : 'Battlefield ready · buildings disabled') }
     const constructCatalog = (records: PlacedBuilding[]) => {
+      if (!BATTLE_BUILDINGS_ENABLED) return
       if (!renderRef.current) { cachedBuildings = records; return }
       cachedBuildings = []
       setProgress({ done: 0, total: records.length, phase: 'assessing' })
@@ -122,7 +123,7 @@ export function Battlefield(props: Props) {
     latest.current.onReady({ overview: () => { releaseFollow(); map.fitBounds(THEATER_BOUNDS, { padding: {top:map.getContainer().clientWidth<760?115:65,bottom:50,left:35,right:35}, pitch: 0, bearing: 0, duration: 1000 }) }, focus, zoom: delta => { if (latest.current.selected) chaseScale = Math.max(.6, Math.min(6, chaseScale * 2 ** (-delta / 2))); else map.zoomTo(map.getZoom() + delta, { duration: 300 }) }, rotate: () => { releaseFollow(); map.rotateTo(0, { duration: 600 }) }, tilt: () => { releaseFollow(); map.easeTo({ pitch: map.getPitch() > 10 ? 0 : 55, duration: 600 }) }, reimport: () => { imported.clear(); importGeometry() } })
     map.on('error', e => {
       const message = e.error?.message || ''
-      if (/webgpu|webgl|graphics initialization|context lost/i.test(message)) { setError('The graphics engine could not start. Enable hardware acceleration and reload.'); setLoading(false); latest.current.onStatus('Graphics interrupted') }
+      if (/webgpu|webgl|graphics initialization|context lost/i.test(message)) { setError('The geographic map renderer stopped. Restart the app, then check browser graphics support if the problem continues.'); setLoading(false); latest.current.onStatus('Map graphics interrupted') }
       else if (/tile|fetch|network/i.test(message)) latest.current.onStatus('Some map tiles unavailable · retry by panning')
     })
     map.on('resize', () => { if(!latest.current.selected&&map.getZoom()<12)map.fitBounds(THEATER_BOUNDS,{padding:{top:85,bottom:45,left:35,right:35},duration:0,pitch:0,bearing:0}) })
@@ -233,7 +234,7 @@ export function Battlefield(props: Props) {
     <div ref={container} className="map-root" aria-label="Interactive geographic battlefield of San Diego" />
     <div className="map-vignette" />
     <div className="minimap-card desktop-only" style={props.graphics.performanceMode ? { display: 'none' } : undefined}><div className="minimap-header"><span>THEATER OVERVIEW</span><span>N ↑</span></div><div ref={miniContainer} className="minimap-map" /></div>
-    {loading && <div className={styles.loadingScreen} role="status"><div className={styles.loadingBrand}><span className={styles.brandOrb}><Crosshair size={17} /></span><span><strong>GRID COMMAND</strong><small>Preparing San Diego · City theater</small></span></div><div className={styles.loadingCopy}><strong>{progress.phase === 'assessing' ? 'BUILDING INSTANCE DATA' : progress.phase === 'ready' ? 'BUILDINGS READY' : 'DISCOVERING BUILDINGS'}</strong><span>{progress.done.toLocaleString()} / {progress.total ? progress.total.toLocaleString() : '…'} {progress.phase === 'discovering' ? 'sectors' : 'buildings'}</span></div><div className={styles.loadingTrack}><i style={{ width: `${progress.total ? Math.min(100, progress.done / progress.total * 100) : 0}%` }} /></div></div>}
+    {loading && <div className={styles.loadingScreen} role="status"><div className={styles.loadingBrand}><span className={styles.brandOrb}><Crosshair size={17} /></span><span><strong>GRID COMMAND</strong><small>Preparing San Diego · City theater</small></span></div><div className={styles.loadingCopy}><strong>INITIALIZING THEATER</strong><span>{BATTLE_BUILDINGS_ENABLED ? `${progress.done.toLocaleString()} / ${progress.total ? progress.total.toLocaleString() : '…'} world sectors` : 'Buildings and building loading are disabled'}</span></div><div className={styles.loadingTrack}><i style={{ width: `${BATTLE_BUILDINGS_ENABLED && progress.total ? Math.min(100, progress.done / progress.total * 100) : 100}%` }} /></div></div>}
     {error && <div className="map-loading" role="alert"><span className="max-w-sm text-center text-sm">{error}</span><button className="map-control" onClick={() => window.location.reload()}>Reload battlefield</button></div>}
   </>
 }

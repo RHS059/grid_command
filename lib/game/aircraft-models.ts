@@ -1,5 +1,7 @@
+import { animateVehicleGameplay } from './vehicle-animation'
 import * as T from './scene-data'
 import { createReferenceAircraft } from './reference-aircraft'
+import { hasBlenderVehicle, createBlenderVehicle } from './blender-vehicles'
 import { SIDE_COLOR, type Role, type Side } from './types'
 
 export function disposeModel(root: T.Object3D) {
@@ -9,6 +11,7 @@ export function disposeModel(root: T.Object3D) {
 }
 
 export function createAircraft(role: Role, side: Side) {
+  if(hasBlenderVehicle(role))return createBlenderVehicle(role,side)
   if (['CARGO_PLANE','CAS_FIGHTER','JET','TRANSPORT_HELI','HEAVY_LIFT_HELI','ATTACK_HELI'].includes(role)) return createReferenceAircraft(role, side)
   const root = new T.Group(); root.name = role
   const body = new T.MeshStandardMaterial({ color: '#65716a', roughness: .62, metalness: .3 })
@@ -99,6 +102,7 @@ export function createAircraft(role: Role, side: Side) {
 }
 
 export function animateAircraft(root: T.Object3D, time: number, motion?: { x:number; y:number; heading:number; aim?:number; time:number; active:boolean }) {
+  if(root.userData.blenderVehicle){animateVehicleGameplay(root,time,motion);return}
   if(root.name==='HEAVY_LIFT_HELI'||root.name==='ATTACK_HELI'){
     const old=root.userData.flightSample as {x:number;y:number;time:number}|undefined
     if(motion){
