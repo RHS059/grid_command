@@ -3,11 +3,11 @@ import { generateBuilding, type BuildingPart, type BuildingPartKind, type Buildi
 import { createInteriorWindowMaterial } from './interior-window-material'
 import { createWireSpriteMaterial } from './building-detail-material'
 
-const X_AXIS = new T.Vector3(1, 0, 0), Z_AXIS = new T.Vector3(0, 0, 1), PART_TILT = new T.Quaternion()
+const X_AXIS = new T.Vector3(1, 0, 0), Y_AXIS = new T.Vector3(0, 1, 0), Z_AXIS = new T.Vector3(0, 0, 1), PART_TILT = new T.Quaternion(), PART_ROLL = new T.Quaternion()
 
 export const BUILDING_PART_CAPACITY: Record<BuildingPartKind, number> = {
   wall: 18000, gable: 2000, window: 6000, 'window-flat': 18000, 'window-frame': 18000, door: 2000, floor: 6000, roof: 5000,
-  trim: 26000, accent: 18000, awning: 3000, rooftop: 1500, 'detail-box': 12000, 'detail-cylinder': 4000, 'detail-plane': 3000, wire: 6000,
+  trim: 26000, accent: 18000, awning: 3000, rooftop: 1500, 'detail-box': 12000, 'detail-cylinder': 4000, 'detail-dome': 512, 'detail-cooling-tower': 512, 'detail-plane': 3000, wire: 6000,
 }
 
 export function applyBuildingPartTransform(target: T.Object3D, item: BuildingPart, origin = { x: 0, y: 0, z: 0 }, buildingRotation = 0) {
@@ -15,6 +15,7 @@ export function applyBuildingPartTransform(target: T.Object3D, item: BuildingPar
   target.position.set(origin.x + item.x * cos - item.y * sin, origin.y + item.x * sin + item.y * cos, origin.z + item.z)
   target.quaternion.setFromAxisAngle(Z_AXIS, buildingRotation + item.rotation)
   if (item.tilt) target.quaternion.multiply(PART_TILT.setFromAxisAngle(X_AXIS, item.tilt))
+  if (item.roll) target.quaternion.multiply(PART_ROLL.setFromAxisAngle(Y_AXIS, item.roll))
   target.scale.set(item.width, item.primitive === 'vertical-plane' || item.primitive === 'triangle-plane' ? 1 : item.depth, item.primitive === 'horizontal-plane' ? 1 : item.height)
   target.updateMatrix()
   return target
@@ -22,8 +23,10 @@ export function applyBuildingPartTransform(target: T.Object3D, item: BuildingPar
 
 export function buildingGeometry(kind: BuildingPartKind) {
   if (kind === 'wall' || kind === 'window' || kind === 'window-flat' || kind === 'detail-plane') { const geometry = new T.PlaneGeometry(1, 1); geometry.rotateX(Math.PI / 2); return geometry }
-  if (kind === 'wire') return new T.PlaneGeometry(1, 1)
+  if (kind === 'wire') { const geometry = new T.PlaneGeometry(1, 1); geometry.rotateX(Math.PI / 2); return geometry }
   if (kind === 'detail-cylinder') { const geometry = new T.CylinderGeometry(.5, .5, 1, 8, 1); geometry.rotateX(Math.PI / 2); return geometry }
+  if (kind === 'detail-dome') { const geometry = new T.SphereGeometry(.5, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2); geometry.rotateX(Math.PI / 2); return geometry }
+  if (kind === 'detail-cooling-tower') { const geometry = new T.LatheGeometry([new T.Vector2(.5, -.5), new T.Vector2(.43, -.28), new T.Vector2(.3, .22), new T.Vector2(.35, .5)], 12); geometry.rotateX(Math.PI / 2); return geometry }
   if (kind === 'window-frame') {
     const shape = new T.Shape(); shape.moveTo(-.5, -.5); shape.lineTo(.5, -.5); shape.lineTo(.5, .5); shape.lineTo(-.5, .5); shape.closePath()
     const opening = new T.Path(); opening.moveTo(-.41, -.41); opening.lineTo(-.41, .41); opening.lineTo(.41, .41); opening.lineTo(.41, -.41); opening.closePath(); shape.holes.push(opening)
