@@ -1,5 +1,5 @@
 import * as T from 'three'
-import { generateBuilding, presetFromFeature, type BuildingPartKind } from './building-system'
+import { generateBuilding, presetFromFeature, type BuildingPartKind, type PlacedBuilding } from './building-system'
 import { applyBuildingPartTransform, BUILDING_PART_CAPACITY, buildingGeometry } from './building-model'
 import { createInteriorWindowMaterial } from './interior-window-material'
 import { createColoredBuildingMaterial, createWireSpriteMaterial } from './building-detail-material'
@@ -12,6 +12,7 @@ export class ModularBuildingRenderer {
   private dummy = new T.Object3D()
   private revision = 0
   private signature = ''
+  private catalog: PlacedBuilding[] | null = null
   constructor(private scene: T.Scene) {
     for (const kind of Object.keys(BUILDING_PART_CAPACITY) as BuildingPartKind[]) {
       const material = kind === 'window' ? createInteriorWindowMaterial('#ffffff', true)
@@ -30,17 +31,19 @@ export class ModularBuildingRenderer {
     this.sectors.set(sector, ids); this.revision++; this.signature = ''
   }
   setFeatures(features: GeometryPacket['features']) {
+    this.catalog = null
     this.features.clear(); this.sectors.clear()
     for (const feature of features) if (!feature.water) this.features.set(feature.key, feature)
     this.revision++; this.signature = ''
   }
+  setCatalog(buildings: PlacedBuilding[]) { this.catalog = buildings; this.features.clear(); this.sectors.clear(); this.revision++; this.signature = '' }
   update(center: { x: number; y: number }, zoom: number, graphics: Graphics, terrain: boolean) {
     const enabled = graphics.buildings && zoom >= 10
     if (!enabled) { this.signature = ''; for (const mesh of this.meshes.values()) { mesh.count = 0; mesh.visible = false } return }
     const signature = `${this.revision}:${Math.round(center.x/120)}:${Math.round(center.y/120)}:${Math.round(zoom*2)}:${graphics.quality}:${terrain}`
     if (signature === this.signature) return
     this.signature = signature
-    const buildings = [...this.features.values()].map(presetFromFeature).filter((value): value is NonNullable<typeof value> => !!value)
+    const buildings = (this.catalog || [...this.features.values()].map(presetFromFeature).filter((value): value is NonNullable<typeof value> => !!value))
       .sort((a,b)=>a.preset.id.localeCompare(b.preset.id))
     const counts = new Map<BuildingPartKind, number>()
     for (const building of buildings) {
@@ -55,6 +58,6 @@ export class ModularBuildingRenderer {
     }
     for (const [kind, mesh] of this.meshes) { mesh.count = counts.get(kind) || 0; mesh.visible = mesh.count > 0; if (mesh.count) { mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true; const buildingColor = mesh.geometry.getAttribute('buildingColor') as T.InstancedBufferAttribute | undefined; if (buildingColor) buildingColor.needsUpdate = true; if (kind === 'window') (mesh.geometry.getAttribute('roomData') as T.InstancedBufferAttribute).needsUpdate = true } }
   }
-  dispose() { for (const mesh of this.meshes.values()) { this.scene.remove(mesh); mesh.geometry.dispose(); (mesh.material as T.Material).dispose(); mesh.dispose() } this.meshes.clear(); this.features.clear(); this.sectors.clear() }
+  dispose() { for (const mesh of this.meshes.values()) { this.scene.remove(mesh); mesh.geometry.dispose(); (mesh.material as T.Material).dispose(); mesh.dispose() } this.meshes.clear(); this.features.clear(); this.sectors.clear(); this.catalog = null }
 }
 

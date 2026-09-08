@@ -11,6 +11,7 @@ import { tacticalStyle, zoneFeatures } from '@/lib/game/map-style'
 import { loadBattleGeometry } from '@/lib/game/geometry-loader'
 import type { GeometryPacket } from '@/lib/game/types'
 import type { BuildingAssessmentProgress } from '@/lib/game/building-consolidation'
+import type { PlacedBuilding } from '@/lib/game/building-system'
 import { AIRBASES, BASES, CENTER, SIDE_COLOR, lngLat, type BattleState, type Graphics, type Perspective, type Side } from '@/lib/game/types'
 import styles from './game-hud.module.css'
 
@@ -99,9 +100,9 @@ export function Battlefield(props: Props) {
     map.on('rotate', () => { if (orbiting && latest.current.selected) updateOrbit() })
     map.on('rotateend', () => { if (!orbiting) return; updateOrbit(); orbiting = false })
     let collision: GeometryPacket | null = null
-    let mapLoaded = false, buildingsLoaded = false, readySent = false, consolidatedBuildings: GeometryPacket['features'] = []
+    let mapLoaded = false, buildingsLoaded = false, readySent = false, consolidatedBuildings: GeometryPacket['features'] = [], cachedBuildings: PlacedBuilding[] = []
     const finishLoading = () => { if (!mapLoaded || !buildingsLoaded || readySent) return; readySent = true; setLoading(false); latest.current.onWorldReady(); latest.current.onStatus('San Diego building catalog ready') }
-    const cancelGeometry = loadBattleGeometry(packet => { collision = packet; latest.current.onGeometry(packet) }, text => latest.current.onStatus(text), () => latest.current.stateRef.current, value => setProgress(value), features => { consolidatedBuildings = features; buildingsLoaded = true; renderRef.current?.buildings.setFeatures(features); finishLoading() })
+    const cancelGeometry = loadBattleGeometry(packet => { collision = packet; latest.current.onGeometry(packet) }, text => latest.current.onStatus(text), () => latest.current.stateRef.current, value => setProgress(value), features => { if(cachedBuildings.length)return;consolidatedBuildings = features; buildingsLoaded = true; renderRef.current?.buildings.setFeatures(features); finishLoading() }, records => { cachedBuildings=records;buildingsLoaded=true;renderRef.current?.buildings.setCatalog(records);finishLoading() })
     const importGeometry = () => { if(collision) latest.current.onGeometry(collision) }
     const focus = (point: { x: number; y: number }, zoom = 16.3) => { releaseFollow(); map.flyTo({ center: lngLat(point), zoom, duration: 1100, essential: false }) }
     latest.current.onReady({ overview: () => { releaseFollow(); map.fitBounds(THEATER_BOUNDS, { padding: {top:map.getContainer().clientWidth<760?115:65,bottom:50,left:35,right:35}, pitch: 0, bearing: 0, duration: 1000 }) }, focus, zoom: delta => { if (latest.current.selected) chaseScale = Math.max(.6, Math.min(6, chaseScale * 2 ** (-delta / 2))); else map.zoomTo(map.getZoom() + delta, { duration: 300 }) }, rotate: () => { releaseFollow(); map.rotateTo(0, { duration: 600 }) }, tilt: () => { releaseFollow(); map.easeTo({ pitch: map.getPitch() > 10 ? 0 : 55, duration: 600 }) }, reimport: () => { imported.clear(); importGeometry() } })
@@ -142,7 +143,7 @@ export function Battlefield(props: Props) {
         overlayStarted = true
         import('@/lib/game/renderer').then(({ BattlefieldRenderer }) => {
           if (disposed || !canvas.current) return
-          try { renderRef.current = new BattlefieldRenderer(map, canvas.current, () => displayState, () => ({ graphics: latest.current.graphics, perspective: latest.current.perspective, selected: latest.current.selected, active: latest.current.active }), fps => latest.current.onFPS(fps));if(consolidatedBuildings.length)renderRef.current.buildings.setFeatures(consolidatedBuildings);latest.current.onStatus('3D renderer online') }
+          try { renderRef.current = new BattlefieldRenderer(map, canvas.current, () => displayState, () => ({ graphics: latest.current.graphics, perspective: latest.current.perspective, selected: latest.current.selected, active: latest.current.active }), fps => latest.current.onFPS(fps));if(cachedBuildings.length)renderRef.current.buildings.setCatalog(cachedBuildings);else if(consolidatedBuildings.length)renderRef.current.buildings.setFeatures(consolidatedBuildings);latest.current.onStatus('3D renderer online') }
           catch { latest.current.onStatus('3D overlay unavailable · tactical map active') }
         }).catch(() => latest.current.onStatus('3D overlay unavailable · tactical map active'))
       }

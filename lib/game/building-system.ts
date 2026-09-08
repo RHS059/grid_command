@@ -6,6 +6,7 @@ export type BuildingPrimitive = 'vertical-plane' | 'triangle-plane' | 'horizonta
 export interface InteriorRoomData { type: number; span: number; offset: number; seed: number }
 export interface FootprintPoint { x: number; y: number }
 export interface BuildingPreset { id: string; name: string; type: BuildingType; width: number; depth: number; floors: number; seed: string; roof?: 'auto' | 'flat' | 'gable'; footprint?: FootprintPoint[]; footprintMode?: 'rectangle' | 'shape'; slopedWalls?: boolean }
+export interface PlacedBuilding { key: string; x: number; y: number; rotation: number; elevation: number; preset: BuildingPreset }
 export interface BuildingPart { id: string; kind: BuildingPartKind; primitive: BuildingPrimitive; x: number; y: number; z: number; width: number; depth: number; height: number; rotation: number; tilt?: number; roll?: number; color: string; material: string; room?: InteriorRoomData; lod?: 'close' }
 export interface BuildingLayout { preset: BuildingPreset; parts: BuildingPart[]; roof: 'flat' | 'gable' }
 
