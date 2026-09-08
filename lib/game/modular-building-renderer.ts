@@ -12,7 +12,7 @@ export class ModularBuildingRenderer {
   private signature = ''
   constructor(private scene: T.Scene) {
     for (const kind of Object.keys(BUILDING_PART_CAPACITY) as BuildingPartKind[]) {
-      const material = kind === 'window' ? new T.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: .18, metalness: .16, emissive: '#07131b', emissiveIntensity: .7 })
+      const material = kind === 'window' ? new T.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: .18, metalness: .16, emissive: '#07131b', emissiveIntensity: .7, transparent: true, opacity: .88 })
         : new T.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: kind === 'roof' ? .75 : .9, metalness: kind === 'door' ? .18 : .04 })
       const mesh = new T.InstancedMesh(buildingGeometry(kind), material, BUILDING_PART_CAPACITY[kind]); mesh.count = 0; mesh.visible = false; mesh.frustumCulled = false; mesh.instanceMatrix.setUsage(T.DynamicDrawUsage); this.meshes.set(kind, mesh); scene.add(mesh)
     }

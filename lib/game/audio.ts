@@ -1,7 +1,7 @@
 import { clonePreset, DEFAULT_BANK, parseSoundBank, type SoundBank, type SoundPreset } from './sfx-schema'
 import { CATALOG, isVehicle, type BattleState, type Perspective, type Point, type Role } from './types'
 interface Voice {stop:()=>void;update:(speed:number,gain:number,pan:number)=>void}
-const SOUND_STORAGE_VERSION=2
+const SOUND_STORAGE_VERSION=3
 export const vehicleSoundKey=(role:Role)=>role==='CARGO_PLANE'?'CARGO_JET_ENGINE':role==='HEAVY_LIFT_HELI'?'HEAVYLIFT_HELO_ENGINE':role==='TRANSPORT_HELI'?'TRANSPORT_HELO_ENGINE':role==='JET'?'FIGHTER_JET_ENGINE':role==='CAS_FIGHTER'?'CAS_JET_ENGINE':role==='ATTACK_HELI'?'ATTACK_HELO_ENGINE':['TANK','APC','CANNON_APC','IFV'].includes(role)?'TANK_ENGINE':'VEHICLE_ENGINE'
 export class BattlefieldAudio {
   bank:SoundBank=DEFAULT_BANK;filename='_sfx.json';enabled=false;volume=.4;context:AudioContext|null=null;master:GainNode|null=null;voices=new Set<Voice>();previews=new Set<Voice>();modelPreview:Voice|null=null;loops=new Map<string,Voice>();motion=new Map<string,{x:number;y:number;time:number}>();listeners=new Set<()=>void>();lastEvent=0;lastTime=0;lastRadio=0;lastStep=0;status='Repository _sfx.json · 18 presets';noise:AudioBuffer|null=null;pending:{time:number;x:number;y:number}[]=[]
@@ -18,12 +18,12 @@ export class BattlefieldAudio {
   async enable(value:boolean){if(!value){this.enabled=false;this.stop();return}if(!this.context){this.context=new AudioContext();this.master=this.context.createGain();const limiter=this.context.createDynamicsCompressor();limiter.threshold.value=-12;limiter.knee.value=8;limiter.ratio.value=12;limiter.attack.value=.003;limiter.release.value=.15;this.master.connect(limiter);limiter.connect(this.context.destination);this.noise=this.context.createBuffer(1,this.context.sampleRate*2,this.context.sampleRate);const a=this.noise.getChannelData(0);for(let i=0;i<a.length;i++)a[i]=Math.random()*2-1}await this.context.resume();this.enabled=true;this.master!.gain.value=this.volume}
   setVolume(value:number){this.volume=Math.max(0,Math.min(1,value));if(this.master&&this.context)this.master.gain.setTargetAtTime(this.volume,this.context.currentTime,.03);this.save()}
   stop(includePreviews=true){for(const voice of this.voices)if(includePreviews||!this.previews.has(voice))voice.stop();this.loops.clear();this.pending=[]}
-  async preview(key:string){this.stopPreviews();await this.enable(true);const voice=this.play(key,.5,0,0);if(voice)this.previews.add(voice);if(this.bank[key]?.loop)setTimeout(()=>voice?.stop(),2000)}
+  async preview(key:string,override?:SoundPreset){this.stopPreviews();await this.enable(true);const preset=override||this.bank[key],voice=this.play(key,.5,0,0,preset);if(voice)this.previews.add(voice);if(preset?.loop)setTimeout(()=>voice?.stop(),2000)}
   async startVehiclePreview(role:Role,speed=.35,distance=30,angle=0){this.stopPreviews();await this.enable(true);const voice=this.play(vehicleSoundKey(role),1,0,speed);if(voice){this.modelPreview=voice;this.previews.add(voice);this.updateVehiclePreview(speed,distance,angle)}}
   updateVehiclePreview(speed:number,distance:number,angle:number){const range=Math.max(0,distance),gain=.7/(1+range/100),pan=Math.sin(angle*Math.PI/180)*Math.min(1,range/60);this.modelPreview?.update(speed,gain,pan)}
   stopVehiclePreview(){this.modelPreview?.stop();this.modelPreview=null}
-  play(key:string,gain=1,pan=0,speed=0):Voice|null {
-    const ctx=this.context,p=this.bank[key];if(!ctx||!this.master||!this.enabled||!p||this.voices.size>=32)return null;const now=ctx.currentTime,nodes:AudioNode[]=[],sources:AudioScheduledSourceNode[]=[],oscillators:OscillatorNode[]=[]
+  play(key:string,gain=1,pan=0,speed=0,override?:SoundPreset):Voice|null {
+    const ctx=this.context,p=override||this.bank[key];if(!ctx||!this.master||!this.enabled||!p||this.voices.size>=32)return null;const now=ctx.currentTime,nodes:AudioNode[]=[],sources:AudioScheduledSourceNode[]=[],oscillators:OscillatorNode[]=[]
     const bus=ctx.createGain(),filter=ctx.createBiquadFilter(),distortion=ctx.createWaveShaper(),envelope=ctx.createGain(),spatial=ctx.createGain(),stereo=ctx.createStereoPanner();nodes.push(bus,filter,distortion,envelope,spatial,stereo)
     filter.type=p.filterType;filter.Q.value=p.filterQ;const curve=new Float32Array(512);for(let i=0;i<512;i++){const x=i/255.5-1;curve[i]=(1+p.distortion)*x/(1+p.distortion*Math.abs(x))}distortion.curve=curve
     bus.connect(filter);filter.connect(distortion);distortion.connect(envelope);envelope.connect(spatial);spatial.connect(stereo);stereo.connect(this.master)
