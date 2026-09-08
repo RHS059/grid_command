@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { assetPath } from '@/lib/asset-path'
 import { BUILDING_MODULE, BUILDING_TYPES, SEED_FIELDS, normalizeBuildingPreset, normalizeBuildingSeed, parseBuildingPresets, type BuildingPreset, type BuildingType, type FootprintPoint } from '@/lib/game/building-system'
 import { BuildingViewport } from './building-viewport'
+import styles from './building-editor.module.css'
 
 const randomSeed = () => Array.from({ length: 16 }, () => Math.floor(Math.random() * 10)).join('')
 const empty: BuildingPreset = { id: 'custom-building', name: 'Custom building', type: 'residential-house', width: 4, depth: 3, floors: 2, seed: '2417330848621957', roof: 'auto', footprintMode: 'rectangle', slopedWalls: false }
@@ -28,7 +29,7 @@ function FootprintEditor({ value, onChange }: { value: BuildingPreset; onChange:
 
 function SeedEditor({ value, onChange }: { value: string; onChange: (seed: string) => void }) {
   const seed = normalizeBuildingSeed(value), update = (index: number, pair: string) => { const digits = pair.replace(/\D/g, '').slice(0, 2).padStart(2, '0'); onChange(`${seed.slice(0, index * 2)}${digits}${seed.slice(index * 2 + 2)}`) }
-  return <div><div className="mb-2 flex items-center justify-between"><span className="text-sm">Structured seed</span><span className="font-mono text-xs text-muted-foreground">{seed.match(/.{2}/g)?.join(' ')}</span></div><div className="grid grid-cols-2 gap-2">{SEED_FIELDS.map((label, index) => <label key={label} className="rounded border border-border p-2 text-[11px] text-muted-foreground">{label}<input className="mt-1 w-full rounded border border-border bg-background px-2 py-1 font-mono text-sm text-foreground" inputMode="numeric" value={seed.slice(index * 2, index * 2 + 2)} onChange={event => update(index, event.target.value)} /></label>)}</div></div>
+  return <div className={styles.seedEditor}><div className={styles.seedHeader}><span>Structured seed</span><span>{seed.match(/.{2}/g)?.join(' ')}</span></div><div className={styles.seedGrid}>{SEED_FIELDS.map((label, index) => <label key={label}>{label}<input inputMode="numeric" value={seed.slice(index * 2, index * 2 + 2)} onChange={event => update(index, event.target.value)} /></label>)}</div></div>
 }
 
 export function BuildingEditor() {
@@ -36,14 +37,49 @@ export function BuildingEditor() {
   useEffect(() => { let saved: BuildingPreset[] = []; const stored = localStorage.getItem('grid-command-buildings'); if (stored) try { saved = parseBuildingPresets(JSON.parse(stored)) } catch {} fetch(assetPath('/_buildings.json')).then(r => r.json()).then(value => { const defaults = parseBuildingPresets(value), savedIds = new Set(saved.map(item => item.id)), next = [...defaults.filter(item => !savedIds.has(item.id)), ...saved]; setPresets(next); if (next[0]) setDraft(next[0]) }).catch(() => { setPresets(saved); if (saved[0]) setDraft(saved[0]) }) }, [])
   const save = (next: BuildingPreset[]) => { setPresets(next); localStorage.setItem('grid-command-buildings', JSON.stringify(next)) }, select = (preset: BuildingPreset) => { setDraft({ ...preset }); setError('') }, exists = presets.some(p => p.id === draft.id)
   const persist = () => { const preset = normalizeBuildingPreset({ ...draft, id: exists ? draft.id : `${draft.type}-${Date.now()}`, name: draft.name || `${draft.type} building` }); save(exists ? presets.map(item => item.id === preset.id ? preset : item) : [...presets, preset]); select(preset) }
-  return <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-background"><header className="flex flex-wrap items-center justify-between gap-4 border-b border-border px-6 py-4"><div><h1 className="text-xl font-medium">Building Designer</h1><p className="pt-1 text-sm text-muted-foreground">Draw the footprint and inspect the exact low-poly building used in the battlefield.</p></div><div className="flex flex-wrap gap-2"><label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-secondary"><Upload size={15} />Import JSON<input className="sr-only" type="file" accept="application/json,.json" onChange={async e => { const file=e.target.files?.[0]; if(!file)return; try{const next=parseBuildingPresets(JSON.parse(await file.text()));save(next);select(next[0]||empty);setError('')}catch(reason){setError(reason instanceof Error?reason.message:'Invalid building preset file.')}e.target.value='' }} /></label><Button variant="outline" onClick={()=>download(presets)}><Download />Export JSON</Button></div></header>
-    <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[290px_minmax(360px,1fr)_350px]"><aside className="border-r border-border p-4"><div className="mb-3 flex items-center justify-between"><span className="eyebrow">PRESETS</span><Button size="icon-sm" variant="ghost" aria-label="New preset" onClick={()=>setDraft({...empty,id:`draft-${Date.now()}`,seed:randomSeed()})}><Plus /></Button></div><div className="flex flex-col gap-2">{presets.map(p=><button key={p.id} onClick={()=>select(p)} className={`rounded-md border px-3 py-3 text-left ${p.id===draft.id?'border-primary bg-primary/10':'border-border hover:bg-secondary'}`}><span className="block text-sm font-medium">{p.name}</span><span className="text-xs text-muted-foreground">{BUILDING_TYPES.find(t=>t.value===p.type)?.label} · {p.width}×{p.depth} · {p.floors}F</span></button>)}</div></aside>
-      <main className="relative flex min-h-[560px] items-center justify-center p-5"><BuildingViewport preset={draft} /></main>
-      <aside className="border-l border-border p-5"><div className="flex flex-col gap-4"><label className="text-sm">Name<input className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2" value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})}/></label><label className="text-sm">Building type<select className="settings-select mt-2 w-full" value={draft.type} onChange={e=>setDraft({...draft,type:e.target.value as BuildingType})}>{BUILDING_TYPES.map(type=><option key={type.value} value={type.value}>{type.label}</option>)}</select></label>
-        <div><span className="text-sm">Footprint</span><div className="mt-2 grid grid-cols-2 gap-2"><Button size="sm" variant={draft.footprintMode!=='shape'?'default':'outline'} onClick={()=>setDraft({...draft,footprintMode:'rectangle',footprint:undefined})}>Rectangle</Button><Button size="sm" variant={draft.footprintMode==='shape'?'default':'outline'} onClick={()=>setDraft({...draft,footprintMode:'shape',footprint:undefined})}>Draw shape</Button></div><div className="mt-2"><FootprintEditor value={draft} onChange={setDraft}/></div></div>
-        <label className="flex items-start justify-between gap-3 rounded-md border border-border p-3 text-sm"><span>Sloped walls<span className="mt-1 block text-xs leading-relaxed text-muted-foreground">Follow diagonal lines in a drawn shape. Off converts them to square corners.</span></span><input type="checkbox" checked={!!draft.slopedWalls} onChange={e=>setDraft({...draft,slopedWalls:e.target.checked})}/></label>
-        <label className="text-sm">Floors · {draft.floors}<input className="mt-2 w-full" type="range" min="1" max="40" value={draft.floors} onChange={e=>setDraft({...draft,floors:Number(e.target.value)})}/></label><label className="text-sm">Roof<select className="settings-select mt-2 w-full" value={draft.roof} onChange={e=>setDraft({...draft,roof:e.target.value as BuildingPreset['roof']})}><option value="auto">Deterministic auto</option><option value="flat">Flat</option><option value="gable">Angled</option></select></label>
-        <SeedEditor value={draft.seed} onChange={seed=>setDraft({...draft,seed})}/><div className="flex flex-wrap gap-2"><Button onClick={persist}><Plus />{exists?'Save preset':'Add preset'}</Button><Button variant="outline" onClick={()=>setDraft({...draft,seed:randomSeed()})}><RotateCcw />Reroll all</Button>{exists&&<Button variant="destructive" size="icon" aria-label="Delete preset" onClick={()=>{const next=presets.filter(p=>p.id!==draft.id);save(next);select(next[0]||empty)}}><Trash2 /></Button>}</div>{error&&<p className="text-sm text-destructive">{error}</p>}<p className="text-xs leading-relaxed text-muted-foreground">Every building receives at least one entrance. Each seed pair controls one stable visual system, including facade, glazing, roof, entrance placement, spacing and details.</p></div></aside>
-    </div></div>
+  const typeLabel = BUILDING_TYPES.find(type => type.value === draft.type)?.label || draft.type
+  const importPresets = async (file?: File) => { if (!file) return; try { const next = parseBuildingPresets(JSON.parse(await file.text())); save(next); select(next[0] || empty); setError('') } catch (reason) { setError(reason instanceof Error ? reason.message : 'Invalid building preset file.') } }
+  const remove = () => { const next = presets.filter(preset => preset.id !== draft.id); save(next); select(next[0] || empty) }
+  return <div className={styles.workspace}>
+    <main className={styles.viewport}><BuildingViewport preset={draft} /></main>
+
+    <aside className={`${styles.panel} ${styles.catalog}`} aria-label="Building presets">
+      <div className={styles.panelHeader}>
+        <span className={styles.eyebrow}>PRESETS</span>
+        <div className={styles.headerActions}>
+          <label className={styles.smallButton}><Upload size={12} />Import<input className="sr-only" type="file" accept="application/json,.json" onChange={async event => { await importPresets(event.target.files?.[0]); event.target.value = '' }} /></label>
+          <button className={styles.smallButton} onClick={() => download(presets)}><Download size={12} />Export</button>
+          <button className={styles.iconButton} aria-label="New preset" onClick={() => setDraft({ ...empty, id: `draft-${Date.now()}`, seed: randomSeed() })}><Plus size={14} /></button>
+        </div>
+      </div>
+      <div className={styles.presetList}>{presets.map(preset => <button key={preset.id} onClick={() => select(preset)} className={`${styles.preset} ${preset.id === draft.id ? styles.selectedPreset : ''}`}>
+        <span>{preset.name}</span><small>{BUILDING_TYPES.find(type => type.value === preset.type)?.label} · {preset.width}×{preset.depth} · {preset.floors}F</small>
+      </button>)}</div>
+    </aside>
+
+    <aside className={`${styles.panel} ${styles.inspector}`} aria-label="Building editor">
+      <div className={styles.inspectorHeading}>
+        <span className={styles.eyebrow}>{typeLabel} · {draft.width}×{draft.depth} · {draft.floors}F</span>
+        <input aria-label="Building name" value={draft.name} onChange={event => setDraft({ ...draft, name: event.target.value })} />
+      </div>
+      <div className={styles.inspectorScroll}>
+        <label className={styles.field}>Building type<select value={draft.type} onChange={event => setDraft({ ...draft, type: event.target.value as BuildingType })}>{BUILDING_TYPES.map(type => <option key={type.value} value={type.value}>{type.label}</option>)}</select></label>
+        <section className={styles.controlSection}>
+          <div className={styles.sectionLine}><span>Footprint</span><div className={styles.segmented}><button className={draft.footprintMode !== 'shape' ? styles.active : ''} onClick={() => setDraft({ ...draft, footprintMode: 'rectangle', footprint: undefined })}>Rectangle</button><button className={draft.footprintMode === 'shape' ? styles.active : ''} onClick={() => setDraft({ ...draft, footprintMode: 'shape', footprint: undefined })}>Shape</button></div></div>
+          <div className={styles.footprintWrap}><FootprintEditor value={draft} onChange={setDraft} /></div>
+          <label className={styles.checkLine}><span>Sloped walls<small>Follow diagonal lines in a drawn shape</small></span><input type="checkbox" checked={!!draft.slopedWalls} onChange={event => setDraft({ ...draft, slopedWalls: event.target.checked })} /></label>
+        </section>
+        <label className={styles.rangeField}><span>Floors</span><strong>{draft.floors}</strong><input type="range" min="1" max="40" value={draft.floors} onChange={event => setDraft({ ...draft, floors: Number(event.target.value) })} /></label>
+        <section className={styles.controlSection}><div className={styles.sectionLine}><span>Roof</span></div><div className={styles.roofChoices}>{(['auto', 'flat', 'gable'] as const).map(roof => <button key={roof} className={draft.roof === roof ? styles.active : ''} onClick={() => setDraft({ ...draft, roof })}>{roof === 'auto' ? 'Auto' : roof === 'gable' ? 'Gable' : 'Flat'}</button>)}</div></section>
+        <div className={styles.rerollLine}><span>Variation seed</span><button onClick={() => setDraft({ ...draft, seed: randomSeed() })}><RotateCcw size={13} />Reroll</button></div>
+        <SeedEditor value={draft.seed} onChange={seed => setDraft({ ...draft, seed })} />
+        {error && <p className={styles.error} role="alert">{error}</p>}
+      </div>
+      <div className={styles.inspectorFooter}>
+        <Button className={styles.saveButton} onClick={persist}>{exists ? 'Save preset' : 'Add preset'}</Button>
+        {exists && <Button className={styles.deleteButton} variant="destructive" size="icon" aria-label="Delete preset" onClick={remove}><Trash2 size={15} /></Button>}
+      </div>
+    </aside>
+  </div>
 }
 

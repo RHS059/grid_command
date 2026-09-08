@@ -1,0 +1,190 @@
+.workspace {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: #101c29;
+  color: #e9edf4;
+}
+
+.viewport {
+  position: absolute;
+  inset: 0;
+}
+
+.viewport :global(.model-viewport) {
+  min-height: 100%;
+  border: 0;
+  border-radius: 0;
+}
+
+.panel {
+  position: absolute;
+  z-index: 4;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .11);
+  border-radius: 12px;
+  background: rgba(15, 20, 31, .96);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, .28);
+  backdrop-filter: blur(12px);
+}
+
+.catalog {
+  top: 86px;
+  bottom: 18px;
+  left: 16px;
+  width: 296px;
+  display: flex;
+  flex-direction: column;
+}
+
+.panelHeader {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, .1);
+}
+
+.eyebrow {
+  color: #a9b2c2;
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .17em;
+  text-transform: uppercase;
+}
+
+.headerActions { display: flex; align-items: center; gap: 5px; }
+.smallButton, .iconButton, .rerollLine button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 25px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, .06);
+  color: #dbe1ea;
+  font-size: 10px;
+  cursor: pointer;
+}
+.smallButton:hover, .iconButton:hover, .rerollLine button:hover { background: rgba(255, 255, 255, .12); }
+.iconButton { width: 25px; padding: 0; }
+
+.presetList {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px;
+  scrollbar-width: thin;
+}
+
+.preset {
+  position: relative;
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #e8ebf2;
+  text-align: left;
+  cursor: pointer;
+}
+.preset:hover { background: rgba(255, 255, 255, .05); }
+.preset span { display: block; font-size: 12px; font-weight: 650; }
+.preset small { display: block; margin-top: 3px; color: #a7afbf; font-family: var(--font-mono, monospace); font-size: 8px; letter-spacing: .06em; text-transform: uppercase; }
+.selectedPreset { border-color: rgba(137, 184, 255, .4); background: rgba(137, 184, 255, .14); }
+.selectedPreset::before { content: ''; position: absolute; top: 8px; bottom: 8px; left: -1px; width: 2px; border-radius: 2px; background: #7dbbff; }
+
+.inspector {
+  top: 18px;
+  right: 16px;
+  bottom: 42px;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+}
+
+.inspectorHeading { flex: none; padding: 13px 14px 12px; border-bottom: 1px solid rgba(255, 255, 255, .1); }
+.inspectorHeading input {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.inspectorScroll { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 14px 18px; scrollbar-width: thin; }
+.field { display: block; color: #aeb6c5; font-size: 10px; }
+.field select {
+  width: 100%;
+  height: 31px;
+  margin-top: 6px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 5px;
+  background: #191f2d;
+  color: #edf1f7;
+  font-size: 11px;
+}
+
+.controlSection { margin-top: 14px; }
+.sectionLine, .rerollLine { display: flex; align-items: center; justify-content: space-between; color: #b8c0ce; font-size: 10px; }
+.segmented, .roofChoices { display: flex; border: 1px solid rgba(255, 255, 255, .14); border-radius: 5px; overflow: hidden; }
+.segmented button, .roofChoices button {
+  min-height: 26px;
+  padding: 0 9px;
+  border: 0;
+  background: transparent;
+  color: #b8c0ce;
+  font-size: 9px;
+  cursor: pointer;
+}
+.segmented button + button, .roofChoices button + button { border-left: 1px solid rgba(255, 255, 255, .1); }
+.segmented button.active, .roofChoices button.active { background: #566174; color: #fff; }
+.roofChoices { width: 100%; margin-top: 6px; }
+.roofChoices button { flex: 1; }
+
+.footprintWrap { margin-top: 7px; }
+.footprintWrap :global(svg) { display: block; width: 100%; height: 140px; aspect-ratio: auto; border-color: rgba(255, 255, 255, .14); background: #111824; }
+
+.checkLine { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; color: #c5ccd7; font-size: 10px; }
+.checkLine small { display: block; margin-top: 2px; color: #7f8999; font-size: 8px; }
+.checkLine input { accent-color: #62adff; }
+
+.rangeField { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px; margin-top: 14px; color: #b8c0ce; font-size: 10px; }
+.rangeField strong { color: #edf1f7; font-family: var(--font-mono, monospace); font-size: 10px; }
+.rangeField input { grid-column: 1 / -1; width: 100%; accent-color: #65b0ff; }
+.rerollLine { margin-top: 14px; }
+
+.seedEditor { margin-top: 8px; }
+.seedHeader { display: flex; align-items: center; justify-content: space-between; color: #9ea8b8; font-size: 9px; }
+.seedHeader span:last-child { font-family: var(--font-mono, monospace); font-size: 8px; }
+.seedGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 7px; }
+.seedGrid label { padding: 6px; border: 1px solid rgba(255, 255, 255, .1); border-radius: 5px; color: #8f99a9; font-size: 8px; }
+.seedGrid input { display: block; width: 100%; margin-top: 4px; padding: 3px 5px; border: 1px solid rgba(255, 255, 255, .12); border-radius: 3px; outline: none; background: #111722; color: #edf1f7; font-family: var(--font-mono, monospace); font-size: 10px; }
+
+.inspectorFooter { flex: none; display: flex; gap: 7px; padding: 10px 14px; border-top: 1px solid rgba(255, 255, 255, .1); }
+.saveButton { flex: 1; height: 34px; background: #367cc7; color: #fff; font-size: 11px; }
+.deleteButton { width: 34px; height: 34px; }
+.error { margin-top: 10px; color: #ff8791; font-size: 10px; }
+
+@media (max-width: 900px) {
+  .catalog { width: 240px; }
+  .inspector { width: 284px; }
+}
+
+@media (max-width: 680px) {
+  .catalog { top: 78px; right: auto; bottom: 52%; width: min(240px, calc(100vw - 32px)); }
+  .inspector { top: 50%; bottom: 10px; left: 16px; right: 16px; width: auto; }
+}
