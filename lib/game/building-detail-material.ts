@@ -36,8 +36,8 @@ export function createWireSpriteMaterial(color = '#252a29', vertexColors = false
       varying vec2 vUv;
       varying vec3 vColor;
       void main() {
-        vec2 point = vUv - 0.5;
-        float alpha = 1.0 - smoothstep(0.28, 0.48, length(point));
+        vec2 edge = min(vUv, 1.0 - vUv);
+        float alpha = smoothstep(0.0, 0.16, min(edge.x, edge.y));
         if (alpha < 0.04) discard;
         gl_FragColor = vec4(vColor, alpha);
         #include <tonemapping_fragment>
@@ -48,19 +48,10 @@ export function createWireSpriteMaterial(color = '#252a29', vertexColors = false
 }
 
 export function createColoredBuildingMaterial(kind: string) {
-  const material = new T.MeshStandardMaterial({
+  return new T.MeshBasicMaterial({
     color: '#ffffff',
     vertexColors: true,
-    roughness: kind === 'roof' ? .75 : kind === 'detail-cylinder' ? .62 : .9,
-    metalness: ['door', 'detail-box', 'detail-cylinder'].includes(kind) ? .16 : .04,
+    toneMapped: false,
     side: kind === 'gable' || kind === 'detail-plane' ? T.DoubleSide : T.FrontSide,
   })
-  material.onBeforeCompile = shader => {
-    shader.fragmentShader = shader.fragmentShader.replace(
-      'vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance;',
-      'vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance + diffuseColor.rgb * 0.24;',
-    )
-  }
-  material.customProgramCacheKey = () => 'building-colored-fill-v1'
-  return material
 }
