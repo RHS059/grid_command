@@ -40,11 +40,12 @@ const inside = (p: FootprintPoint, poly: FootprintPoint[]) => { let hit = false;
 const roomTypes: Record<BuildingType, number[]> = {
   'residential-house': [0, 0, 1, 1, 2], apartment: [0, 1, 1, 2], residential: [0, 1, 2],
   commercial: [2, 2, 3, 3, 5], 'grocery-store': [4, 4, 5], 'department-store': [5, 5, 4], 'gas-station': [4, 5, 2],
-  industrial: [6, 6, 2], 'power-station': [6, 6, 7], 'parking-garage': [7, 7, 6], government: [2, 3, 3, 7], church: [7, 3],
+  industrial: [6, 6, 2], 'power-station': [6, 6, 7], 'parking-garage': [8], government: [2, 3, 3, 7], church: [7, 3],
 }
 const roomFor = (preset: BuildingPreset, floor: number, edge: number, group: number, span: number, offset: number): InteriorRoomData => {
   const seed = random(preset.seed.slice(14, 16), `room-${floor}-${edge}-${group}`), choices = roomTypes[preset.type] || roomTypes.residential
-  return { type: choices[Math.floor(seed * choices.length) % choices.length], span, offset, seed }
+  const residentialOffset = family(preset.type) === 'residential' ? floor + edge + Math.floor(group / Math.max(1, span)) : 0
+  return { type: choices[(Math.floor(seed * choices.length) + residentialOffset) % choices.length], span, offset, seed }
 }
 
 export function normalizeBuildingPreset(value: BuildingPreset): BuildingPreset {
@@ -56,20 +57,27 @@ export function generateBuilding(input: BuildingPreset): BuildingLayout {
   const preset = normalizeBuildingPreset(input), group = family(preset.type), style = styles[group], seeds = seedPairs(preset.seed), points = polygonFor(preset), parts: BuildingPart[] = []
   const minX = Math.min(...points.map(p => p.x)), maxX = Math.max(...points.map(p => p.x)), minY = Math.min(...points.map(p => p.y)), maxY = Math.max(...points.map(p => p.y)), w = maxX - minX, d = maxY - minY
   const wallMaterial = ['stucco', 'brick', 'concrete', 'metal-panel'][seeds[0] % 4], wallColor = style.walls[seeds[1] % style.walls.length], windowType = ['narrow', 'square', 'wide', 'ribbon'][seeds[2] % 4], windowMaterial = ['clear-glass', 'smoked-glass', 'green-glass', 'amber-glass'][seeds[3] % 4], windowColor = style.windows[seeds[3] % style.windows.length], roofMaterial = ['standing-seam', 'shingle', 'membrane'][seeds[4] % 3], roofColor = style.roofs[seeds[4] % style.roofs.length]
-  const shape = preset.footprintMode === 'shape', forceGable = ['residential-house', 'church'].includes(preset.type), roofChance = Math.max(.04, (group === 'residential' ? .78 : group === 'civic' ? .55 : .18) - preset.floors * .08), roof = preset.roof === 'auto' ? !shape && (forceGable || seeds[4] < roofChance * 100) ? 'gable' : 'flat' : preset.roof === 'gable' && shape ? 'flat' : preset.roof || 'flat'
+  const shape = preset.footprintMode === 'shape', autoGable = ['residential-house', 'residential', 'church'].includes(preset.type), roof = preset.roof === 'auto' ? !shape && autoGable ? 'gable' : 'flat' : preset.roof === 'gable' && shape ? 'flat' : preset.roof || 'flat'
   const edges = points.map((start, i) => { const end = points[(i + 1) % points.length], dx = end.x - start.x, dy = end.y - start.y, length = Math.hypot(dx, dy); return { start, end, dx, dy, length, rotation: Math.atan2(dy, dx), nx: dy / length, ny: -dx / length } }).filter(e => e.length > .25)
-  const doorEdge = seeds[5] % edges.length, roomSpanSeed = preset.seed.slice(12, 14), detailSeed = preset.seed.slice(14, 16), sizes = { narrow: [1.15, 1.55], square: [1.55, 1.55], wide: [2.35, 1.35], ribbon: [3.25, 1.05] } as const
+  const doorEdge = seeds[5] % edges.length, roomSpanSeed = preset.seed.slice(12, 14), detailSeed = preset.seed.slice(14, 16), buildingHasSills = random(detailSeed, 'building-sills') > .24, sizes = { narrow: [1.15, 1.55], square: [1.55, 1.55], wide: [2.35, 1.35], ribbon: [3.25, 1.05] } as const
+  const windowDensity: Record<BuildingType, number> = { 'residential-house': .58, apartment: .72, residential: .62, commercial: .68, 'grocery-store': .46, 'department-store': .52, 'gas-station': .42, industrial: .32, 'power-station': .10, 'parking-garage': .72, government: .56, church: .24 }
+  const facadeAllowsWindow = (floor: number, edge: number, module: number, count: number) => {
+    if (count === 1) return random(preset.seed, `single-window-${floor}-${edge}`) < windowDensity[preset.type]
+    const patternModule = preset.type === 'government' ? Math.min(module, count - 1 - module) : module, phase = (seeds[6] + edge * 2 + floor) % 6
+    const patternedBlank = (patternModule + phase) % (preset.type === 'power-station' ? 3 : seeds[6] % 2 ? 4 : 5) === 0
+    return !patternedBlank && random(preset.seed, `facade-window-${floor}-${edge}-${patternModule}`) < windowDensity[preset.type]
+  }
   const closeDetail = (item: BuildingPart) => { item.lod = 'close'; return item }
   for (let floor = 0; floor < preset.floors; floor++) {
     if (floor === 0) for (let gx = Math.floor(minX / BUILDING_MODULE); gx < Math.ceil(maxX / BUILDING_MODULE); gx++) for (let gy = Math.floor(minY / BUILDING_MODULE); gy < Math.ceil(maxY / BUILDING_MODULE); gy++) { const x = (gx + .5) * BUILDING_MODULE, y = (gy + .5) * BUILDING_MODULE; if (inside({ x, y }, points)) parts.push(part(`floor-${gx}-${gy}`, 'floor', x, y, .04, BUILDING_MODULE, BUILDING_MODULE, 0, 0, style.trim, 'concrete-slab')) }
-    edges.forEach((edge, edgeIndex) => { const count = Math.max(1, Math.ceil(edge.length / BUILDING_MODULE)), moduleWidth = edge.length / count, doorModule = Math.min(count - 1, Math.floor(seeds[5] * count / 100)), spanRoll = random(roomSpanSeed, `span-${floor}-${edgeIndex}`), roomWidth = count >= 3 && spanRoll > .34 ? spanRoll > .78 ? 3 : 2 : 1; for (let module = 0; module < count; module++) { const ratio = (module + .5) / count, x = edge.start.x + edge.dx * ratio, y = edge.start.y + edge.dy * ratio, id = `edge-${edgeIndex}-${floor}-${module}`, isDoor = floor === 0 && edgeIndex === doorEdge && module === doorModule
+    edges.forEach((edge, edgeIndex) => { const count = Math.max(1, Math.ceil(edge.length / BUILDING_MODULE)), moduleWidth = edge.length / count, doorModule = ['government', 'church'].includes(preset.type) ? Math.floor(count / 2) : Math.min(count - 1, Math.floor(seeds[5] * count / 100)), spanRoll = random(roomSpanSeed, `span-${floor}-${edgeIndex}`), roomWidth = count >= 3 && spanRoll > .34 ? spanRoll > .78 ? 3 : 2 : 1; for (let module = 0; module < count; module++) { const ratio = (module + .5) / count, x = edge.start.x + edge.dx * ratio, y = edge.start.y + edge.dy * ratio, id = `edge-${edgeIndex}-${floor}-${module}`, isDoor = floor === 0 && edgeIndex === doorEdge && module === doorModule
       parts.push(part(`${id}-wall`, 'wall', x, y, floor * FLOOR_HEIGHT + FLOOR_HEIGHT / 2, moduleWidth, 0, FLOOR_HEIGHT, edge.rotation, wallColor, wallMaterial))
-      const parkingOpening = preset.type === 'parking-garage' && !isDoor && floor > 0, showWindow = !isDoor && (parkingOpening || random(preset.seed, id) < (preset.type === 'power-station' ? .2 : Math.min(.98, .55 + count * .05 + seeds[6] / 300))), fx = x + edge.nx * .025, fy = y + edge.ny * .025
-      if (isDoor) { const bay = ['industrial', 'power-station', 'parking-garage'].includes(preset.type), dw = bay ? Math.min(moduleWidth * .84, 3.2) : Math.min(moduleWidth * .52, 1.7), dh = bay ? 2.55 : 2.3; parts.push(part(`${id}-door-frame`, 'trim', fx, fy, dh / 2, dw + .28, 0, dh + .25, edge.rotation, style.trim, 'painted-trim')); parts.push(part(`${id}-door`, 'door', x + edge.nx * .04, y + edge.ny * .04, dh / 2, dw, 0, dh, edge.rotation, style.doors[seeds[5] % style.doors.length], bay ? 'rollup-steel' : 'painted-door')); if (bay) for (let slat = 1; slat < 5; slat++) parts.push(closeDetail(part(`${id}-garage-slat-${slat}`, 'detail-box', x + edge.nx * .09, y + edge.ny * .09, slat * dh / 5, dw * .92, .035, .035, edge.rotation, style.trim, 'garage-slat'))) }
+      const parkingOpening = preset.type === 'parking-garage' && !isDoor && facadeAllowsWindow(floor, edgeIndex, module, count), showWindow = !isDoor && (parkingOpening || facadeAllowsWindow(floor, edgeIndex, module, count)), fx = x + edge.nx * .025, fy = y + edge.ny * .025
+      if (isDoor) { const bay = ['industrial', 'power-station', 'parking-garage'].includes(preset.type), doubleDoor = ['church', 'government'].includes(preset.type), dw = bay ? Math.min(moduleWidth * .84, 3.2) : doubleDoor ? Math.min(moduleWidth * .74, 2.7) : Math.min(moduleWidth * .52, 1.7), dh = bay ? 2.55 : 2.3; parts.push(part(`${id}-door-frame`, 'trim', fx, fy, dh / 2, dw + .28, 0, dh + .25, edge.rotation, style.trim, 'painted-trim')); if (doubleDoor) { const tangentX = edge.dx / edge.length, tangentY = edge.dy / edge.length, leafWidth = dw / 2 - .035, leafOffset = dw / 4 + .018; for (const side of [-1, 1]) parts.push(part(`${id}-door-leaf-${side}`, 'door', x + edge.nx * .04 + tangentX * leafOffset * side, y + edge.ny * .04 + tangentY * leafOffset * side, dh / 2, leafWidth, 0, dh, edge.rotation, style.doors[seeds[5] % style.doors.length], 'painted-door')); parts.push(part(`${id}-door-center`, 'trim', fx, fy, dh / 2, .09, .08, dh + .08, edge.rotation, style.trim, 'door-center-seam', 'box')) } else parts.push(part(`${id}-door`, 'door', x + edge.nx * .04, y + edge.ny * .04, dh / 2, dw, 0, dh, edge.rotation, style.doors[seeds[5] % style.doors.length], bay ? 'rollup-steel' : 'painted-door')); if (bay) for (let slat = 1; slat < 5; slat++) parts.push(closeDetail(part(`${id}-garage-slat-${slat}`, 'detail-box', x + edge.nx * .09, y + edge.ny * .09, slat * dh / 5, dw * .92, .035, .035, edge.rotation, style.trim, 'garage-slat'))) }
       else if (showWindow) { const storefront = floor === 0 && ['commercial', 'grocery-store', 'department-store', 'gas-station'].includes(preset.type), selectedType = parkingOpening || storefront ? 'ribbon' : windowType as keyof typeof sizes, [baseW, baseH] = sizes[selectedType], ww = Math.min(moduleWidth * .82, baseW), wh = storefront ? 2.25 : parkingOpening ? 1.45 : baseH, z = floor * FLOOR_HEIGHT + (storefront ? 1.42 : parkingOpening ? 1.65 : 1.78)
         parts.push(part(`${id}-window-frame`, 'window-frame', x + edge.nx * .058, y + edge.ny * .058, z, ww + .22, .08, wh + .22, edge.rotation, style.trim, 'painted-trim', 'box'))
         const roomGroup = Math.floor(module / roomWidth) * roomWidth, roomSpan = Math.min(roomWidth, count - roomGroup), window = part(`${id}-window`, 'window', x + edge.nx * .065, y + edge.ny * .065, z, ww, 0, wh, edge.rotation, windowColor, windowMaterial, 'vertical-plane'); window.room = roomFor(preset, floor, edgeIndex, roomGroup, roomSpan, module - roomGroup); parts.push(window)
-        if (random(detailSeed, `${id}-sill`) > .16) parts.push(closeDetail(part(`${id}-sill`, 'detail-box', x + edge.nx * .16, y + edge.ny * .16, z - wh / 2 - .13, ww + .32, .34, .10, edge.rotation, style.trim, 'window-sill')))
+        if (buildingHasSills) parts.push(closeDetail(part(`${id}-sill`, 'detail-box', x + edge.nx * .16, y + edge.ny * .16, z - wh / 2 - .13, ww + .32, .34, .10, edge.rotation, style.trim, 'window-sill')))
         if (floor === 0 && !parkingOpening && random(detailSeed, `${id}-awning`) > .68) parts.push(part(`${id}-awning`, 'awning', x + edge.nx * .72, y + edge.ny * .72, z + wh / 2 + .22, ww + .42, 1.25, .12, edge.rotation, style.accent, 'fabric-awning', 'box'))
         if (floor > 0 && ['apartment', 'commercial', 'government'].includes(preset.type) && random(detailSeed, `${id}-ac`) > .83) parts.push(closeDetail(part(`${id}-window-ac`, 'detail-box', x + edge.nx * .28, y + edge.ny * .28, z - wh / 2 + .16, Math.min(.72, ww * .55), .44, .34, edge.rotation, '#a9afb0', 'window-air-conditioner')))
         if (selectedType === 'wide' || selectedType === 'ribbon') parts.push(part(`${id}-mullion`, 'accent', x + edge.nx * .072, y + edge.ny * .072, z, .07, .04, wh, edge.rotation, style.trim, 'window-mullion', 'box')); if (preset.type === 'apartment' && floor > 0 && (module + floor + seeds[7]) % 4 === 0) parts.push(part(`${id}-balcony`, 'awning', x + edge.nx * .62, y + edge.ny * .62, floor * FLOOR_HEIGHT + .72, Math.min(2.8, moduleWidth * .8), 1.15, .14, edge.rotation, style.accent, 'balcony', 'box')) }
@@ -86,7 +94,16 @@ export function generateBuilding(input: BuildingPreset): BuildingLayout {
       for (const end of [-1, 1]) parts.push(closeDetail(part(`downspout-${side}-${end}`, 'detail-cylinder', alongX ? end * length / 2 : side * span / 2, alongX ? side * span / 2 : end * length / 2, top / 2, .13, .13, top, 0, '#4b5557', 'downspout')))
     }
   }
-  else { for (let gx = Math.floor(minX / BUILDING_MODULE); gx < Math.ceil(maxX / BUILDING_MODULE); gx++) for (let gy = Math.floor(minY / BUILDING_MODULE); gy < Math.ceil(maxY / BUILDING_MODULE); gy++) { const x = (gx + .5) * BUILDING_MODULE, y = (gy + .5) * BUILDING_MODULE; if (inside({ x, y }, points)) parts.push(part(`roof-${gx}-${gy}`, 'roof', x, y, top + .09, BUILDING_MODULE + .08, BUILDING_MODULE + .08, .18, 0, roofColor, roofMaterial)) } edges.forEach((edge, i) => parts.push(part(`parapet-${i}`, 'trim', (edge.start.x + edge.end.x) / 2, (edge.start.y + edge.end.y) / 2, top + .48, edge.length, 0, .72, edge.rotation, style.trim, 'parapet'))); const count = Math.max(1, Math.min(4, Math.floor(w * d / 180) + seeds[7] % 2)); for (let i = 0; i < count; i++) parts.push(part(`roof-unit-${i}`, 'rooftop', (random(preset.seed, `rx${i}`) - .5) * Math.max(0, w - 5), (random(preset.seed, `ry${i}`) - .5) * Math.max(0, d - 5), top + .72, 1.3 + random(preset.seed, `rw${i}`), 1.15, .85, 0, style.accent, 'air-conditioner')) }
+  else {
+    for (let gx = Math.floor(minX / BUILDING_MODULE); gx < Math.ceil(maxX / BUILDING_MODULE); gx++) for (let gy = Math.floor(minY / BUILDING_MODULE); gy < Math.ceil(maxY / BUILDING_MODULE); gy++) {
+      const x = (gx + .5) * BUILDING_MODULE, y = (gy + .5) * BUILDING_MODULE, inset = BUILDING_MODULE / 2 - .03
+      const cornersInside = [[-inset, -inset], [inset, -inset], [inset, inset], [-inset, inset]].every(([ox, oy]) => inside({ x: x + ox, y: y + oy }, points))
+      if (cornersInside) parts.push(part(`roof-${gx}-${gy}`, 'roof', x, y, top + .09, BUILDING_MODULE + .04, BUILDING_MODULE + .04, .18, 0, roofColor, roofMaterial))
+      else for (let sx = 0; sx < 4; sx++) for (let sy = 0; sy < 4; sy++) { const tx = x - 1.5 + sx, ty = y - 1.5 + sy; if (inside({ x: tx, y: ty }, points)) parts.push(part(`roof-${gx}-${gy}-${sx}-${sy}`, 'roof', tx, ty, top + .09, 1.04, 1.04, .18, 0, roofColor, roofMaterial)) }
+    }
+    edges.forEach((edge, i) => parts.push(part(`parapet-${i}`, 'trim', (edge.start.x + edge.end.x) / 2, (edge.start.y + edge.end.y) / 2, top + .48, edge.length, 0, .72, edge.rotation, style.trim, 'parapet')))
+    const count = Math.max(1, Math.min(4, Math.floor(w * d / 180) + seeds[7] % 2)); for (let i = 0; i < count; i++) parts.push(part(`roof-unit-${i}`, 'rooftop', (random(preset.seed, `rx${i}`) - .5) * Math.max(0, w - 5), (random(preset.seed, `ry${i}`) - .5) * Math.max(0, d - 5), top + .72, 1.3 + random(preset.seed, `rw${i}`), 1.15, .85, 0, style.accent, 'air-conditioner'))
+  }
   const addDetail = (item: BuildingPart, close = false) => { if (close) item.lod = 'close'; parts.push(item) }
   const front = edges[doorEdge], rear = edges[(doorEdge + Math.floor(edges.length / 2)) % edges.length], utility = edges[(doorEdge + 1) % edges.length]
   const edgePoint = (edge: typeof front, ratio: number, outset: number) => ({ x: edge.start.x + edge.dx * ratio + edge.nx * outset, y: edge.start.y + edge.dy * ratio + edge.ny * outset })
@@ -125,7 +142,47 @@ export function generateBuilding(input: BuildingPreset): BuildingLayout {
     addDetail(part('water-tower', 'detail-cylinder', towerX, towerY, top + 1.85, 1.65, 1.65, 1.25, 0, '#697779', 'water-tower'))
     addDetail(part('water-tower-cap', 'detail-cylinder', towerX, towerY, top + 2.5, 1.25, 1.25, .16, 0, '#535f60', 'water-tower-cap'))
   }
-  if (['gas-station', 'grocery-store'].includes(preset.type)) { const edge = edges[doorEdge], x = (edge.start.x + edge.end.x) / 2 + edge.nx * 1.1, y = (edge.start.y + edge.end.y) / 2 + edge.ny * 1.1; parts.push(part('front-canopy', 'awning', x, y, 2.75, Math.min(edge.length * .8, 12), 2.3, .18, edge.rotation, style.accent, 'store-canopy', 'box')) }
+  if (preset.type === 'grocery-store') { const edge = edges[doorEdge], x = (edge.start.x + edge.end.x) / 2 + edge.nx * 1.1, y = (edge.start.y + edge.end.y) / 2 + edge.ny * 1.1; parts.push(part('front-canopy', 'awning', x, y, 2.75, Math.min(edge.length * .8, 12), 2.3, .18, edge.rotation, style.accent, 'store-canopy', 'box')) }
+
+  if (preset.type === 'gas-station') {
+    const tangentX = front.dx / front.length, tangentY = front.dy / front.length, canopyWidth = Math.min(14, Math.max(7, front.length * .9)), island = edgePoint(front, .5, 5.4)
+    addDetail(part('fuel-canopy', 'awning', island.x, island.y, 3.45, canopyWidth, 4.8, .28, front.rotation, style.accent, 'fuel-canopy', 'box'))
+    for (const side of [-1, 1]) for (const row of [-1, 1]) addDetail(part(`fuel-canopy-column-${side}-${row}`, 'detail-cylinder', island.x + tangentX * side * (canopyWidth / 2 - .65) + front.nx * row * 1.7, island.y + tangentY * side * (canopyWidth / 2 - .65) + front.ny * row * 1.7, 1.7, .24, .24, 3.4, 0, style.trim, 'canopy-column'))
+    const pumpCount = Math.max(2, Math.min(4, Math.floor(canopyWidth / 3.2)))
+    for (let i = 0; i < pumpCount; i++) {
+      const along = (i - (pumpCount - 1) / 2) * Math.min(3.1, canopyWidth / pumpCount), px = island.x + tangentX * along, py = island.y + tangentY * along
+      addDetail(part(`fuel-island-${i}`, 'detail-box', px, py, .12, 1.45, 1.05, .24, front.rotation, '#777b76', 'concrete-island'))
+      addDetail(part(`fuel-pump-${i}`, 'detail-box', px, py, .92, .72, .48, 1.6, front.rotation, i % 2 ? '#d9d5c8' : '#c8d0ce', 'fuel-pump'))
+      addDetail(part(`fuel-pump-top-${i}`, 'detail-box', px, py, 1.78, .82, .54, .18, front.rotation, style.accent, 'fuel-pump-sign'))
+      for (const side of [-1, 1]) addDetail(part(`fuel-bollard-${i}-${side}`, 'detail-cylinder', px + tangentX * side * .58, py + tangentY * side * .58, .48, .16, .16, .96, 0, '#d6a62e', 'safety-bollard'), true)
+    }
+  }
+
+  if (preset.type === 'power-station') {
+    const tangentX = rear.dx / rear.length, tangentY = rear.dy / rear.length, yard = edgePoint(rear, .5, 4.2)
+    addDetail(part('main-transformer', 'detail-box', yard.x, yard.y, 1.25, 3.4, 2.2, 2.5, rear.rotation, '#59645f', 'power-transformer'))
+    for (const side of [-1, 1]) {
+      const rx = yard.x + tangentX * side * 2.0, ry = yard.y + tangentY * side * 2.0
+      addDetail(part(`transformer-radiator-${side}`, 'detail-box', rx, ry, 1.15, .52, 2.35, 1.75, rear.rotation, '#3f4d49', 'transformer-radiator'))
+      for (let fin = -1; fin <= 1; fin++) addDetail(part(`radiator-fin-${side}-${fin}`, 'detail-box', rx + tangentX * fin * .15, ry + tangentY * fin * .15, 1.15, .06, 2.5, 1.82, rear.rotation, '#758078', 'radiator-fin'), true)
+    }
+    for (let i = -1; i <= 1; i++) addDetail(part(`transformer-bushing-${i}`, 'detail-cylinder', yard.x + tangentX * i * .78, yard.y + tangentY * i * .78, 3.02, .18, .18, 1.05, 0, '#8d7658', 'ceramic-insulator'))
+    for (const side of [-1, 1]) { const gx = yard.x + tangentX * side * 3.5, gy = yard.y + tangentY * side * 3.5; addDetail(part(`gantry-post-${side}`, 'detail-box', gx, gy, 2.4, .18, .18, 4.8, rear.rotation, '#4c5758', 'steel-gantry')); addDetail(part(`switch-cabinet-${side}`, 'detail-box', gx + rear.nx * .8, gy + rear.ny * .8, .9, 1.15, .7, 1.8, rear.rotation, '#737d76', 'switchgear-cabinet')) }
+    addDetail(part('gantry-crossbar', 'detail-box', yard.x, yard.y, 4.45, 7.2, .22, .22, rear.rotation, '#4c5758', 'steel-gantry'))
+    for (let i = -1; i <= 1; i++) addDetail(part(`gantry-bus-${i}`, 'wire', yard.x + rear.nx * i * .42, yard.y + rear.ny * i * .42, 4.12, 6.8, 0, .06, rear.rotation, '#6d7774', 'bus-conductor', 'vertical-plane'), true)
+  }
+
+  if (preset.type === 'government') {
+    const tangentX = front.dx / front.length, tangentY = front.dy / front.length, portico = edgePoint(front, .5, 1.75), porticoWidth = Math.min(9, Math.max(4.5, front.length * .48)), corniceHeight = Math.min(top - .2, FLOOR_HEIGHT * 1.18)
+    addDetail(part('civic-portico-roof', 'awning', portico.x, portico.y, corniceHeight, porticoWidth, 3.1, .32, front.rotation, style.trim, 'stone-portico', 'box'))
+    addDetail(part('civic-cornice', 'trim', frontCenter.x, frontCenter.y, corniceHeight + .22, Math.min(front.length * .9, 16), .38, .5, front.rotation, style.trim, 'stone-cornice', 'box'))
+    for (const side of [-1, -.34, .34, 1]) addDetail(part(`civic-column-${side}`, 'detail-cylinder', portico.x + tangentX * side * (porticoWidth * .4), portico.y + tangentY * side * (porticoWidth * .4), corniceHeight / 2, .34, .34, corniceHeight, 0, style.trim, 'stone-column'))
+    addDetail(part('civic-pediment', 'gable', portico.x + front.nx * .03, portico.y + front.ny * .03, corniceHeight + .78, porticoWidth, 0, 1.5, front.rotation, wallColor, 'stone-pediment', 'triangle-plane'))
+    addDetail(part('civic-cupola-base', 'rooftop', 0, 0, top + .55, 2.8, 2.8, 1.1, 0, style.trim, 'cupola-base'))
+    addDetail(part('civic-cupola-drum', 'detail-cylinder', 0, 0, top + 1.35, 1.75, 1.75, .8, 0, wallColor, 'cupola-drum'))
+    addDetail(part('civic-cupola-cap', 'detail-cylinder', 0, 0, top + 1.88, 1.3, 1.3, .28, 0, roofColor, 'cupola-cap'))
+    addDetail(part('civic-cupola-finial', 'detail-cylinder', 0, 0, top + 2.35, .12, .12, .8, 0, style.accent, 'cupola-finial'))
+  }
   if (preset.type === 'church') { parts.push(part('steeple', 'rooftop', 0, 0, top + 1.25, 1.5, 1.5, 2.5, 0, style.trim, 'stone-steeple', 'box')); parts.push(part('spire', 'rooftop', 0, 0, top + 3.05, .2, .2, 1.2, 0, style.accent, 'metal-spire', 'box')) }
   return { preset, parts, roof }
 }
