@@ -145,7 +145,7 @@ export function Game() {
     <div id="panel-models" role="tabpanel" aria-label="Model Preview" className={cn('model-tab-panel', styles.workspacePanel)} hidden={view !== 'models'}><UnitLab embedded active={view === 'models'} simulationPaused={state.paused || !!state.winner} soundEngine={soundEngine} /></div>
     <div id="panel-buildings" role="tabpanel" aria-label="Building Designer" className={cn('model-tab-panel', styles.workspacePanel)} hidden={view !== 'buildings'}><BuildingEditor /></div>
     <div id="panel-sfx" role="tabpanel" aria-label="SFX Designer" className={cn('model-tab-panel', styles.workspacePanel)} hidden={view !== 'sfx'}><SoundSettings engine={soundEngine} /></div>
-    <div className={styles.diagnostics}>{view === 'battlefield' ? `${fps === null ? '—' : fps === 0 ? '<1' : fps} FPS · ` : ''}BUILD 0.9.15</div>
+    <div className={styles.diagnostics}>{view === 'battlefield' ? `${fps === null ? '—' : fps === 0 ? '<1' : fps} FPS · ` : ''}BUILD 0.9.16</div>
     <GameDialogs modal={modal} onClose={() => setModal(null)} graphics={graphics} setGraphics={setGraphics} restart={restart} />
   </main>
 }
