@@ -114,7 +114,8 @@ export function generateBuilding(input: BuildingPreset): BuildingLayout {
 
   addDetail(part('electric-box', 'detail-box', utilityCenter.x, utilityCenter.y, 1.15, .72, .25, 1.05, utility.rotation, '#697374', 'electric-box'), true)
   const wireTop = Math.max(2.6, top - .55), tangentX = utility.dx / utility.length, tangentY = utility.dy / utility.length
-  for (let i = 0; i < 14; i++) { const t = i / 13, sag = Math.sin(t * Math.PI) * .24; addDetail(part(`service-wire-${i}`, 'wire', utilityCenter.x + tangentX * (t * 1.25 - .3) + utility.nx * .16, utilityCenter.y + tangentY * (t * 1.25 - .3) + utility.ny * .16, 1.55 + (wireTop - 1.55) * t - sag, .115, 0, .115, utility.rotation, '#202625', 'service-wire', 'vertical-plane'), true) }
+  const wirePoint = (t: number) => ({ x: utilityCenter.x + tangentX * (t * 1.25 - .3) + utility.nx * .16, y: utilityCenter.y + tangentY * (t * 1.25 - .3) + utility.ny * .16, z: 1.55 + (wireTop - 1.55) * t - Math.sin(t * Math.PI) * .24 })
+  for (let i = 0; i < 13; i++) { const start = wirePoint(i / 13), end = wirePoint((i + 1) / 13), length = Math.hypot(end.x - start.x, end.y - start.y, end.z - start.z); addDetail(part(`service-wire-${i}`, 'wire', (start.x + end.x) / 2, (start.y + end.y) / 2, (start.z + end.z) / 2, .045, 0, length * 1.12, utility.rotation, '#202625', 'service-wire', 'vertical-plane'), true) }
 
   if (['industrial', 'power-station', 'parking-garage'].includes(preset.type)) for (let i = 0; i < 2 + seeds[7] % 3; i++) { const pipe = edgePoint(utility, .18 + i * .13, .22); addDetail(part(`service-pipe-${i}`, 'detail-cylinder', pipe.x, pipe.y, top * .42, .16, .16, Math.max(1.8, top * .72), 0, i % 2 ? '#807260' : '#596667', 'service-pipe'), true) }
 
