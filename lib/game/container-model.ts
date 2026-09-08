@@ -1,5 +1,5 @@
-import * as T from 'three'
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
+import * as T from './scene-data'
+import { mergeGeometries } from './scene-data'
 
 // A common container keeps the truck, crane load and receiving trailer aligned.
 export function createCargoContainer() {

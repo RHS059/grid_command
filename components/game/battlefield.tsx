@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState, type MutableRefObject } from 'react'
-import maplibregl, { type GeoJSONSource, type Map as GeoMap } from 'maplibre-gl'
+import * as geographic from '@/lib/game/geo-map'
+import type { GeoJSONSource, GeoMap } from '@/lib/game/geo-map'
 import type { FeatureCollection, Feature, Geometry } from 'geojson'
 import { Crosshair } from 'lucide-react'
 import { DisplayPoses, followSubject, chaseView, angleBetween } from '@/lib/game/chase-camera'
@@ -24,27 +25,27 @@ interface Props {
   onWorldReady: () => void;
 }
 export function Battlefield(props: Props) {
-  const container = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement>(null), miniContainer = useRef<HTMLDivElement>(null)
+  const container = useRef<HTMLDivElement>(null), miniContainer = useRef<HTMLDivElement>(null)
   const latest = useRef(props); latest.current = { ...props, graphics: effectiveGraphics(props.graphics) }
   const mapRef = useRef<GeoMap | null>(null)
   const renderRef = useRef<import('@/lib/game/renderer').BattlefieldRenderer | null>(null)
   const [loading, setLoading] = useState(true), [error, setError] = useState(''), [progress, setProgress] = useState<BuildingAssessmentProgress>({ done: 0, total: 0, phase: 'discovering' })
 
   useEffect(() => {
-    if (!container.current || !canvas.current) return
+    if (!container.current) return
     let disposed = false, interval: ReturnType<typeof setInterval> | undefined
     const homeZoom = () => 10
     let map: GeoMap
-    try { map = new maplibregl.Map({ container: container.current, style: tacticalStyle(), center: CENTER, zoom: homeZoom(), pitch: 45, bearing: -18, minZoom: 8, maxZoom: 22, maxPitch: 75, antialias: false, pixelRatio: Math.min(window.devicePixelRatio, 1.5), attributionControl: { compact: true }, maxBounds: [[-118.5,31.5],[-115.5,34.2]], fadeDuration: 0, refreshExpiredTiles: false }) }
-    catch { setError('WebGL is unavailable. Enable hardware acceleration in your browser and reload.'); setLoading(false); return }
+    try { map = new geographic.GeoMap({ container: container.current, style: tacticalStyle(), center: CENTER, zoom: homeZoom(), pitch: 45, bearing: -18, minZoom: 8, maxZoom: 22, maxPitch: 75, antialias: false, pixelRatio: Math.min(window.devicePixelRatio, 1.5), attributionControl: { compact: true }, maxBounds: [[-118.5,31.5],[-115.5,34.2]], fadeDuration: 0, refreshExpiredTiles: false }) }
+    catch { setError('Graphics initialization failed. Enable hardware acceleration in your browser and reload.'); setLoading(false); return }
     map.fitBounds(THEATER_BOUNDS, { padding: { top: 100, bottom: 65, left: 40, right: 40 }, duration: 0, pitch: 0, bearing: 0 })
     mapRef.current = map
-    const markers = new Map<string, maplibregl.Marker>(), objectives = new Map<string, maplibregl.Marker>()
-    const imported = new Set<string>(), fixed: maplibregl.Marker[] = []
+    const markers = new Map<string, geographic.Marker>(), objectives = new Map<string, geographic.Marker>()
+    const imported = new Set<string>(), fixed: geographic.Marker[] = []
     let minimap: GeoMap | null = null, lastMarkers = 0, lastData = 0, lastDataTick = -1, lastRoutes = false, lastPerspective = '', overlayStarted = false
     const poses = new DisplayPoses()
     let chaseOptions: ReturnType<NonNullable<GeoMap['transformCameraUpdate']>> | null = null, orbiting = false, orbitBearing = 0
-    // Pinned MapLibre 4.7 overwrites target elevation during terrain rendering after transformCameraUpdate.
+    // Chase camera explicitly owns target altitude until the player releases follow.
     // Freeze only while following; restore its normal elevation management for every free-camera interaction.
     const elevationControl = map as GeoMap & { _elevationFreeze: boolean }
     map.transformCameraUpdate = () => orbiting ? {} : chaseOptions || {}
@@ -76,9 +77,9 @@ export function Battlefield(props: Props) {
         view.to = { x: view.from.x + (view.to.x - view.from.x) * ratio, y: view.from.y + (view.to.y - view.from.y) * ratio }; view.toZ = 0
       }
       elevationControl._elevationFreeze = true
-      const options = map.calculateCameraOptionsFromTo(maplibregl.LngLat.convert(lngLat(view.from)), view.fromZ, maplibregl.LngLat.convert(lngLat(view.to)), view.toZ)
+      const options = map.calculateCameraOptionsFromTo(geographic.LngLat.convert(lngLat(view.from)), view.fromZ, geographic.LngLat.convert(lngLat(view.to)), view.toZ)
       options.zoom = Math.min(22, options.zoom!)
-      chaseOptions = { ...options, center: maplibregl.LngLat.convert(options.center!), elevation: view.toZ }
+      chaseOptions = { ...options, center: geographic.LngLat.convert(options.center!), elevation: view.toZ }
       map.jumpTo(options)
     }
     frame = requestAnimationFrame(followFrame)
@@ -100,15 +101,28 @@ export function Battlefield(props: Props) {
     map.on('rotate', () => { if (orbiting && latest.current.selected) updateOrbit() })
     map.on('rotateend', () => { if (!orbiting) return; updateOrbit(); orbiting = false })
     let collision: GeometryPacket | null = null
-    let mapLoaded = false, buildingsLoaded = false, readySent = false, consolidatedBuildings: GeometryPacket['features'] = [], cachedBuildings: PlacedBuilding[] = []
+    let mapLoaded = false, buildingsLoaded = false, readySent = false, catalogReceived = false, consolidatedBuildings: GeometryPacket['features'] = [], cachedBuildings: PlacedBuilding[] = []
     const finishLoading = () => { if (!mapLoaded || !buildingsLoaded || readySent) return; readySent = true; setLoading(false); latest.current.onWorldReady(); latest.current.onStatus('San Diego building catalog ready') }
-    const cancelGeometry = loadBattleGeometry(packet => { collision = packet; latest.current.onGeometry(packet) }, text => latest.current.onStatus(text), () => latest.current.stateRef.current, value => setProgress(value), features => { if(buildingsLoaded)return;consolidatedBuildings = features; buildingsLoaded = true; renderRef.current?.buildings.setFeatures(features); finishLoading() }, records => { if(renderRef.current)renderRef.current.buildings.setCatalog(records);else cachedBuildings=records;buildingsLoaded=true;finishLoading() })
+    const constructCatalog = (records: PlacedBuilding[]) => {
+      if (!renderRef.current) { cachedBuildings = records; return }
+      cachedBuildings = []
+      setProgress({ done: 0, total: records.length, phase: 'assessing' })
+      renderRef.current.buildings.setCatalog(records, (done, total) => {
+        if (!disposed) setProgress({ done, total, phase: done === total ? 'ready' : 'assessing' })
+      }, () => {
+        if (disposed) return
+        buildingsLoaded = true
+        renderRef.current?.resize()
+        finishLoading()
+      })
+    }
+    const cancelGeometry = loadBattleGeometry(packet => { collision = packet; latest.current.onGeometry(packet) }, text => latest.current.onStatus(text), () => latest.current.stateRef.current, value => { if (!catalogReceived) setProgress(value) }, features => { if(catalogReceived || buildingsLoaded)return;consolidatedBuildings = features; buildingsLoaded = true; renderRef.current?.buildings.setFeatures(features); finishLoading() }, records => { catalogReceived = true; constructCatalog(records) })
     const importGeometry = () => { if(collision) latest.current.onGeometry(collision) }
     const focus = (point: { x: number; y: number }, zoom = 16.3) => { releaseFollow(); map.flyTo({ center: lngLat(point), zoom, duration: 1100, essential: false }) }
     latest.current.onReady({ overview: () => { releaseFollow(); map.fitBounds(THEATER_BOUNDS, { padding: {top:map.getContainer().clientWidth<760?115:65,bottom:50,left:35,right:35}, pitch: 0, bearing: 0, duration: 1000 }) }, focus, zoom: delta => { if (latest.current.selected) chaseScale = Math.max(.6, Math.min(6, chaseScale * 2 ** (-delta / 2))); else map.zoomTo(map.getZoom() + delta, { duration: 300 }) }, rotate: () => { releaseFollow(); map.rotateTo(0, { duration: 600 }) }, tilt: () => { releaseFollow(); map.easeTo({ pitch: map.getPitch() > 10 ? 0 : 55, duration: 600 }) }, reimport: () => { imported.clear(); importGeometry() } })
     map.on('error', e => {
       const message = e.error?.message || ''
-      if (/webgl|context lost/i.test(message)) { setError('The graphics context was lost. Reload to reconnect.'); latest.current.onStatus('Graphics interrupted') }
+      if (/webgpu|webgl|graphics initialization|context lost/i.test(message)) { setError('The graphics engine could not start. Enable hardware acceleration and reload.'); setLoading(false); latest.current.onStatus('Graphics interrupted') }
       else if (/tile|fetch|network/i.test(message)) latest.current.onStatus('Some map tiles unavailable · retry by panning')
     })
     map.on('resize', () => { if(!latest.current.selected&&map.getZoom()<12)map.fitBounds(THEATER_BOUNDS,{padding:{top:85,bottom:45,left:35,right:35},duration:0,pitch:0,bearing:0}) })
@@ -121,7 +135,7 @@ export function Battlefield(props: Props) {
         const style = tacticalStyle(); style.layers = style.layers.filter(l => !['hillshade', 'buildings-3d', 'buildings-3d-detail', 'road-labels', 'unit-routes', 'tactical-grid'].includes(l.id)); delete style.sources.elevation; delete style.sources.hillshadeDem
         style.sources['mini-units'] = { type: 'geojson', data: { type: 'FeatureCollection', features: [] } }
         style.layers.push({ id: 'mini-units', type: 'circle', source: 'mini-units', paint: { 'circle-radius': 2, 'circle-color': ['get', 'color'] } })
-        minimap = new maplibregl.Map({ container: miniContainer.current, style, center: CENTER, zoom: 7.9, interactive: false, attributionControl: false, antialias: false, pixelRatio: 1 })
+        minimap = new geographic.GeoMap({ container: miniContainer.current, style, center: CENTER, zoom: 7.9, interactive: false, attributionControl: false, antialias: false, pixelRatio: 1 })
         minimap.fitBounds(THEATER_BOUNDS,{padding:8,duration:0})
         lastDataTick = -1
       }
@@ -136,14 +150,14 @@ export function Battlefield(props: Props) {
       for (const side of ['BLU', 'RED'] as Side[]) for (const base of [{ ...BASES[side], label: `${side} MOB` }, { ...AIRBASES[side], label: `${side} AIRBASE` }]) {
         const el = document.createElement('button'); el.className = `base-marker ${side.toLowerCase()}`; el.textContent = base.label; el.setAttribute('aria-label', `Focus ${base.label}`)
         el.onclick = e => { e.stopPropagation(); latest.current.onSelect(null); focus(base, 16.5) }
-        fixed.push(new maplibregl.Marker({ element: el }).setLngLat(lngLat(base)).addTo(map));el.setAttribute('aria-label',`Focus ${base.label}`)
+        fixed.push(new geographic.Marker({ element: el }).setLngLat(lngLat(base)).addTo(map));el.setAttribute('aria-label',`Focus ${base.label}`)
       }
       importGeometry()
       if (!overlayStarted) {
         overlayStarted = true
         import('@/lib/game/renderer').then(({ BattlefieldRenderer }) => {
-          if (disposed || !canvas.current) return
-          try { renderRef.current = new BattlefieldRenderer(map, canvas.current, () => displayState, () => ({ graphics: latest.current.graphics, perspective: latest.current.perspective, selected: latest.current.selected, active: latest.current.active }), fps => latest.current.onFPS(fps));if(cachedBuildings.length){renderRef.current.buildings.setCatalog(cachedBuildings);cachedBuildings=[]}else if(consolidatedBuildings.length)renderRef.current.buildings.setFeatures(consolidatedBuildings);latest.current.onStatus('3D renderer online') }
+          if (disposed) return
+          try { renderRef.current = new BattlefieldRenderer(map, null, () => displayState, () => ({ graphics: latest.current.graphics, perspective: latest.current.perspective, selected: latest.current.selected, active: latest.current.active }), fps => latest.current.onFPS(fps), message => latest.current.onStatus(message));if(cachedBuildings.length)constructCatalog(cachedBuildings);else if(consolidatedBuildings.length)renderRef.current.buildings.setFeatures(consolidatedBuildings);latest.current.onStatus('WebGPU battlefield initializing') }
           catch { latest.current.onStatus('3D overlay unavailable · tactical map active') }
         }).catch(() => latest.current.onStatus('3D overlay unavailable · tactical map active'))
       }
@@ -162,9 +176,9 @@ export function Battlefield(props: Props) {
             const el = document.createElement('button'); const diamond = document.createElement('span'); diamond.className = 'objective-diamond'; const letter = document.createElement('span'); letter.textContent = o.id; diamond.append(letter)
             const label = document.createElement('span'); label.className = 'objective-label'; el.append(diamond, label)
             el.onclick = e => { e.stopPropagation(); latest.current.onSelect(null); focus(o, 16) }
-            marker = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(lngLat(o)).addTo(map); objectives.set(o.id, marker)
+            marker = new geographic.Marker({ element: el, anchor: 'center' }).setLngLat(lngLat(o)).addTo(map); objectives.set(o.id, marker)
           }
-          const el = marker.getElement(); el.className = `maplibregl-marker objective-marker ${map.getZoom()<12?'strategic':''} ${o.owner?.toLowerCase() || ''}`; el.style.zIndex = '2'; el.setAttribute('aria-label', `Objective ${o.id}, ${o.contested ? 'contested' : o.owner || 'neutral'}`)
+          const el = marker.getElement(); el.className = `geographic-marker objective-marker ${map.getZoom()<12?'strategic':''} ${o.owner?.toLowerCase() || ''}`; el.style.zIndex = '2'; el.setAttribute('aria-label', `Objective ${o.id}, ${o.contested ? 'contested' : o.owner || 'neutral'}`)
           const facilities=[o.facilities?.helipad&&!o.facilities.helipad.construction&&(o.facilities.helipad.hp>=40?'H':'H×'),o.facilities?.vehicleBay&&!o.facilities.vehicleBay.construction&&(o.facilities.vehicleBay.hp>=40?'V':'V×')].filter(Boolean).join(' / ')
           el.querySelector('.objective-label')!.textContent = o.contested ? 'CONTESTED' : o.capturing ? `CAPTURING ${Math.round(o.progress * 100)}%` : o.owner ? `${o.owner} CONTROL${facilities?` · ${facilities}`:''}` : 'UNCONTROLLED'
           ;(el.querySelector('.objective-label') as HTMLElement).style.display = map.getZoom()<12 ? 'none' : ''
@@ -179,9 +193,9 @@ export function Battlefield(props: Props) {
             const el = document.createElement('button'); const symbol = document.createElement('span'); symbol.className = 'marker-box'; symbol.textContent = ['TANK','APC','CANNON_APC','IFV'].includes(u.role) ? '▱' : u.role === 'TRUCK' ? '=' : u.role === 'COMMAND' ? '★' : ['RECON_UAV','CAS_FIGHTER','JET','ATTACK_HELI'].includes(u.role) ? '⌁' : u.role === 'MEDIC' ? '+' : '×'
             const health = document.createElement('span'); health.className = 'marker-health'; health.append(document.createElement('i')); const label = document.createElement('span'); label.className = 'marker-name'; label.textContent = u.name
             el.append(symbol, health, label); el.onclick = e => { e.stopPropagation(); latest.current.onSelect(u.id) }
-            marker = new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -10] }).setLngLat(ll).addTo(map); markers.set(u.id, marker)
+            marker = new geographic.Marker({ element: el, anchor: 'bottom', offset: [0, -10] }).setLngLat(ll).addTo(map); markers.set(u.id, marker)
           }
-          const el = marker.getElement(); el.className = `maplibregl-marker tactical-marker ${u.side.toLowerCase()} ${selected === u.id ? 'selected' : ''}`; el.setAttribute('aria-label', `${u.name}, ${u.role}, ${u.mission}`)
+          const el = marker.getElement(); el.className = `geographic-marker tactical-marker ${u.side.toLowerCase()} ${selected === u.id ? 'selected' : ''}`; el.setAttribute('aria-label', `${u.name}, ${u.role}, ${u.mission}`)
           ;(el.querySelector('.marker-name') as HTMLElement).style.display = graphics.labels && (map.getZoom() > 15.4 || selected === u.id) ? 'block' : 'none'
           ;(el.querySelector('.marker-health i') as HTMLElement).style.width = `${u.hp}%`; marker.setLngLat(ll)
         }
@@ -217,10 +231,9 @@ export function Battlefield(props: Props) {
 
   return <>
     <div ref={container} className="map-root" aria-label="Interactive geographic battlefield of San Diego" />
-    <canvas ref={canvas} className="map-canvas" aria-hidden="true" />
     <div className="map-vignette" />
     <div className="minimap-card desktop-only" style={props.graphics.performanceMode ? { display: 'none' } : undefined}><div className="minimap-header"><span>THEATER OVERVIEW</span><span>N ↑</span></div><div ref={miniContainer} className="minimap-map" /></div>
-    {loading && <div className={styles.loadingScreen} role="status"><div className={styles.loadingBrand}><span className={styles.brandOrb}><Crosshair size={17} /></span><span><strong>GRID COMMAND</strong><small>Preparing San Diego · City theater</small></span></div><div className={styles.loadingCopy}><strong>{progress.phase === 'assessing' ? 'COMBINING BUILDING FOOTPRINTS' : progress.phase === 'ready' ? 'BUILDINGS READY' : 'DISCOVERING BUILDINGS'}</strong><span>{progress.done.toLocaleString()} / {progress.total ? progress.total.toLocaleString() : '…'} {progress.phase === 'discovering' ? 'sectors' : 'buildings'}</span></div><div className={styles.loadingTrack}><i style={{ width: `${progress.total ? Math.min(100, progress.done / progress.total * 100) : 0}%` }} /></div></div>}
+    {loading && <div className={styles.loadingScreen} role="status"><div className={styles.loadingBrand}><span className={styles.brandOrb}><Crosshair size={17} /></span><span><strong>GRID COMMAND</strong><small>Preparing San Diego · City theater</small></span></div><div className={styles.loadingCopy}><strong>{progress.phase === 'assessing' ? 'BUILDING INSTANCE DATA' : progress.phase === 'ready' ? 'BUILDINGS READY' : 'DISCOVERING BUILDINGS'}</strong><span>{progress.done.toLocaleString()} / {progress.total ? progress.total.toLocaleString() : '…'} {progress.phase === 'discovering' ? 'sectors' : 'buildings'}</span></div><div className={styles.loadingTrack}><i style={{ width: `${progress.total ? Math.min(100, progress.done / progress.total * 100) : 0}%` }} /></div></div>}
     {error && <div className="map-loading" role="alert"><span className="max-w-sm text-center text-sm">{error}</span><button className="map-control" onClick={() => window.location.reload()}>Reload battlefield</button></div>}
   </>
 }

@@ -1,4 +1,4 @@
-import * as T from 'three'
+import * as T from './scene-data'
 
 /** Small flat-shaded meshes, baked once and merged before instancing. Z is up. */
 export function tint(g: T.BufferGeometry, color: string, variation = 0) {

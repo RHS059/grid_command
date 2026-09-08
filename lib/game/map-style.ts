@@ -1,4 +1,4 @@
-import type { FilterSpecification, StyleSpecification } from 'maplibre-gl'
+import type { FilterSpecification, StyleSpecification } from './geo-map-types'
 import { JAMMER } from './theater'
 import { MOB_YARD } from './mob'
 import { AIRBASES, BASES, lngLat, type BattleState, type Perspective } from './types'
@@ -39,7 +39,7 @@ export function tacticalStyle(): StyleSpecification {
       { id: 'highway', type: 'line', source: 'openmaptiles', 'source-layer': 'transportation', filter: ['match', ['get', 'class'], ['motorway', 'trunk'], true, false], paint: { 'line-color': '#536275', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 2, 16, 10, 20, 70], 'line-opacity': .85 } },
       { id: 'path', type: 'line', source: 'openmaptiles', 'source-layer': 'transportation', filter: ['==', ['get', 'class'], 'path'], paint: { 'line-color': '#47504f', 'line-width': ['interpolate', ['linear'], ['zoom'], 13, .5, 17, 2], 'line-opacity': .65 } },
       { id: 'building-footprints', type: 'fill', source: 'openmaptiles', 'source-layer': 'building', filter:outsideBases, paint: { 'fill-color': '#31465e', 'fill-opacity': .55 } },
-      // MapLibre batches and simplifies vector-tile geometry. The normal 3D
+      // Native geographic tiles preserve the vector building footprints. The normal 3D
       // layer retains the skyline while flat footprints preserve every low-rise
       // building at the same low cost as the buildings-off baseline.
       { id: 'buildings-3d', type: 'fill-extrusion', source: 'openmaptiles', 'source-layer': 'building', minzoom: 14.2, filter:prominentBuildings, paint: {

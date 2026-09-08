@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import * as T from 'three'
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import * as T from '@/lib/game/scene-data'
+import { GraphicsRenderer, OrbitControls } from '@/lib/game/graphics-preview'
 import { addCarrierOccupants } from '@/lib/game/carrier-occupants'
 import { SoldierBatch, vehicleGeometry } from '@/lib/game/unit-models'
 import { createAircraft, animateAircraft, disposeModel } from '@/lib/game/aircraft-models'
@@ -17,10 +17,11 @@ export function ModelViewport(props: Props) {
   useEffect(() => {
     if (!props.active || !host.current) return
     setError('')
-    let renderer: T.WebGLRenderer
-    try { renderer = new T.WebGLRenderer({ antialias: true, alpha: true }) } catch { setError('3D preview requires WebGL. Enable hardware acceleration and reload.'); return }
+    let renderer: GraphicsRenderer
+    try { renderer = new GraphicsRenderer({ antialias: true, alpha: true }) } catch { setError('3D preview could not start. Enable hardware acceleration and reload.'); return }
+    void renderer.ready.catch(() => setError('3D preview could not start. Enable hardware acceleration and reload.'))
     const element = host.current, scene = new T.Scene(), camera = new T.PerspectiveCamera(38, 1, .05, 5000)
-    camera.up.set(0, 0, 1); renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5)); renderer.outputColorSpace = T.SRGBColorSpace
+    camera.up.set(0, 0, 1); renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5))
     renderer.domElement.setAttribute('aria-label', `${MODEL_NAMES[props.model]} interactive 3D model`); element.append(renderer.domElement)
     const orbit = new OrbitControls(camera, renderer.domElement); orbit.enableDamping = true; orbit.autoRotateSpeed = .65; orbit.maxPolarAngle = Math.PI * .49
     const sky = new T.HemisphereLight('#dbe7ef', '#172432', 2.8); sky.position.set(0, 0, 1); scene.add(sky)
@@ -53,7 +54,7 @@ export function ModelViewport(props: Props) {
       orbit.autoRotate = c.rotate; orbit.update(); renderer.render(scene, camera)
     }
     frame = requestAnimationFrame(render)
-    return () => { cancelAnimationFrame(frame); observer.disconnect(); orbit.dispose(); batch?.dispose(); disposeModel(scene); material.dispose(); renderer.dispose(); renderer.forceContextLoss(); renderer.domElement.remove() }
+    return () => { cancelAnimationFrame(frame); observer.disconnect(); orbit.dispose(); batch?.dispose(); disposeModel(scene); material.dispose(); renderer.dispose(); renderer.domElement.remove() }
   }, [props.model, props.side, props.active])
   return <div className="model-viewport" ref={host}>{error && <p role="alert" className="p-6 text-sm text-destructive">{error}</p>}</div>
 }

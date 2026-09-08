@@ -1,7 +1,7 @@
 import { animateMob } from './mob-models'
 import { mobHelipadRise, mobTier, MOB_YARD, onMobHelipad } from './mob'
-import * as T from 'three'
-import { MercatorCoordinate, type Map as GeographicMap, type CustomLayerInterface } from 'maplibre-gl'
+import * as T from './scene-data'
+import type { GeoMap as GeographicMap } from './geo-map'
 import { BASES, AIRBASES, CENTER, CATALOG, SIDE_COLOR, isAir, isVehicle, lngLat, local, type BattleState, type Graphics, type Perspective, type Role, type Side } from './types'
 import { addCarrierOccupants, updateCarrierOccupants } from './carrier-occupants'
 import { SoldierBatch, vehicleGeometry } from './unit-models'
@@ -30,7 +30,7 @@ export class BattlefieldRenderer {
   }
   corpseBatches: Record<Side,SoldierBatch[]> = {BLU:[],RED:[]};
   aircraft=new Map<string,T.Group>();objectiveFacilities=new Map<string,T.Group>();bases:{model:T.Group;point:{x:number;y:number;id:string};elevation?:BaseElevation}[]=[];buildings:ModularBuildingRenderer
-  renderer!:T.WebGLRenderer;scene=new T.Scene();camera=new T.Camera();transform=new T.Matrix4();dummy=new T.Object3D();groups=new Map<string,T.InstancedMesh>();soldiers:Record<Side,SoldierBatch>;effects=new Map<string,T.InstancedMesh>();combatLights:T.PointLight[]=[];layer:CustomLayerInterface;disposed=false;previous=0;report=0;frames:number[]=[];ground=new Map<string,{x:number;y:number;z:number;time:number}>();snapshotTime=-1;arrival=0
+  ready:Promise<void>;scene=new T.Scene();camera=new T.Camera();transform=new T.Matrix4();dummy=new T.Object3D();groups=new Map<string,T.InstancedMesh>();soldiers:Record<Side,SoldierBatch>;effects=new Map<string,T.InstancedMesh>();combatLights:T.PointLight[]=[];disposed=false;previous=0;report=0;frames:number[]=[];ground=new Map<string,{x:number;y:number;z:number;time:number}>();snapshotTime=-1;arrival=0
   constructor(public map:GeographicMap,_canvas:HTMLCanvasElement|null,public getState:()=>BattleState,public getSettings:()=>{graphics:Graphics;perspective:Perspective;selected:string|null;active?:boolean},public onFPS:(n:number)=>void){
     const material=new T.MeshStandardMaterial({vertexColors:true,roughness:.85,metalness:.08,flatShading:false});this.soldiers={BLU:new SoldierBatch(this.scene,'BLU',material),RED:new SoldierBatch(this.scene,'RED',material)}
     const sky=new T.HemisphereLight('#dbe7ef','#172432',2.3);sky.position.set(0,0,1);this.scene.add(sky);const sun=new T.DirectionalLight('#dbe7ef',3);sun.position.set(-400,200,600);this.scene.add(sun)
@@ -46,8 +46,7 @@ export class BattlefieldRenderer {
     const rocketSmoke=new T.InstancedMesh(new T.IcosahedronGeometry(1,1),new T.MeshStandardMaterial({color:'#697278',transparent:true,opacity:.42,roughness:1,depthWrite:false,flatShading:true}),256);rocketSmoke.count=0;rocketSmoke.frustumCulled=false;this.effects.set('rocket-smoke',rocketSmoke);this.scene.add(rocketSmoke)
     const shadow=new T.InstancedMesh(new T.CircleGeometry(1,12),new T.MeshBasicMaterial({color:'#0b1119',transparent:true,opacity:.3,depthWrite:false}),256);shadow.count=0;shadow.frustumCulled=false;this.effects.set('shadow',shadow);this.scene.add(shadow)
     for(let i=0;i<12;i++){const light=new T.PointLight('#ff9a35',0,24,2);light.visible=false;this.combatLights.push(light);this.scene.add(light)}
-    const origin=MercatorCoordinate.fromLngLat(CENTER,0),s=origin.meterInMercatorCoordinateUnits();this.transform.makeTranslation(origin.x,origin.y,0).scale(new T.Vector3(s,-s,s))
-    this.layer={id:'battlefield-projection',type:'custom',renderingMode:'3d',onAdd:(_map,gl)=>{this.renderer=new T.WebGLRenderer({canvas:map.getCanvas(),context:gl as WebGL2RenderingContext,antialias:false});this.renderer.autoClear=false;this.renderer.outputColorSpace=T.SRGBColorSpace},render:(_gl,matrix)=>this.render(matrix as number[])};map.addLayer(this.layer)
+    this.ready=map.ready;map.attachBattlefield(this.scene,matrix=>this.render(matrix))
     map.on('sourcedata', this.terrainChanged)
     if(process.env.NODE_ENV==='development') (window as unknown as {gridDebug:BattlefieldRenderer}).gridDebug=this
   }
@@ -117,7 +116,7 @@ export class BattlefieldRenderer {
     for(const s of state.smokes){if(performanceMode&&!nearby(s.x,s.y,16))continue;if(perspective!=='OBS'&&s.side!==perspective&&!state.units.some(u=>u.side===perspective&&Math.hypot(u.x-s.x,u.y-s.y)<600))continue;const age=time-s.time;if(age<1){const p=Math.max(0,age);place(`${s.side}-core`,s.from.x+(s.x-s.from.x)*p,s.from.y+(s.y-s.from.y)*p,s.from.z+(s.z-s.from.z)*p+Math.sin(p*Math.PI)*4,.12,.12,.12)}else{const r=Math.min(12,(age-1)*4)*Math.min(1,(s.expires-time)/4);for(let i=0;i<5;i++)place('smoke',s.x+Math.sin(i*2)*r*.4,s.y+Math.cos(i*2)*r*.4,s.z+3+i,r*.65,r*.65,r*.65)}}
     for(const batches of Object.values(this.corpseBatches))for(const batch of batches)batch.end(graphics.models)
     this.soldiers.BLU.end(graphics.models);this.soldiers.RED.end(graphics.models);for(const[key,mesh]of this.groups){mesh.count=graphics.models?counts.get(key)||0:0;mesh.visible=mesh.count>0;if(mesh.count)mesh.instanceMatrix.needsUpdate=true}for(const[key,mesh]of this.effects){mesh.count=ec.get(key)||0;mesh.visible=mesh.count>0;if(mesh.count)mesh.instanceMatrix.needsUpdate=true}
-    this.renderer.resetState();this.renderer.render(this.scene,this.camera);this.renderer.resetState();if(!state.paused&&!state.winner&&!document.hidden)this.map.triggerRepaint();if(this.ground.size>1500)this.ground.clear()
+    this.map.configure(graphics);if(!state.paused&&!state.winner&&!document.hidden)this.map.triggerRepaint();if(this.ground.size>1500)this.ground.clear()
   }
-  dispose(){if(this.disposed)return;this.disposed=true;this.map.off('sourcedata',this.terrainChanged);if(process.env.NODE_ENV==='development'){const debug=window as unknown as {gridDebug?:BattlefieldRenderer};if(debug.gridDebug===this)delete debug.gridDebug}if(this.map.getLayer(this.layer.id))this.map.removeLayer(this.layer.id);this.soldiers.BLU.dispose();this.soldiers.RED.dispose();for(const batches of Object.values(this.corpseBatches))for(const batch of batches)batch.dispose();this.buildings.dispose();disposeModel(this.scene);this.aircraft.clear();this.bases=[];this.renderer?.dispose();this.ground.clear()}
+  dispose(){if(this.disposed)return;this.disposed=true;this.map.off('sourcedata',this.terrainChanged);if(process.env.NODE_ENV==='development'){const debug=window as unknown as {gridDebug?:BattlefieldRenderer};if(debug.gridDebug===this)delete debug.gridDebug}this.map.detachBattlefield();this.soldiers.BLU.dispose();this.soldiers.RED.dispose();for(const batches of Object.values(this.corpseBatches))for(const batch of batches)batch.dispose();this.buildings.dispose();disposeModel(this.scene);this.aircraft.clear();this.bases=[];this.ground.clear()}
 }

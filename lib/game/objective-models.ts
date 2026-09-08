@@ -1,4 +1,4 @@
-import * as T from 'three'
+import * as T from './scene-data'
 import { SIDE_COLOR, type Objective } from './types'
 import { objectiveFacilityPoint } from './objective-logistics'
 
