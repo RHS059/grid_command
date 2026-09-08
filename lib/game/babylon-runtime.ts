@@ -49,13 +49,11 @@ export class BabylonRuntime {
     let engine:AbstractEngine|undefined
     if(!forceWebGL&&window.isSecureContext&&'gpu'in navigator){
       let candidate:WebGPUEngine|undefined
-      let expired=false,timer:ReturnType<typeof setTimeout>|undefined
       try{
         candidate=new WebGPUEngine(canvas,{antialias:false,powerPreference:'high-performance'})
-        await Promise.race([candidate.initAsync().then(()=>{if(expired)candidate?.dispose()}),new Promise<never>((_,reject)=>{timer=setTimeout(()=>{expired=true;reject(new Error('WebGPU startup timed out'))},8000)})])
+        await candidate.initAsync()
         engine=candidate
-      }catch(error){console.warn('WebGPU startup failed; switching to Babylon compatibility rendering.',error);if(!expired)candidate?.dispose();const replacement=canvas.cloneNode(false)as HTMLCanvasElement;canvas.replaceWith(replacement);canvas=replacement}
-      finally{if(timer)clearTimeout(timer)}
+      }catch(error){console.warn('WebGPU startup failed; switching to Babylon compatibility rendering.',error);candidate?.dispose();const replacement=canvas.cloneNode(false)as HTMLCanvasElement;canvas.replaceWith(replacement);canvas=replacement}
     }
     engine??=new Engine(canvas,true,{preserveDrawingBuffer:false,stencil:true,doNotHandleContextLost:false})
     return new BabylonRuntime(canvas,engine)
@@ -166,3 +164,4 @@ export class BabylonRuntime {
   render(){if(!this.disposed)this.scene.render()}
   dispose(){if(this.disposed)return;this.disposed=true;this.effects.dispose();this.scene.dispose();this.engine.dispose();this.draws.clear();this.materials.clear();this.native.clear();this.nativeNodes.clear()}
 }
+
