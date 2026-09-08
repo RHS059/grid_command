@@ -1,6 +1,6 @@
 import * as T from 'three'
 import { generateBuilding, presetFromFeature, type BuildingPartKind } from './building-system'
-import { applyBuildingPartTransform, BUILDING_PART_CAPACITY } from './building-model'
+import { applyBuildingPartTransform, BUILDING_PART_CAPACITY, buildingGeometry } from './building-model'
 import type { GeometryPacket, Graphics } from './types'
 
 export class ModularBuildingRenderer {
@@ -11,11 +11,10 @@ export class ModularBuildingRenderer {
   private revision = 0
   private signature = ''
   constructor(private scene: T.Scene) {
-    const geometry = new T.BoxGeometry(1, 1, 1)
     for (const kind of Object.keys(BUILDING_PART_CAPACITY) as BuildingPartKind[]) {
       const material = kind === 'window' ? new T.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: .18, metalness: .16, emissive: '#07131b', emissiveIntensity: .7 })
         : new T.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: kind === 'roof' ? .75 : .9, metalness: kind === 'door' ? .18 : .04 })
-      const mesh = new T.InstancedMesh(geometry.clone(), material, BUILDING_PART_CAPACITY[kind]); mesh.count = 0; mesh.visible = false; mesh.frustumCulled = false; mesh.instanceMatrix.setUsage(T.DynamicDrawUsage); this.meshes.set(kind, mesh); scene.add(mesh)
+      const mesh = new T.InstancedMesh(buildingGeometry(kind), material, BUILDING_PART_CAPACITY[kind]); mesh.count = 0; mesh.visible = false; mesh.frustumCulled = false; mesh.instanceMatrix.setUsage(T.DynamicDrawUsage); this.meshes.set(kind, mesh); scene.add(mesh)
     }
   }
   import(packet: GeometryPacket) {
