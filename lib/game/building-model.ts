@@ -16,8 +16,8 @@ export function applyBuildingPartTransform(target: T.Object3D, item: BuildingPar
 }
 
 export function buildingGeometry(kind: BuildingPartKind) {
-  if (['wall', 'window', 'door', 'trim'].includes(kind)) { const geometry = new T.PlaneGeometry(1, 1); geometry.rotateX(Math.PI / 2); return geometry }
-  if (kind === 'floor' || kind === 'roof') return new T.PlaneGeometry(1, 1)
+  if (kind === 'wall') { const geometry = new T.PlaneGeometry(1, 1); geometry.rotateX(Math.PI / 2); return geometry }
+  if (kind === 'floor') return new T.PlaneGeometry(1, 1)
   return new T.BoxGeometry(1, 1, 1)
 }
 
@@ -27,6 +27,8 @@ const materialFor = (kind: BuildingPartKind, color: string, material: string) =>
   roughness: material.includes('glass') ? .18 : material.includes('metal') || material.includes('steel') || material.includes('panel') || material.includes('seam') ? .48 : material.includes('brick') || material.includes('shingle') ? .94 : kind === 'roof' ? .72 : .86,
   metalness: material.includes('glass') ? .24 : material.includes('metal') || material.includes('steel') || material.includes('panel') || material.includes('seam') ? .42 : .03,
   emissive: kind === 'window' ? new T.Color(color).multiplyScalar(.08) : new T.Color('#000000'),
+  transparent: material.includes('glass'),
+  opacity: material.includes('glass') ? .88 : 1,
 })
 
 export function createBuildingModel(preset: BuildingPreset) {
