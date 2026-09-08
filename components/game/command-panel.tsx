@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import { ChevronRight, Crosshair, Flag, Shield, Radio, Users, Truck, ShieldPlus, Navigation, Boxes, Plane, Target, ChevronDown, Fuel, Package, HeartPulse, ArrowUpRight } from 'lucide-react'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Button } from '@/components/ui/button'
@@ -70,8 +70,9 @@ function StaffPanel({state,side}:{state:BattleState;side:Side}){
   const council=state.subcommanders?.[side]
   return <section className={cn('force-card',side==='RED'&&'red')} aria-label={`${side} command staff`}><div className="force-heading"><div><div className="force-name force-color">{side} COMMAND STAFF</div><div className="force-callsign">Delegated authority and readiness</div></div><Radio size={18} className="force-color" /></div>{council?<><div className="strategy"><span className="font-mono force-color">{council.action}</span><span className="text-muted-foreground">OBJECTIVE {council.target} · REV {council.revision}</span></div><div className="flex flex-col gap-3 pt-4">{STAFF_ORDER.map(id=>{const report=council.reports[id];return <div key={id} className="rounded-md border border-border p-3"><div className="flex items-start justify-between gap-3"><div><div className="text-sm font-medium">{report.name}</div><div className="text-xs text-muted-foreground">{report.responsibility}</div></div><span className={cn('font-mono text-xs',report.approved?'text-primary':report.required?'text-destructive':'text-muted-foreground')}>{report.status}</span></div><p className="pt-2 text-sm leading-relaxed">{report.reason}</p><p className="pt-2 text-xs text-muted-foreground">{report.metrics} · {report.required?'decision authority':'advisory'}</p></div>})}</div></>:<p className="pt-4 text-sm text-muted-foreground">Command staff will report at the first planning cycle.</p>}</section>
 }
-export const CommandPanel = memo(function CommandPanel({ state, perspective, selected, onSelect, focus, mobileOpen, onUpgradeMob, onBuildObjective }: { state: BattleState; perspective: Perspective; selected: string | null; onSelect: (u: Unit) => void; focus: (p: { x: number; y: number }) => void; mobileOpen: boolean; onUpgradeMob?: (side: Side) => void; onBuildObjective?: (side: Side, objectiveId: string, kind: 'helipad'|'vehicleBay') => void }) {
-  const [tab, setTab] = useState('forces'), [rosterSide, setRosterSide] = useState<Side>('BLU'), [expanded, setExpanded] = useState(false)
+export const CommandPanel = memo(function CommandPanel({ state, perspective, preferredSide = 'BLU', selected, onSelect, focus, mobileOpen, onUpgradeMob, onBuildObjective }: { state: BattleState; perspective: Perspective; preferredSide?: Side; selected: string | null; onSelect: (u: Unit) => void; focus: (p: { x: number; y: number }) => void; mobileOpen: boolean; onUpgradeMob?: (side: Side) => void; onBuildObjective?: (side: Side, objectiveId: string, kind: 'helipad'|'vehicleBay') => void }) {
+  const [tab, setTab] = useState('forces'), [rosterSide, setRosterSide] = useState<Side>(preferredSide), [expanded, setExpanded] = useState(false)
+  useEffect(() => setRosterSide(preferredSide), [preferredSide])
   const visibleSides: Side[] = perspective === 'OBS' ? ['BLU', 'RED'] : [perspective]
   const activeSide = perspective === 'OBS' ? rosterSide : perspective
   const units = state.units.filter(u => u.side === activeSide && u.hp > 0 && !u.external)
@@ -88,6 +89,6 @@ export const CommandPanel = memo(function CommandPanel({ state, perspective, sel
   </aside>
 }, (previous, next) => {
   const summary = (s: BattleState) => JSON.stringify([Math.floor(s.time), s.airfields, s.mobs, s.subcommanders, s.nextSupply, s.depots, s.forces, s.objectives.map(o => [o.owner,o.contested,o.stock,o.facilities,o.restock]), s.units.map(u => [u.id, u.members, u.hp > 0, u.transport?.phase, u.transport?.cargo, u.travelStatus])])
-  return previous.perspective === next.perspective && previous.selected === next.selected && previous.mobileOpen === next.mobileOpen && previous.onSelect === next.onSelect && previous.focus === next.focus && previous.onUpgradeMob === next.onUpgradeMob && previous.onBuildObjective === next.onBuildObjective && summary(previous.state) === summary(next.state)
+  return previous.perspective === next.perspective && previous.preferredSide === next.preferredSide && previous.selected === next.selected && previous.mobileOpen === next.mobileOpen && previous.onSelect === next.onSelect && previous.focus === next.focus && previous.onUpgradeMob === next.onUpgradeMob && previous.onBuildObjective === next.onBuildObjective && summary(previous.state) === summary(next.state)
 })
 
