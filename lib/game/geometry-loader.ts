@@ -4,12 +4,15 @@ import { lngLat, local, BASES, AIRBASES, type BattleState, type GeometryFeature,
 import { MOB_YARD } from './mob'
 import { BUILDING_RENDER_CENTER, BUILDING_RENDER_RADIUS, sectorOrigin, SECTOR_SIZE } from './theater'
 import { consolidateBuildingFeatures, type BuildingAssessmentProgress } from './building-consolidation'
+import { assetPath } from '../asset-path'
+import type { PlacedBuilding } from './building-system'
 
-export function loadBattleGeometry(done:(packet:GeometryPacket)=>void,status:(text:string)=>void,_getState?:()=>BattleState,progress?:(value:BuildingAssessmentProgress)=>void,buildingsReady?:(features:GeometryFeature[])=>void){
+export function loadBattleGeometry(done:(packet:GeometryPacket)=>void,status:(text:string)=>void,_getState?:()=>BattleState,progress?:(value:BuildingAssessmentProgress)=>void,buildingsReady?:(features:GeometryFeature[])=>void,catalogReady?:(records:PlacedBuilding[])=>void){
   const host=document.createElement('div');Object.assign(host.style,{position:'fixed',left:'-2000px',top:'0',width:'1024px',height:'1024px',pointerEvents:'none',opacity:'0'});host.setAttribute('aria-hidden','true');document.body.append(host)
   const style=tacticalStyle();style.layers=style.layers.filter(l=>['background','building-footprints','water'].includes(l.id))
   const map=new maplibregl.Map({container:host,style,center:lngLat(BASES.BLU),zoom:14.8,pitch:0,interactive:false,attributionControl:false,pixelRatio:.5,fadeDuration:0})
   const cache=new Map<string,GeometryPacket>(),failed=new Map<string,number>();let disposed=false,loading='',version=0,started=0,loaded=false,finalizing=false
+  fetch(assetPath('/san-diego-buildings.json')).then(response=>{if(!response.ok)throw new Error('catalog unavailable');return response.json()}).then(value=>{const records=Array.isArray(value?.records)?value.records:[];if(value?.schema!==1||value?.region!=='san-diego-theater'||value?.complete!==true||!records.length||records.some((record:PlacedBuilding)=>typeof record?.key!=='string'||!Number.isFinite(record?.x)||!Number.isFinite(record?.y)||record?.preset?.seed?.length!==16))throw new Error('catalog invalid');if(disposed)return;progress?.({done:records.length,total:records.length,phase:'ready'});catalogReady?.(records);status(`${records.length.toLocaleString()} cached buildings ready`)}).catch(()=>status('Building catalog unavailable · rebuilding from map data'))
   const minX=Math.floor((BUILDING_RENDER_CENTER.x-BUILDING_RENDER_RADIUS)/SECTOR_SIZE),maxX=Math.floor((BUILDING_RENDER_CENTER.x+BUILDING_RENDER_RADIUS)/SECTOR_SIZE),minY=Math.floor((BUILDING_RENDER_CENTER.y-BUILDING_RENDER_RADIUS)/SECTOR_SIZE),maxY=Math.floor((BUILDING_RENDER_CENTER.y+BUILDING_RENDER_RADIUS)/SECTOR_SIZE)
   const keys:string[]=[]
   for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const nearestX=Math.max(x*SECTOR_SIZE,Math.min(BUILDING_RENDER_CENTER.x,(x+1)*SECTOR_SIZE)),nearestY=Math.max(y*SECTOR_SIZE,Math.min(BUILDING_RENDER_CENTER.y,(y+1)*SECTOR_SIZE));if(Math.hypot(nearestX-BUILDING_RENDER_CENTER.x,nearestY-BUILDING_RENDER_CENTER.y)<=BUILDING_RENDER_RADIUS)keys.push(`${x},${y}`)}
