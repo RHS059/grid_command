@@ -6,8 +6,8 @@ import { createWireSpriteMaterial } from './building-detail-material'
 const X_AXIS = new T.Vector3(1, 0, 0), Y_AXIS = new T.Vector3(0, 1, 0), Z_AXIS = new T.Vector3(0, 0, 1), PART_TILT = new T.Quaternion(), PART_ROLL = new T.Quaternion()
 
 export const BUILDING_PART_CAPACITY: Record<BuildingPartKind, number> = {
-  wall: 18000, gable: 2000, window: 6000, 'window-flat': 18000, 'window-frame': 18000, door: 2000, floor: 6000, roof: 5000,
-  trim: 26000, accent: 18000, awning: 3000, rooftop: 1500, 'detail-box': 12000, 'detail-cylinder': 4000, 'detail-dome': 512, 'detail-cooling-tower': 512, 'detail-plane': 3000, wire: 6000,
+  wall: 120000, gable: 12000, window: 40000, 'window-flat': 120000, 'window-frame': 40000, door: 16000, floor: 80000, roof: 80000,
+  trim: 120000, accent: 120000, awning: 24000, rooftop: 12000, 'detail-box': 40000, 'detail-cylinder': 24000, 'detail-dome': 4000, 'detail-cooling-tower': 4000, 'detail-plane': 24000, wire: 40000,
 }
 
 export function applyBuildingPartTransform(target: T.Object3D, item: BuildingPart, origin = { x: 0, y: 0, z: 0 }, buildingRotation = 0) {

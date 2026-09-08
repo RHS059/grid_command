@@ -3,13 +3,16 @@
 import { useEffect, useRef, useState, type MutableRefObject } from 'react'
 import maplibregl, { type GeoJSONSource, type Map as GeoMap } from 'maplibre-gl'
 import type { FeatureCollection, Feature, Geometry } from 'geojson'
+import { Crosshair } from 'lucide-react'
 import { DisplayPoses, followSubject, chaseView, angleBetween } from '@/lib/game/chase-camera'
 import { THEATER_BOUNDS } from '@/lib/game/theater'
 import { effectiveGraphics } from '@/lib/game/graphics'
 import { tacticalStyle, zoneFeatures } from '@/lib/game/map-style'
 import { loadBattleGeometry } from '@/lib/game/geometry-loader'
 import type { GeometryPacket } from '@/lib/game/types'
+import type { BuildingAssessmentProgress } from '@/lib/game/building-consolidation'
 import { AIRBASES, BASES, CENTER, SIDE_COLOR, lngLat, type BattleState, type Graphics, type Perspective, type Side } from '@/lib/game/types'
+import styles from './game-hud.module.css'
 
 export interface MapAPI { overview: () => void; focus: (point: { x: number; y: number }, zoom?: number) => void; zoom: (delta: number) => void; rotate: () => void; tilt: () => void; reimport: () => void }
 interface Props {
@@ -17,13 +20,14 @@ interface Props {
   stateRef: MutableRefObject<BattleState>; graphics: Graphics; perspective: Perspective; selected: string | null;
   onSelect: (id: string | null) => void; onReady: (api: MapAPI) => void; onFPS: (fps: number) => void;
   onStatus: (status: string) => void; onGeometry: (packet: GeometryPacket) => void;
+  onWorldReady: () => void;
 }
 export function Battlefield(props: Props) {
   const container = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement>(null), miniContainer = useRef<HTMLDivElement>(null)
   const latest = useRef(props); latest.current = { ...props, graphics: effectiveGraphics(props.graphics) }
   const mapRef = useRef<GeoMap | null>(null)
   const renderRef = useRef<import('@/lib/game/renderer').BattlefieldRenderer | null>(null)
-  const [loading, setLoading] = useState(true), [error, setError] = useState('')
+  const [loading, setLoading] = useState(true), [error, setError] = useState(''), [progress, setProgress] = useState<BuildingAssessmentProgress>({ done: 0, total: 0, phase: 'discovering' })
 
   useEffect(() => {
     if (!container.current || !canvas.current) return
@@ -95,8 +99,9 @@ export function Battlefield(props: Props) {
     map.on('rotate', () => { if (orbiting && latest.current.selected) updateOrbit() })
     map.on('rotateend', () => { if (!orbiting) return; updateOrbit(); orbiting = false })
     let collision: GeometryPacket | null = null
-    const buildingPackets = new Map<string, GeometryPacket>()
-    const cancelGeometry = loadBattleGeometry(packet => { collision = packet; if(packet.evict)buildingPackets.delete(packet.evict);buildingPackets.set(packet.sector||`legacy-${packet.version}`,packet);renderRef.current?.importBuildings(packet);latest.current.onGeometry(packet) }, text => latest.current.onStatus(text), () => latest.current.stateRef.current)
+    let mapLoaded = false, buildingsLoaded = false, readySent = false, consolidatedBuildings: GeometryPacket['features'] = []
+    const finishLoading = () => { if (!mapLoaded || !buildingsLoaded || readySent) return; readySent = true; setLoading(false); latest.current.onWorldReady(); latest.current.onStatus('San Diego building catalog ready') }
+    const cancelGeometry = loadBattleGeometry(packet => { collision = packet; latest.current.onGeometry(packet) }, text => latest.current.onStatus(text), () => latest.current.stateRef.current, value => setProgress(value), features => { consolidatedBuildings = features; buildingsLoaded = true; renderRef.current?.buildings.setFeatures(features); finishLoading() })
     const importGeometry = () => { if(collision) latest.current.onGeometry(collision) }
     const focus = (point: { x: number; y: number }, zoom = 16.3) => { releaseFollow(); map.flyTo({ center: lngLat(point), zoom, duration: 1100, essential: false }) }
     latest.current.onReady({ overview: () => { releaseFollow(); map.fitBounds(THEATER_BOUNDS, { padding: {top:map.getContainer().clientWidth<760?115:65,bottom:50,left:35,right:35}, pitch: 0, bearing: 0, duration: 1000 }) }, focus, zoom: delta => { if (latest.current.selected) chaseScale = Math.max(.6, Math.min(6, chaseScale * 2 ** (-delta / 2))); else map.zoomTo(map.getZoom() + delta, { duration: 300 }) }, rotate: () => { releaseFollow(); map.rotateTo(0, { duration: 600 }) }, tilt: () => { releaseFollow(); map.easeTo({ pitch: map.getPitch() > 10 ? 0 : 55, duration: 600 }) }, reimport: () => { imported.clear(); importGeometry() } })
@@ -122,7 +127,7 @@ export function Battlefield(props: Props) {
     }
     map.on('load', () => {
       if (disposed) return
-      setLoading(false); latest.current.onStatus('Geographic renderer online')
+      mapLoaded = true; latest.current.onStatus('Geographic renderer online'); finishLoading()
       const initialGraphics = latest.current.graphics
       for (const [id, enabled] of [['buildings-3d', false], ['buildings-3d-detail', false], ['tactical-grid', initialGraphics.grid], ['unit-routes', initialGraphics.routes], ['road-labels', initialGraphics.labels], ['hillshade', initialGraphics.shadows]] as const) map.setLayoutProperty(id, 'visibility', enabled ? 'visible' : 'none')
       map.setPixelRatio(Math.min(window.devicePixelRatio, initialGraphics.quality === 'performance' ? 1 : initialGraphics.quality === 'balanced' ? 1.5 : 2))
@@ -137,7 +142,7 @@ export function Battlefield(props: Props) {
         overlayStarted = true
         import('@/lib/game/renderer').then(({ BattlefieldRenderer }) => {
           if (disposed || !canvas.current) return
-          try { renderRef.current = new BattlefieldRenderer(map, canvas.current, () => displayState, () => ({ graphics: latest.current.graphics, perspective: latest.current.perspective, selected: latest.current.selected, active: latest.current.active }), fps => latest.current.onFPS(fps));for(const packet of buildingPackets.values())renderRef.current.importBuildings(packet);latest.current.onStatus('3D renderer online') }
+          try { renderRef.current = new BattlefieldRenderer(map, canvas.current, () => displayState, () => ({ graphics: latest.current.graphics, perspective: latest.current.perspective, selected: latest.current.selected, active: latest.current.active }), fps => latest.current.onFPS(fps));if(consolidatedBuildings.length)renderRef.current.buildings.setFeatures(consolidatedBuildings);latest.current.onStatus('3D renderer online') }
           catch { latest.current.onStatus('3D overlay unavailable · tactical map active') }
         }).catch(() => latest.current.onStatus('3D overlay unavailable · tactical map active'))
       }
@@ -214,7 +219,7 @@ export function Battlefield(props: Props) {
     <canvas ref={canvas} className="map-canvas" aria-hidden="true" />
     <div className="map-vignette" />
     <div className="minimap-card desktop-only" style={props.graphics.performanceMode ? { display: 'none' } : undefined}><div className="minimap-header"><span>THEATER OVERVIEW</span><span>N ↑</span></div><div ref={miniContainer} className="minimap-map" /></div>
-    {loading && <div className="map-loading" role="status"><div className="loading-ring" /><span className="font-mono text-sm">CONNECTING TO SAN DIEGO</span><span className="text-sm">Loading real terrain and vector geometry</span></div>}
+    {loading && <div className={styles.loadingScreen} role="status"><div className={styles.loadingBrand}><span className={styles.brandOrb}><Crosshair size={17} /></span><span><strong>GRID COMMAND</strong><small>Preparing San Diego · City theater</small></span></div><div className={styles.loadingCopy}><strong>{progress.phase === 'assessing' ? 'COMBINING BUILDING FOOTPRINTS' : progress.phase === 'ready' ? 'BUILDINGS READY' : 'DISCOVERING BUILDINGS'}</strong><span>{progress.done.toLocaleString()} / {progress.total ? progress.total.toLocaleString() : '…'} {progress.phase === 'discovering' ? 'sectors' : 'buildings'}</span></div><div className={styles.loadingTrack}><i style={{ width: `${progress.total ? Math.min(100, progress.done / progress.total * 100) : 0}%` }} /></div></div>}
     {error && <div className="map-loading" role="alert"><span className="max-w-sm text-center text-sm">{error}</span><button className="map-control" onClick={() => window.location.reload()}>Reload battlefield</button></div>}
   </>
 }

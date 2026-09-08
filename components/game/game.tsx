@@ -77,12 +77,13 @@ export function Game() {
     const w = new Worker(new URL('../../lib/game/simulation.worker.ts', import.meta.url), { type: 'module' }); worker.current = w
     w.onmessage = (e: MessageEvent<BattleState>) => { const previous = stateRef.current; stateRef.current = e.data; const now = performance.now(); if (now - lastUI.current > 240 || e.data.paused || previous.paused !== e.data.paused || previous.speed !== e.data.speed || e.data.tick === 0 || e.data.winner) { lastUI.current = now; setState(e.data) } }
     w.onerror = () => { setWorkerError('Simulation interrupted. Restart the operation or reload.'); setStatus('Simulation worker error') }
-    w.postMessage({ type: 'init', seed: 3701 })
+    w.postMessage({ type: 'init', seed: 3701 }); w.postMessage({ type: 'pause', value: true })
     return () => { w.terminate(); worker.current = null; if ('speechSynthesis' in window) window.speechSynthesis.cancel() }
   }, [])
   const pause = useCallback(() => { const next = !stateRef.current.paused; worker.current?.postMessage({ type: 'pause', value: next }); setState(s => ({ ...s, paused: next })); stateRef.current = { ...stateRef.current, paused: next } }, [])
   const speed = useCallback((n: number) => { worker.current?.postMessage({ type: 'speed', value: n }); setState(s => ({ ...s, speed: n })); stateRef.current = { ...stateRef.current, speed: n } }, [])
   const onGeometry = useCallback((packet: import('@/lib/game/types').GeometryPacket) => worker.current?.postMessage({ type: 'geometry', packet }), [])
+  const onWorldReady = useCallback(() => worker.current?.postMessage({ type: 'pause', value: false }), [])
   const onReady = useCallback((api: MapAPI) => { mapAPI.current = api }, [])
   const selectUnit = useCallback((unit: Unit) => { const live = stateRef.current.units.find(u => u.id === unit.id) || unit; setSelected(live.id); setMobileOpen(false) }, [])
   const focus = useCallback((point: { x: number; y: number }) => { setSelected(null); mapAPI.current?.focus(point); setMobileOpen(false) }, [])
@@ -126,7 +127,7 @@ export function Game() {
     <WorkspaceMenu view={view} open={workspaceOpen} setOpen={setWorkspaceOpen} setView={setView} openCommand={() => setMobileOpen(true)} openHelp={() => setModal('help')} openSettings={() => setModal('settings')} restart={() => setModal('restart')} />
     <div className="battle-workspace" id="panel-battlefield" role="tabpanel" aria-label="Battlefield" hidden={view !== 'battlefield'}>
       <div className="battle-main"><section className="map-area" aria-label="Live battlefield">
-        <Battlefield active={view === 'battlefield'} stateRef={stateRef} graphics={graphics} perspective={perspective} selected={selected} onSelect={setSelected} onReady={onReady} onFPS={setFps} onStatus={setStatus} onGeometry={onGeometry} />
+        <Battlefield active={view === 'battlefield'} stateRef={stateRef} graphics={graphics} perspective={perspective} selected={selected} onSelect={setSelected} onReady={onReady} onFPS={setFps} onStatus={setStatus} onGeometry={onGeometry} onWorldReady={onWorldReady} />
         <div className={styles.leftHud}>
           <ForceOverview state={state} side={activeSide} setSide={setActiveSide} focus={focus} openCommand={() => setMobileOpen(true)} />
           <section className={styles.radioPanel} aria-label="Radio traffic"><div className={styles.radioHeader}><span>RADIO TRAFFIC</span><div><label className="sr-only" htmlFor="radio-channel">Radio channel filter</label><select id="radio-channel" value={radioFilter} onChange={event => setRadioFilter(event.target.value)}><option value="all">All</option><option value="command">Command</option><option value="combat">Contact</option><option value="logistics">Logistics</option></select><button aria-label={audio ? 'Mute radio' : 'Enable radio audio'} onClick={toggleAudio}>{audio ? <AudioLines size={14} /> : <VolumeX size={14} />}</button></div></div><div className={styles.radioFeed} role="log" aria-live="off">{events.length ? events.slice(0, 30).map(event => <div className={styles.radioLine} key={event.id}><span><time>{clock(event.time)}</time><i className={cn(event.side === 'RED' && styles.red, event.side === 'SYS' && styles.system)}>{event.side}</i></span><p>{event.text}</p></div>) : <p className={styles.emptyRadio}>No reports on this channel.</p>}</div></section>
@@ -145,7 +146,7 @@ export function Game() {
     <div id="panel-models" role="tabpanel" aria-label="Model Preview" className={cn('model-tab-panel', styles.workspacePanel)} hidden={view !== 'models'}><UnitLab embedded active={view === 'models'} simulationPaused={state.paused || !!state.winner} soundEngine={soundEngine} /></div>
     <div id="panel-buildings" role="tabpanel" aria-label="Building Designer" className={cn('model-tab-panel', styles.workspacePanel)} hidden={view !== 'buildings'}><BuildingEditor /></div>
     <div id="panel-sfx" role="tabpanel" aria-label="SFX Designer" className={cn('model-tab-panel', styles.workspacePanel)} hidden={view !== 'sfx'}><SoundSettings engine={soundEngine} /></div>
-    <div className={styles.diagnostics}>{view === 'battlefield' ? `${fps === null ? '—' : fps === 0 ? '<1' : fps} FPS · ` : ''}BUILD 0.9.21</div>
+    <div className={styles.diagnostics}>{view === 'battlefield' ? `${fps === null ? '—' : fps === 0 ? '<1' : fps} FPS · ` : ''}BUILD 0.9.22</div>
     <GameDialogs modal={modal} onClose={() => setModal(null)} graphics={graphics} setGraphics={setGraphics} restart={restart} />
   </main>
 }

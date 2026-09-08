@@ -13,6 +13,8 @@ export const CITY_OBJECTIVES = [
   ['G', 'Mission Valley', -117.11, 32.777], ['H', 'City Heights', -117.103, 32.739],
   ['I', 'South Bay corridor', -117.058, 32.638], ['J', 'Otay Mesa', -117.028, 32.574],
 ].map(([id, name, lon, lat]) => ({ id: String(id), name: String(name), ...toPoint(Number(lon), Number(lat)) }))
+export const BUILDING_RENDER_CENTER = CITY_OBJECTIVES[Math.floor(CITY_OBJECTIVES.length / 2)]
+export const BUILDING_RENDER_RADIUS = Math.max(...[...Object.values(CITY_BASES), ...Object.values(CITY_AIRBASES)].map(point => Math.hypot(point.x - BUILDING_RENDER_CENTER.x, point.y - BUILDING_RENDER_CENTER.y))) + 200
 // Strategic staging corridor; MapLibre building/water sectors validate every ground movement.
 export const CORRIDOR = [CITY_BASES.RED, CITY_OBJECTIVES[0], toPoint(-117.069,33.072), toPoint(-117.079,33.045), ...CITY_OBJECTIVES.slice(1,5), toPoint(-117.113,32.862), ...CITY_OBJECTIVES.slice(5,8), toPoint(-117.094,32.702), toPoint(-117.066,32.674), ...CITY_OBJECTIVES.slice(8), CITY_BASES.BLU]
 export const THEATER_BOUNDS: [[number,number],[number,number]] = [[-117.23,32.525],[-116.91,33.12]]

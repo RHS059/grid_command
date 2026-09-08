@@ -29,15 +29,19 @@ export class ModularBuildingRenderer {
     for (const feature of packet.features) if (!feature.water) { this.features.set(feature.key, feature); ids.push(feature.key) }
     this.sectors.set(sector, ids); this.revision++; this.signature = ''
   }
+  setFeatures(features: GeometryPacket['features']) {
+    this.features.clear(); this.sectors.clear()
+    for (const feature of features) if (!feature.water) this.features.set(feature.key, feature)
+    this.revision++; this.signature = ''
+  }
   update(center: { x: number; y: number }, zoom: number, graphics: Graphics, terrain: boolean) {
-    const enabled = graphics.buildings && !graphics.performanceMode && zoom >= 14.2
+    const enabled = graphics.buildings && zoom >= 10
     if (!enabled) { this.signature = ''; for (const mesh of this.meshes.values()) { mesh.count = 0; mesh.visible = false } return }
-    const radius = graphics.quality === 'high' ? 1700 : 1200, maxBuildings = graphics.quality === 'high' ? 220 : 120
     const signature = `${this.revision}:${Math.round(center.x/120)}:${Math.round(center.y/120)}:${Math.round(zoom*2)}:${graphics.quality}:${terrain}`
     if (signature === this.signature) return
     this.signature = signature
-    const buildings = [...this.features.values()].map(presetFromFeature).filter((value): value is NonNullable<typeof value> => !!value && Math.hypot(value.x-center.x,value.y-center.y)<=radius)
-      .sort((a,b)=>Math.hypot(a.x-center.x,a.y-center.y)-Math.hypot(b.x-center.x,b.y-center.y)||a.preset.id.localeCompare(b.preset.id)).slice(0,maxBuildings)
+    const buildings = [...this.features.values()].map(presetFromFeature).filter((value): value is NonNullable<typeof value> => !!value)
+      .sort((a,b)=>a.preset.id.localeCompare(b.preset.id))
     const counts = new Map<BuildingPartKind, number>()
     for (const building of buildings) {
       const layout = generateBuilding(building.preset), distance = Math.hypot(building.x - center.x, building.y - center.y), close = zoom >= 17 && distance <= 360
