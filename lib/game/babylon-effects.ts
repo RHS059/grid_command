@@ -54,7 +54,7 @@ export class BattlefieldEffects {
     if(!performanceMode){
       // Babylon requires TAA to be the first camera postprocess.
       this.taa=new TAARenderingPipeline('grid-temporal-aa',this.scene,[this.camera],Constants.TEXTURETYPE_HALF_FLOAT)
-      this.taa.samples=8;this.taa.reprojectHistory=true;this.taa.clampHistory=true;this.taa.disableOnCameraMove=false
+      this.taa.samples=8;this.taa.reprojectHistory=false;this.taa.clampHistory=true;this.taa.disableOnCameraMove=false
       this.contact=new SSAO2RenderingPipeline('grid-contact-shading',this.scene,{ssaoRatio:.5,blurRatio:.5},[this.camera],false,Constants.TEXTURETYPE_HALF_FLOAT)
       this.contact.radius=2;this.contact.totalStrength=.75;this.contact.samples=8
       this.reflections=new SSRRenderingPipeline('grid-reflections',this.scene,[this.camera],false,Constants.TEXTURETYPE_HALF_FLOAT)
