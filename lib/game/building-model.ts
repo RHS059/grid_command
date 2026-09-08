@@ -10,36 +10,44 @@ export function applyBuildingPartTransform(target: T.Object3D, item: BuildingPar
   const cos = Math.cos(buildingRotation), sin = Math.sin(buildingRotation)
   target.position.set(origin.x + item.x * cos - item.y * sin, origin.y + item.x * sin + item.y * cos, origin.z + item.z)
   target.rotation.set(item.tilt || 0, 0, buildingRotation + item.rotation)
-  target.scale.set(item.width, item.depth, item.height)
+  target.scale.set(item.width, item.primitive === 'vertical-plane' ? 1 : item.depth, item.primitive === 'horizontal-plane' ? 1 : item.height)
   target.updateMatrix()
   return target
 }
 
-const materialFor = (kind: BuildingPartKind, color: string) => new T.MeshStandardMaterial({
+export function buildingGeometry(kind: BuildingPartKind) {
+  if (['wall', 'window', 'door', 'trim'].includes(kind)) { const geometry = new T.PlaneGeometry(1, 1); geometry.rotateX(Math.PI / 2); return geometry }
+  if (kind === 'floor' || kind === 'roof') return new T.PlaneGeometry(1, 1)
+  return new T.BoxGeometry(1, 1, 1)
+}
+
+const materialFor = (kind: BuildingPartKind, color: string, material: string) => new T.MeshStandardMaterial({
   color,
   flatShading: true,
-  roughness: kind === 'window' ? .2 : kind === 'roof' ? .72 : .86,
-  metalness: kind === 'window' ? .22 : kind === 'accent' || kind === 'rooftop' ? .14 : .03,
+  roughness: material.includes('glass') ? .18 : material.includes('metal') || material.includes('steel') || material.includes('panel') || material.includes('seam') ? .48 : material.includes('brick') || material.includes('shingle') ? .94 : kind === 'roof' ? .72 : .86,
+  metalness: material.includes('glass') ? .24 : material.includes('metal') || material.includes('steel') || material.includes('panel') || material.includes('seam') ? .42 : .03,
   emissive: kind === 'window' ? new T.Color(color).multiplyScalar(.08) : new T.Color('#000000'),
 })
 
 export function createBuildingModel(preset: BuildingPreset) {
-  const group = new T.Group(), geometry = new T.BoxGeometry(1, 1, 1)
+  const group = new T.Group(), geometries = new Map<BuildingPartKind, T.BufferGeometry>(), materials = new Map<string, T.MeshStandardMaterial>()
   group.name = `building:${preset.id}`
   for (const item of generateBuilding(preset).parts) {
-    const mesh = new T.Mesh(geometry, materialFor(item.kind, item.color))
+    let geometry = geometries.get(item.kind); if (!geometry) { geometry = buildingGeometry(item.kind); geometries.set(item.kind, geometry) }
+    const materialKey = `${item.kind}:${item.material}:${item.color}`; let material = materials.get(materialKey); if (!material) { material = materialFor(item.kind, item.color, item.material); materials.set(materialKey, material) }
+    const mesh = new T.Mesh(geometry, material)
     mesh.name = item.id
     mesh.userData.buildingPart = item
     applyBuildingPartTransform(mesh, item)
     group.add(mesh)
   }
-  group.userData.sharedGeometry = geometry
+  group.userData.geometries = [...geometries.values()]
+  group.userData.materials = [...materials.values()]
   return group
 }
 
 export function disposeBuildingModel(group: T.Group) {
-  group.traverse(object => { if (object instanceof T.Mesh) (object.material as T.Material).dispose() })
-  const geometry = group.userData.sharedGeometry
-  if (geometry instanceof T.BufferGeometry) geometry.dispose()
+  for (const material of group.userData.materials || []) if (material instanceof T.Material) material.dispose()
+  for (const geometry of group.userData.geometries || []) if (geometry instanceof T.BufferGeometry) geometry.dispose()
 }
 

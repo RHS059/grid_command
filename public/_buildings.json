@@ -1,8 +1,15 @@
 [
-  { "id": "residential-rowhouse", "name": "Residential rowhouse", "type": "residential", "width": 3, "depth": 2, "floors": 2, "seed": 114, "roof": "auto" },
-  { "id": "residential-apartments", "name": "Residential apartments", "type": "residential", "width": 5, "depth": 4, "floors": 6, "seed": 327, "roof": "auto" },
-  { "id": "commercial-office", "name": "Commercial office", "type": "commercial", "width": 6, "depth": 5, "floors": 9, "seed": 518, "roof": "flat" },
-  { "id": "commercial-storefront", "name": "Commercial storefront", "type": "commercial", "width": 5, "depth": 3, "floors": 2, "seed": 729, "roof": "flat" },
-  { "id": "industrial-warehouse", "name": "Industrial warehouse", "type": "industrial", "width": 8, "depth": 5, "floors": 1, "seed": 940, "roof": "gable" },
-  { "id": "industrial-workshop", "name": "Industrial workshop", "type": "industrial", "width": 5, "depth": 4, "floors": 2, "seed": 1251, "roof": "auto" }
+  { "id": "residential-house", "name": "Residential house", "type": "residential-house", "width": 3, "depth": 2, "floors": 2, "seed": "2417330848621957", "roof": "gable" },
+  { "id": "apartment", "name": "Apartment block", "type": "apartment", "width": 5, "depth": 4, "floors": 6, "seed": "3126485764397418", "roof": "flat" },
+  { "id": "commercial-office", "name": "Commercial office", "type": "commercial", "width": 6, "depth": 5, "floors": 9, "seed": "4259751837286641", "roof": "flat" },
+  { "id": "parking-garage", "name": "Parking garage", "type": "parking-garage", "width": 7, "depth": 5, "floors": 5, "seed": "6803924425718634", "roof": "flat" },
+  { "id": "government", "name": "Government offices", "type": "government", "width": 6, "depth": 4, "floors": 5, "seed": "7318453642095726", "roof": "flat" },
+  { "id": "industrial", "name": "Industrial warehouse", "type": "industrial", "width": 8, "depth": 5, "floors": 1, "seed": "8402136951472836", "roof": "gable" },
+  { "id": "power-station", "name": "Power station", "type": "power-station", "width": 7, "depth": 6, "floors": 2, "seed": "9541287036421785", "roof": "flat" },
+  { "id": "gas-station", "name": "Gas station", "type": "gas-station", "width": 4, "depth": 3, "floors": 1, "seed": "1637042859314762", "roof": "flat" },
+  { "id": "grocery-store", "name": "Grocery store", "type": "grocery-store", "width": 7, "depth": 5, "floors": 1, "seed": "2758143960425871", "roof": "flat" },
+  { "id": "department-store", "name": "Department store", "type": "department-store", "width": 9, "depth": 6, "floors": 3, "seed": "3869254071536982", "roof": "flat" },
+  { "id": "church", "name": "Church", "type": "church", "width": 3, "depth": 6, "floors": 2, "seed": "4970365182647093", "roof": "gable" },
+  { "id": "m-shaped", "name": "M-shaped offices", "type": "government", "width": 8, "depth": 7, "floors": 4, "seed": "5081476293758104", "roof": "flat", "footprintMode": "shape", "slopedWalls": true, "footprint": [{"x":1,"y":1},{"x":1,"y":7},{"x":3,"y":4},{"x":5,"y":7},{"x":7,"y":4},{"x":9,"y":7},{"x":9,"y":1}] }
 ]
+
