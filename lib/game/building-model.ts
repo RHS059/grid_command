@@ -1,12 +1,13 @@
 import * as T from 'three'
 import { generateBuilding, type BuildingPart, type BuildingPartKind, type BuildingPreset } from './building-system'
 import { createInteriorWindowMaterial } from './interior-window-material'
+import { createWireSpriteMaterial } from './building-detail-material'
 
 const X_AXIS = new T.Vector3(1, 0, 0), Z_AXIS = new T.Vector3(0, 0, 1), PART_TILT = new T.Quaternion()
 
 export const BUILDING_PART_CAPACITY: Record<BuildingPartKind, number> = {
-  wall: 18000, gable: 2000, window: 18000, 'window-frame': 18000, door: 2000, floor: 6000, roof: 5000,
-  trim: 26000, accent: 18000, awning: 3000, rooftop: 1500,
+  wall: 18000, gable: 2000, window: 6000, 'window-flat': 18000, 'window-frame': 18000, door: 2000, floor: 6000, roof: 5000,
+  trim: 26000, accent: 18000, awning: 3000, rooftop: 1500, 'detail-box': 12000, 'detail-cylinder': 4000, 'detail-plane': 3000, wire: 6000,
 }
 
 export function applyBuildingPartTransform(target: T.Object3D, item: BuildingPart, origin = { x: 0, y: 0, z: 0 }, buildingRotation = 0) {
@@ -20,7 +21,9 @@ export function applyBuildingPartTransform(target: T.Object3D, item: BuildingPar
 }
 
 export function buildingGeometry(kind: BuildingPartKind) {
-  if (kind === 'wall' || kind === 'window') { const geometry = new T.PlaneGeometry(1, 1); geometry.rotateX(Math.PI / 2); return geometry }
+  if (kind === 'wall' || kind === 'window' || kind === 'window-flat' || kind === 'detail-plane') { const geometry = new T.PlaneGeometry(1, 1); geometry.rotateX(Math.PI / 2); return geometry }
+  if (kind === 'wire') return new T.PlaneGeometry(1, 1)
+  if (kind === 'detail-cylinder') { const geometry = new T.CylinderGeometry(.5, .5, 1, 8, 1); geometry.rotateX(Math.PI / 2); return geometry }
   if (kind === 'window-frame') {
     const shape = new T.Shape(); shape.moveTo(-.5, -.5); shape.lineTo(.5, -.5); shape.lineTo(.5, .5); shape.lineTo(-.5, .5); shape.closePath()
     const opening = new T.Path(); opening.moveTo(-.41, -.41); opening.lineTo(-.41, .41); opening.lineTo(.41, .41); opening.lineTo(.41, -.41); opening.closePath(); shape.holes.push(opening)
@@ -47,7 +50,7 @@ export function createBuildingModel(preset: BuildingPreset) {
   group.name = `building:${preset.id}`
   for (const item of generateBuilding(preset).parts) {
     let geometry = geometries.get(item.kind); if (!geometry) { geometry = buildingGeometry(item.kind); geometries.set(item.kind, geometry) }
-    const materialKey = `${item.kind}:${item.material}:${item.color}`; let material = materials.get(materialKey); if (!material) { material = item.kind === 'window' ? createInteriorWindowMaterial(item.color) : materialFor(item.kind, item.color, item.material); materials.set(materialKey, material) }
+    const roomKey = item.room ? `:${item.room.type}:${item.room.span}:${item.room.offset}:${item.room.seed}` : '', materialKey = `${item.kind}:${item.material}:${item.color}${roomKey}`; let material = materials.get(materialKey); if (!material) { material = item.kind === 'window' ? createInteriorWindowMaterial(item.color, false, item.room) : item.kind === 'wire' ? createWireSpriteMaterial(item.color) : materialFor(item.kind, item.color, item.material); materials.set(materialKey, material) }
     const mesh = new T.Mesh(geometry, material)
     mesh.name = item.id
     mesh.userData.buildingPart = item
