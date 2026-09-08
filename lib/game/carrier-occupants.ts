@@ -1,5 +1,5 @@
-import * as T from 'three'
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
+import * as T from './scene-data'
+import { mergeGeometries } from './scene-data'
 import { soldierParts } from './unit-models'
 import type { Side, Unit, BattleState } from './types'
 

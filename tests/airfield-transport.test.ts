@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import * as T from 'three'
+import * as T from '../lib/game/scene-data'
 import { AIRFIELD_TIERS, AIRBASES, CATALOG, initialState, createUnit, stockTotal, troopSeats, type AirfieldTier, type Role } from '../lib/game/types'
 import { completeAirfieldUpgrades, scheduleSupplies, supplyManifest, updateSupplyMissions } from '../lib/game/logistics'
 import { nextPurchase, startAirfieldUpgrade } from '../lib/game/requisitions'

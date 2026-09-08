@@ -1,4 +1,4 @@
-import * as T from 'three'
+import * as T from './scene-data'
 import { createReferenceAircraft } from './reference-aircraft'
 import { SIDE_COLOR, type Role, type Side } from './types'
 

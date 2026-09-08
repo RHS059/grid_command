@@ -1,7 +1,7 @@
 import { createMobYard } from './mob-models'
 import { MOB_YARD } from './mob'
-import * as T from 'three'
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
+import * as T from './scene-data'
+import { mergeGeometries } from './scene-data'
 import { SIDE_COLOR, type AirfieldTier, type Side } from './types'
 import { RUNWAY } from './theater'
 

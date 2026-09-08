@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import * as T from 'three'
+import * as T from '../lib/game/scene-data'
 import { CATALOG, isAir, isVehicle, type Role, type Side } from '../lib/game/types'
 import { MODEL_CATALOG, MODEL_NAMES } from '../lib/game/model-catalog'
 import { createAircraft, animateAircraft, disposeModel } from '../lib/game/aircraft-models'

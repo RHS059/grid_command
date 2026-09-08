@@ -1,6 +1,5 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
-@import 'maplibre-gl/dist/maplibre-gl.css';
 @custom-variant dark (&:is(.dark *));
 @theme inline {
   --font-sans: var(--font-archivo), Arial, sans-serif;
@@ -139,9 +138,6 @@ html, body { width: 100%; height: 100%; overflow: hidden; }
 .tactical-marker .marker-health i { display: block; height: 100%; background: currentColor; }
 .base-marker { color: var(--primary); background: color-mix(in srgb,var(--background) 92%,transparent); border: 1px solid currentColor; padding: 7px 9px; font-family: var(--font-mono); font-size: 11px; border-radius: 3px; letter-spacing: .03em; }
 .base-marker.red { color: var(--destructive); }
-.maplibregl-ctrl-attrib { font-size: 10px !important; background: color-mix(in srgb,var(--background) 85%,transparent) !important; color: var(--muted-foreground) !important; }
-.maplibregl-ctrl-attrib a { color: var(--muted-foreground) !important; }
-.maplibregl-ctrl-bottom-right { right: 8px !important; bottom: 1px !important; }
 .minimap-card { position: absolute; bottom: 41px; right: 22px; width: 184px; height: 134px; background: var(--background); border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
 .minimap-map { position: absolute; inset: 25px 0 0; }
 .minimap-header { display: flex; justify-content: space-between; padding: 6px 9px; font-size: 10px; letter-spacing: .12em; color: var(--muted-foreground); }

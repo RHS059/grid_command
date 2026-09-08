@@ -1,5 +1,5 @@
-import * as T from 'three'
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
+import * as T from './scene-data'
+import { mergeGeometries } from './scene-data'
 import { BASES, SIDE_COLOR, type BattleState, type Side } from './types'
 import { MOB_GARAGE, MOB_HELIPAD, MOB_TIERS, craneCycle, CRANE_LATCH, CRANE_RELEASE, mobDock, mobHelipadRise, mobStorage, truckContainerPose, type MobTier } from './mob'
 import { createCargoContainer } from './container-model'

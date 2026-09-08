@@ -1,7 +1,7 @@
 import { createCargoContainer } from './container-model'
 import { containerOnTruck, truckContainerPose } from './mob'
-import * as T from 'three'
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
+import * as T from './scene-data'
+import { mergeGeometries } from './scene-data'
 import { shell, rod } from './model-geometry'
 import { SIDE_COLOR, type Role, type Side, type MissionState } from './types'
 export const isSupportModel=(role:Role)=>['FORKLIFT','TRUCK','TROOP_TRUCK','UAV_JAMMER'].includes(role)

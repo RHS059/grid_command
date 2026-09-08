@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import * as T from 'three'
+import * as T from '../lib/game/scene-data'
 import { SoldierBatch, vehicleGeometry } from '../lib/game/unit-models'
 import { BattlefieldAudio } from '../lib/game/audio'
 import { initialState, type Soldier, type Role } from '../lib/game/types'

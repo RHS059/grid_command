@@ -1,4 +1,4 @@
-import { MercatorCoordinate } from 'maplibre-gl'
+import { MercatorCoordinate } from './geography'
 import type { Point, Side } from './types'
 export const ORIGIN: [number, number] = [-117.08, 32.82]
 const origin = MercatorCoordinate.fromLngLat(ORIGIN), scale = origin.meterInMercatorCoordinateUnits()

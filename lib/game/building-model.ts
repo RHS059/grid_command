@@ -1,4 +1,4 @@
-import * as T from 'three'
+import * as T from './scene-data'
 import { generateBuilding, type BuildingPart, type BuildingPartKind, type BuildingPreset } from './building-system'
 import { createInteriorWindowMaterial } from './interior-window-material'
 import { createWireSpriteMaterial } from './building-detail-material'

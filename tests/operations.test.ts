@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import * as T from 'three'
+import * as T from '../lib/game/scene-data'
 import { battleFixture as initialState } from './fixtures'
 import { stockTotal, BASES, AIRBASES, prepareUnit, type GeometryPacket } from '../lib/game/types'
 import { Navigation } from '../lib/game/navigation'

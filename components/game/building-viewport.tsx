@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import * as T from 'three'
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import * as T from '@/lib/game/scene-data'
+import { GraphicsRenderer, OrbitControls } from '@/lib/game/graphics-preview'
 import { createBuildingModel, disposeBuildingModel } from '@/lib/game/building-model'
 import type { BuildingPreset } from '@/lib/game/building-system'
 
@@ -12,12 +12,13 @@ export function BuildingViewport({ preset }: { preset: BuildingPreset }) {
   useEffect(() => {
     if (!host.current) return
     setError('')
-    let renderer: T.WebGLRenderer
-    try { renderer = new T.WebGLRenderer({ antialias: true }) } catch { setError('3D preview requires WebGL. Enable hardware acceleration and reload.'); return }
+    let renderer: GraphicsRenderer
+    try { renderer = new GraphicsRenderer({ antialias: true }) } catch { setError('3D preview could not start. Enable hardware acceleration and reload.'); return }
+    void renderer.ready.catch(() => setError('3D preview could not start. Enable hardware acceleration and reload.'))
     const element = host.current, scene = new T.Scene(), camera = new T.PerspectiveCamera(42, 1, .1, 5000)
     scene.background = new T.Color('#101c29'); camera.up.set(0, 0, 1)
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5)); renderer.outputColorSpace = T.SRGBColorSpace
-    renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5))
+
     renderer.domElement.setAttribute('aria-label', `${preset.name} interactive 3D building preview`); element.append(renderer.domElement)
     const orbit = new OrbitControls(camera, renderer.domElement)
     orbit.enableDamping = true; orbit.dampingFactor = .075; orbit.maxPolarAngle = Math.PI * .495; orbit.minPolarAngle = .08
@@ -43,7 +44,7 @@ export function BuildingViewport({ preset }: { preset: BuildingPreset }) {
     let frame = 0
     const render = () => { frame = requestAnimationFrame(render); orbit.update(); renderer.render(scene, camera) }
     frame = requestAnimationFrame(render)
-    return () => { cancelAnimationFrame(frame); observer.disconnect(); orbit.dispose(); disposeBuildingModel(building); ground.geometry.dispose(); (ground.material as T.Material).dispose(); renderer.dispose(); renderer.forceContextLoss(); renderer.domElement.remove() }
+    return () => { cancelAnimationFrame(frame); observer.disconnect(); orbit.dispose(); disposeBuildingModel(building); ground.geometry.dispose(); (ground.material as T.Material).dispose(); renderer.dispose(); renderer.domElement.remove() }
   }, [preset])
   return <div ref={host} className="model-viewport relative h-full min-h-[420px] w-full overflow-hidden rounded-md border border-border bg-[#101c29]">{error && <p role="alert" className="p-6 text-sm text-destructive">{error}</p>}<div className="pointer-events-none absolute bottom-3 left-3 rounded bg-background/80 px-2 py-1 text-xs text-muted-foreground">Drag to orbit · Scroll to zoom</div></div>
 }
