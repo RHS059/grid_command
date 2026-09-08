@@ -200,7 +200,11 @@ export function updateTransports(state: BattleState, nav: Navigation) {
     const lead = passengers.find(s => !s.carrier)
     const phase = (name: string) => {
       m.phase = name; m.since = state.time; u.path = []
-      if (!['pickup', 'boarding'].includes(name)) { m.pickup = undefined; m.pickupFor = undefined }
+      if (name !== 'boarding') { m.pickup = undefined; m.pickupFor = undefined }
+    }
+    const dispatch = (troops: number) => {
+      if (helicopter && troops < troopSeats(u.role) / 2 && !m.manual) phase('return')
+      else { m.dispatchTroops = troops; phase('transit') }
     }
     u.engine = true; u.mission = m.phase.toUpperCase()
     if (!passengers.length && !['return', 'escort'].includes(m.phase)) phase('return')
@@ -216,17 +220,31 @@ export function updateTransports(state: BattleState, nav: Navigation) {
       }
       else if (travel(u, m.pickup, nav, state.time, undefined, 0)) phase('boarding')
       else if (state.time - m.since > 180) phase('return')
-    } else if (m.phase === 'boarding' && lead && state.time - m.since >= 5) {
-      if (distance(u, lead) > PICKUP_BOARDING_RANGE || (u.altitude || 0) > .1) { m.pickup = undefined; m.pickupFor = undefined; phase('pickup'); continue }
-      if (aboard + activeTroops(lead) > troopSeats(u.role)) { phase('return'); continue }
-      lead.carrier = u.id; lead.path = []; lead.mission = 'EMBARKED'
-      for (const body of lead.soldiers || []) body.disembarked = undefined
-      if (passengers.some(s => !s.carrier)) phase('pickup')
-      else {
-        const troops = aboard + activeTroops(lead)
-        if (helicopter && troops < troopSeats(u.role) / 2 && !m.manual) phase('return')
-        else { m.dispatchTroops = troops; phase('transit') }
+    } else if (m.phase === 'boarding') {
+      // Keep boarding bound to the squad selected during pickup. The old code
+      // recomputed `lead` every tick and bounced back to pickup whenever the
+      // carrier stopped a few metres outside the narrow boarding radius.
+      const target = passengers.find(s => s.id === m.pickupFor && !s.carrier)
+      if (!target) {
+        if (lead) phase('pickup')
+        else dispatch(aboard)
+        continue
       }
+      target.path = []; target.movementIntent = undefined; target.mission = 'BOARDING'
+      const closeEnough = distance(u, target) <= PICKUP_BOARDING_RANGE && (u.altitude || 0) <= .1
+      if (!closeEnough) {
+        u.mission = `BOARDING ${target.name}`
+        travel(u, target, nav, state.time, undefined, 0, Math.max(2, PICKUP_BOARDING_RANGE - 2))
+        if (state.time - m.since > 60) phase('return')
+        continue
+      }
+      if (state.time - m.since < 5) continue
+      if (aboard + activeTroops(target) > troopSeats(u.role)) { phase('return'); continue }
+      target.carrier = u.id; target.path = []; target.mission = 'EMBARKED'
+      for (const body of target.soldiers || []) body.disembarked = undefined
+      const troops = aboard + activeTroops(target)
+      if (passengers.some(s => !s.carrier)) phase('pickup')
+      else dispatch(troops)
     } else if (m.phase === 'transit' && m.destination) {
       const pad=helicopter&&m.mobPad?mobHelipad(u.side):undefined
       if(pad&&distance(u,pad)<=180&&!reserveMobHelipad(state,u.side,u.id)){u.travelStatus='HOLDING FOR MOB HELIPAD';travel(u,mobHelipadHold(u.side,u.id),nav,state.time,undefined,85);continue}
