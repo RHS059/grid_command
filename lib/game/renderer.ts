@@ -62,7 +62,7 @@ export class BattlefieldRenderer {
     this.camera.projectionMatrix.fromArray(matrix).multiply(this.transform);this.camera.projectionMatrixInverse.copy(this.camera.projectionMatrix).invert();const counts=new Map<string,number>(),ec=new Map<string,number>(),center=this.map.getCenter(),zoom=this.map.getZoom();this.soldiers.BLU.begin();this.soldiers.RED.begin()
     const performanceMode = !!graphics.performanceMode
     const viewCenter = local([center.lng, center.lat])
-    this.buildings.update(viewCenter,zoom,graphics,!!this.map.getTerrain())
+    this.buildings.update(viewCenter,zoom,this.map.getPitch(),graphics,!!this.map.getTerrain())
     const nearby = (x: number, y: number, radius = 0) => Math.hypot(x - viewCenter.x, y - viewCenter.y) <= 1000 + radius
     this.frustum.setFromProjectionMatrix(this.camera.projectionMatrix)
     this.visibleUnits.clear()

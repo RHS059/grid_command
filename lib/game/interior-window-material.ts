@@ -11,9 +11,15 @@ const vertexShader = /* glsl */`
   varying vec4 vRoomData;
   varying float vBuildingFade;
   varying float vBuildingReveal;
+  varying float vBuildingLod;
+  varying vec2 vBuildingOrigin;
   #ifdef USE_BUILDING_FADE
+    uniform float buildingGlobalFade;
+    uniform vec2 buildingFocus;
     attribute float buildingFade;
     attribute float buildingReveal;
+    attribute float buildingLod;
+    attribute vec2 buildingOrigin;
   #endif
   #ifdef USE_INSTANCING
     attribute vec4 roomData;
@@ -37,9 +43,13 @@ const vertexShader = /* glsl */`
     vRoomData = roomDataUniform;
     vBuildingFade = 1.0;
     vBuildingReveal = 0.0;
+    vBuildingLod = 0.0;
+    vBuildingOrigin = vec2(0.0);
     #ifdef USE_BUILDING_FADE
       vBuildingFade = buildingFade;
       vBuildingReveal = buildingReveal;
+      vBuildingLod = buildingLod;
+      vBuildingOrigin = buildingOrigin;
     #endif
     #ifdef USE_INSTANCING
       vRoomData = roomData;
@@ -48,6 +58,9 @@ const vertexShader = /* glsl */`
       vInstanceColor = instanceColor;
     #endif
     gl_Position = projectionMatrix * viewMatrix * worldPosition;
+    #ifdef USE_BUILDING_FADE
+      if (buildingGlobalFade <= 0.001 || distance(buildingOrigin, buildingFocus) >= 200.0) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+    #endif
   }
 `
 
@@ -61,8 +74,12 @@ const fragmentShader = /* glsl */`
   varying vec4 vRoomData;
   varying float vBuildingFade;
   varying float vBuildingReveal;
+  varying float vBuildingLod;
+  varying vec2 vBuildingOrigin;
   uniform float buildingGlobalFade;
   uniform float buildingRevealProgress;
+  uniform float buildingDetailFade;
+  uniform vec2 buildingFocus;
   #ifdef USE_INSTANCING_COLOR
     varying vec3 vInstanceColor;
   #endif
@@ -89,8 +106,10 @@ const fragmentShader = /* glsl */`
     float coverage = clamp(abs(vBuildingFade), 0.0, 1.0);
     #ifdef USE_BUILDING_FADE
       coverage *= buildingGlobalFade * smoothstep(vBuildingReveal, min(1.0, vBuildingReveal + 0.52), buildingRevealProgress);
+      coverage *= 1.0 - smoothstep(180.0, 200.0, distance(vBuildingOrigin, buildingFocus));
+      coverage *= vBuildingLod > 0.5 ? buildingDetailFade : vBuildingLod < -0.5 ? 1.0 - buildingDetailFade : 1.0;
     #endif
-    float threshold = vBuildingFade < 0.0 ? 1.0 - dither : dither;
+    float threshold = vBuildingLod < -0.5 ? 1.0 - dither : dither;
     if (coverage <= threshold) discard;
     vec3 tint = windowTint;
     #ifdef USE_INSTANCING_COLOR
@@ -236,7 +255,7 @@ const fragmentShader = /* glsl */`
 export function createInteriorWindowMaterial(color = '#35596b', vertexColors = false, room: InteriorRoomData = { type: 2, span: 1, offset: 0, seed: .5 }) {
   return new T.ShaderMaterial({
     name: 'interior-window',
-    uniforms: { windowTint: { value: new T.Color(color) }, roomDataUniform: { value: new T.Vector4(room.type, room.span, room.offset, room.seed) }, buildingGlobalFade: { value: 1 }, buildingRevealProgress: { value: 1 } },
+    uniforms: { windowTint: { value: new T.Color(color) }, roomDataUniform: { value: new T.Vector4(room.type, room.span, room.offset, room.seed) }, buildingGlobalFade: { value: 1 }, buildingRevealProgress: { value: 1 }, buildingDetailFade: { value: 1 }, buildingFocus: { value: new T.Vector2() } },
     vertexShader,
     fragmentShader,
     side: T.FrontSide,
