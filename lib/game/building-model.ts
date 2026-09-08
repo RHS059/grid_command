@@ -1,22 +1,26 @@
 import * as T from 'three'
 import { generateBuilding, type BuildingPart, type BuildingPartKind, type BuildingPreset } from './building-system'
 
+const X_AXIS = new T.Vector3(1, 0, 0), Z_AXIS = new T.Vector3(0, 0, 1), PART_TILT = new T.Quaternion()
+
 export const BUILDING_PART_CAPACITY: Record<BuildingPartKind, number> = {
-  wall: 18000, window: 18000, door: 2000, floor: 6000, roof: 5000,
+  wall: 18000, gable: 2000, window: 18000, door: 2000, floor: 6000, roof: 5000,
   trim: 26000, accent: 18000, awning: 3000, rooftop: 1500,
 }
 
 export function applyBuildingPartTransform(target: T.Object3D, item: BuildingPart, origin = { x: 0, y: 0, z: 0 }, buildingRotation = 0) {
   const cos = Math.cos(buildingRotation), sin = Math.sin(buildingRotation)
   target.position.set(origin.x + item.x * cos - item.y * sin, origin.y + item.x * sin + item.y * cos, origin.z + item.z)
-  target.rotation.set(item.tilt || 0, 0, buildingRotation + item.rotation)
-  target.scale.set(item.width, item.primitive === 'vertical-plane' ? 1 : item.depth, item.primitive === 'horizontal-plane' ? 1 : item.height)
+  target.quaternion.setFromAxisAngle(Z_AXIS, buildingRotation + item.rotation)
+  if (item.tilt) target.quaternion.multiply(PART_TILT.setFromAxisAngle(X_AXIS, item.tilt))
+  target.scale.set(item.width, item.primitive === 'vertical-plane' || item.primitive === 'triangle-plane' ? 1 : item.depth, item.primitive === 'horizontal-plane' ? 1 : item.height)
   target.updateMatrix()
   return target
 }
 
 export function buildingGeometry(kind: BuildingPartKind) {
   if (kind === 'wall') { const geometry = new T.PlaneGeometry(1, 1); geometry.rotateX(Math.PI / 2); return geometry }
+  if (kind === 'gable') { const geometry = new T.BufferGeometry(); geometry.setAttribute('position', new T.Float32BufferAttribute([-.5, 0, -1/3, .5, 0, -1/3, 0, 0, 2/3], 3)); geometry.setIndex([0, 1, 2]); geometry.computeVertexNormals(); return geometry }
   if (kind === 'floor') return new T.PlaneGeometry(1, 1)
   return new T.BoxGeometry(1, 1, 1)
 }
@@ -29,6 +33,7 @@ const materialFor = (kind: BuildingPartKind, color: string, material: string) =>
   emissive: kind === 'window' ? new T.Color(color).multiplyScalar(.08) : new T.Color('#000000'),
   transparent: material.includes('glass'),
   opacity: material.includes('glass') ? .88 : 1,
+  side: kind === 'gable' ? T.DoubleSide : T.FrontSide,
 })
 
 export function createBuildingModel(preset: BuildingPreset) {

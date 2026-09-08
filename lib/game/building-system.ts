@@ -1,8 +1,8 @@
 import { local, type GeometryFeature } from './types'
 
 export type BuildingType = 'industrial' | 'commercial' | 'residential' | 'parking-garage' | 'government' | 'apartment' | 'residential-house' | 'power-station' | 'gas-station' | 'grocery-store' | 'department-store' | 'church'
-export type BuildingPartKind = 'wall' | 'window' | 'door' | 'floor' | 'roof' | 'trim' | 'accent' | 'awning' | 'rooftop'
-export type BuildingPrimitive = 'vertical-plane' | 'horizontal-plane' | 'box'
+export type BuildingPartKind = 'wall' | 'gable' | 'window' | 'door' | 'floor' | 'roof' | 'trim' | 'accent' | 'awning' | 'rooftop'
+export type BuildingPrimitive = 'vertical-plane' | 'triangle-plane' | 'horizontal-plane' | 'box'
 export interface FootprintPoint { x: number; y: number }
 export interface BuildingPreset { id: string; name: string; type: BuildingType; width: number; depth: number; floors: number; seed: string; roof?: 'auto' | 'flat' | 'gable'; footprint?: FootprintPoint[]; footprintMode?: 'rectangle' | 'shape'; slopedWalls?: boolean }
 export interface BuildingPart { id: string; kind: BuildingPartKind; primitive: BuildingPrimitive; x: number; y: number; z: number; width: number; depth: number; height: number; rotation: number; tilt?: number; color: string; material: string }
@@ -26,7 +26,7 @@ const hash = (value: string | number) => [...String(value)].reduce((n, c) => (Ma
 export const normalizeBuildingSeed = (value: unknown) => { const digits = String(value ?? '').replace(/\D/g, ''); if (digits.length >= 16) return digits.slice(0, 16); return `${hash(digits || '1').toString().padStart(10, '0')}${hash(`seed:${digits || '1'}`).toString().padStart(10, '0')}`.slice(0, 16) }
 export const seedPairs = (seed: string) => Array.from({ length: 8 }, (_, index) => Number(seed.slice(index * 2, index * 2 + 2)) || 0)
 const random = (seed: string, key: string) => hash(`${seed}:${key}`) / 0xffffffff
-const primitiveFor = (kind: BuildingPartKind): BuildingPrimitive => kind === 'wall' ? 'vertical-plane' : kind === 'floor' ? 'horizontal-plane' : 'box'
+const primitiveFor = (kind: BuildingPartKind): BuildingPrimitive => kind === 'wall' ? 'vertical-plane' : kind === 'gable' ? 'triangle-plane' : kind === 'floor' ? 'horizontal-plane' : 'box'
 const part = (id: string, kind: BuildingPartKind, x: number, y: number, z: number, width: number, depth: number, height: number, rotation: number, color: string, material: string, primitive = primitiveFor(kind)): BuildingPart => {
   const shallowDepth = kind === 'window' ? .09 : kind === 'door' ? .14 : kind === 'trim' ? .16 : depth
   return { id, kind, primitive, x, y, z, width, depth: primitive === 'box' && depth <= 0 ? shallowDepth : depth, height, rotation, color, material }
@@ -59,7 +59,12 @@ export function generateBuilding(input: BuildingPreset): BuildingLayout {
     } })
   }
   const top = preset.floors * FLOOR_HEIGHT
-  if (roof === 'gable') { const alongX = w >= d, span = alongX ? d : w, length = alongX ? w : d, run = span / 2, rise = Math.min(3.2, Math.max(1.1, run * .38)), slopeLength = Math.hypot(run, rise), pitch = Math.atan2(rise, run); for (const side of [-1, 1]) parts.push({ ...part(`roof-gable-${side}`, 'roof', alongX ? 0 : side * run / 2, alongX ? side * run / 2 : 0, top + rise / 2, length + .45, slopeLength + .35, .18, alongX ? 0 : Math.PI / 2, roofColor, roofMaterial), tilt: alongX ? -side * pitch : side * pitch }) }
+  if (roof === 'gable') {
+    const alongX = w >= d, span = alongX ? d : w, length = alongX ? w : d, run = span / 2, rise = Math.min(3.2, Math.max(1.1, run * .38)), slopeLength = Math.hypot(run, rise), pitch = Math.atan2(rise, run)
+    for (const side of [-1, 1]) parts.push({ ...part(`roof-gable-${side}`, 'roof', alongX ? 0 : side * run / 2, alongX ? side * run / 2 : 0, top + rise / 2, length + .5, slopeLength + .36, .18, alongX ? 0 : Math.PI / 2, roofColor, roofMaterial), tilt: alongX ? -side * pitch : side * pitch })
+    for (const side of [-1, 1]) parts.push(part(`gable-end-${side}`, 'gable', alongX ? side * length / 2 : 0, alongX ? 0 : side * length / 2, top + rise / 3, span, 0, rise, alongX ? Math.PI / 2 : 0, wallColor, wallMaterial))
+    parts.push(part('roof-ridge', 'trim', 0, 0, top + rise + .07, length + .58, .16, .16, alongX ? 0 : Math.PI / 2, style.trim, 'ridge-cap', 'box'))
+  }
   else { for (let gx = Math.floor(minX / BUILDING_MODULE); gx < Math.ceil(maxX / BUILDING_MODULE); gx++) for (let gy = Math.floor(minY / BUILDING_MODULE); gy < Math.ceil(maxY / BUILDING_MODULE); gy++) { const x = (gx + .5) * BUILDING_MODULE, y = (gy + .5) * BUILDING_MODULE; if (inside({ x, y }, points)) parts.push(part(`roof-${gx}-${gy}`, 'roof', x, y, top + .09, BUILDING_MODULE + .08, BUILDING_MODULE + .08, .18, 0, roofColor, roofMaterial)) } edges.forEach((edge, i) => parts.push(part(`parapet-${i}`, 'trim', (edge.start.x + edge.end.x) / 2, (edge.start.y + edge.end.y) / 2, top + .48, edge.length, 0, .72, edge.rotation, style.trim, 'parapet'))); const count = Math.max(1, Math.min(4, Math.floor(w * d / 180) + seeds[7] % 2)); for (let i = 0; i < count; i++) parts.push(part(`roof-unit-${i}`, 'rooftop', (random(preset.seed, `rx${i}`) - .5) * Math.max(0, w - 5), (random(preset.seed, `ry${i}`) - .5) * Math.max(0, d - 5), top + .72, 1.3 + random(preset.seed, `rw${i}`), 1.15, .85, 0, style.accent, 'roof-equipment')) }
   if (['gas-station', 'grocery-store'].includes(preset.type)) { const edge = edges[doorEdge], x = (edge.start.x + edge.end.x) / 2 + edge.nx * 1.1, y = (edge.start.y + edge.end.y) / 2 + edge.ny * 1.1; parts.push(part('front-canopy', 'awning', x, y, 2.75, Math.min(edge.length * .8, 12), 2.3, .18, edge.rotation, style.accent, 'store-canopy', 'box')) }
   if (preset.type === 'church') { parts.push(part('steeple', 'rooftop', 0, 0, top + 1.25, 1.5, 1.5, 2.5, 0, style.trim, 'stone-steeple', 'box')); parts.push(part('spire', 'rooftop', 0, 0, top + 3.05, .2, .2, 1.2, 0, style.accent, 'metal-spire', 'box')) }
