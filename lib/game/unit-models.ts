@@ -5,6 +5,7 @@ import { createSupportModel, isSupportModel } from './support-models'
 import { createAircraft, disposeModel } from './aircraft-models'
 import { shell, profile, rod } from './model-geometry'
 import { armoredGeometry } from './armored-models'
+import { hasBlenderVehicle, blenderVehicleGeometry } from './blender-vehicles'
 import { cloneSoldierRig, cloneSoldierWeapon, createSoldierTemplate, loadSoldierAsset, loadSoldierWeaponAsset, type SoldierWeapon } from './soldier-asset'
 
 const kit = '#68694c', armor = '#30332d', black = '#222524', face = '#b6a084'
@@ -170,6 +171,7 @@ export class SoldierBatch {
   dispose(){this.disposed=true;for(const rig of this.rigs.values())rig.mixer.stopAllAction();this.rigs.clear()}
 }
 export function vehicleGeometry(role:Role,side:Side,attachment=false){const parts:T.BufferGeometry[]=[]
+  if(hasBlenderVehicle(role))return blenderVehicleGeometry(role,side,attachment)
   if(isAir(role)||isSupportModel(role)){const model=isAir(role)?createAircraft(role,side):createSupportModel(role,side);model.updateMatrixWorld(true);const source=attachment&&role==='ATTACK_HELI'?model.getObjectByName('main-rotor')!:model;source.traverse(o=>{if(o instanceof T.Mesh){const g=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();g.applyMatrix4(o.matrixWorld);parts.push(colored(g,`#${(o.material as T.MeshStandardMaterial).color.getHexString()}`))}});disposeModel(model);return combine(parts)}
   return armoredGeometry(role,side,attachment)
 }

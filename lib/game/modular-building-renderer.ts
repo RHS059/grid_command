@@ -3,6 +3,7 @@ import { generateBuilding, presetFromFeature, type BuildingPartKind, type Placed
 import { applyBuildingPartTransform, BUILDING_PART_CAPACITY, buildingGeometry } from './building-model'
 import { createInteriorWindowMaterial } from './interior-window-material'
 import { createColoredBuildingMaterial, createWireSpriteMaterial } from './building-detail-material'
+import { BATTLE_BUILDINGS_ENABLED } from './geometry-loader'
 import type { GeometryPacket, Graphics } from './types'
 
 export class ModularBuildingRenderer {
@@ -17,6 +18,7 @@ export class ModularBuildingRenderer {
   private buildToken = 0
   private constructing = false
   constructor(private scene: T.Scene) {
+    if (!BATTLE_BUILDINGS_ENABLED) return
     for (const kind of Object.keys(BUILDING_PART_CAPACITY) as BuildingPartKind[]) {
       const material = kind === 'window' ? createInteriorWindowMaterial('#ffffff', true)
         : kind === 'wire' ? createWireSpriteMaterial('#ffffff', true)

@@ -1,11 +1,13 @@
 import { createCargoContainer } from './container-model'
 import { containerOnTruck, truckContainerPose } from './mob'
+import { createBlenderVehicle } from './blender-vehicles'
 import * as T from './scene-data'
 import { mergeGeometries } from './scene-data'
 import { shell, rod } from './model-geometry'
 import { SIDE_COLOR, type Role, type Side, type MissionState } from './types'
-export const isSupportModel=(role:Role)=>['FORKLIFT','TRUCK','TROOP_TRUCK','UAV_JAMMER'].includes(role)
+export const isSupportModel=(role:Role)=>['FORKLIFT','TRUCK','TROOP_TRUCK','UAV_JAMMER','APC','TANK'].includes(role)
 export function createSupportModel(role:Role,side:Side){
+  if(['TROOP_TRUCK','APC','TANK'].includes(role))return createBlenderVehicle(role,side)
   const root=new T.Group();root.name=role
   const body=new T.MeshStandardMaterial({color:'#73765a',roughness:.9,flatShading:true}),dark=new T.MeshStandardMaterial({color:'#262c29',roughness:.9,flatShading:true}),metal=new T.MeshStandardMaterial({color:'#565f51',metalness:.15,roughness:.8,flatShading:true}),glass=new T.MeshStandardMaterial({color:'#293e4c',metalness:.6,roughness:.15}),mark=new T.MeshStandardMaterial({color:SIDE_COLOR[side]})
   root.userData.materials=[body,dark,metal,glass,mark]
