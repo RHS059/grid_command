@@ -157,7 +157,7 @@ export function Battlefield(props: Props) {
         overlayStarted = true
         import('@/lib/game/renderer').then(({ BattlefieldRenderer }) => {
           if (disposed) return
-          try { renderRef.current = new BattlefieldRenderer(map, null, () => displayState, () => ({ graphics: latest.current.graphics, perspective: latest.current.perspective, selected: latest.current.selected, active: latest.current.active }), fps => latest.current.onFPS(fps), message => latest.current.onStatus(message));if(cachedBuildings.length)constructCatalog(cachedBuildings);else if(consolidatedBuildings.length)renderRef.current.buildings.setFeatures(consolidatedBuildings);latest.current.onStatus('WebGPU battlefield initializing') }
+          try { renderRef.current = new BattlefieldRenderer(map, null, () => displayState, () => ({ graphics: latest.current.graphics, perspective: latest.current.perspective, selected: latest.current.selected, active: latest.current.active }), fps => latest.current.onFPS(fps));if(cachedBuildings.length)constructCatalog(cachedBuildings);else if(consolidatedBuildings.length)renderRef.current.buildings.setFeatures(consolidatedBuildings);latest.current.onStatus('WebGPU battlefield initializing') }
           catch { latest.current.onStatus('3D overlay unavailable · tactical map active') }
         }).catch(() => latest.current.onStatus('3D overlay unavailable · tactical map active'))
       }
