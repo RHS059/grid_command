@@ -42,7 +42,7 @@ export function Battlefield(props: Props) {
     mapRef.current = map
     const markers = new Map<string, geographic.Marker>(), objectives = new Map<string, geographic.Marker>()
     const imported = new Set<string>(), fixed: geographic.Marker[] = []
-    let minimap: GeoMap | null = null, lastMarkers = 0, lastData = 0, lastDataTick = -1, lastRoutes = false, lastPerspective = '', overlayStarted = false
+    let minimap: GeoMap | null = null, minimapAllowedAt = performance.now() + 15000, lastMarkers = 0, lastData = 0, lastDataTick = -1, lastRoutes = false, lastPerspective = '', overlayStarted = false
     const poses = new DisplayPoses()
     let chaseOptions: ReturnType<NonNullable<GeoMap['transformCameraUpdate']>> | null = null, orbiting = false, orbitBearing = 0
     // Chase camera explicitly owns target altitude until the player releases follow.
@@ -132,6 +132,7 @@ export function Battlefield(props: Props) {
       if (latest.current.graphics.performanceMode) {
         minimap?.remove(); minimap = null; return
       }
+      if (!minimap && performance.now() < minimapAllowedAt) return
       if (!minimap && miniContainer.current) {
         const style = tacticalStyle(); style.layers = style.layers.filter(l => !['hillshade', 'buildings-3d', 'buildings-3d-detail', 'road-labels', 'unit-routes', 'tactical-grid'].includes(l.id)); delete style.sources.elevation; delete style.sources.hillshadeDem
         style.sources['mini-units'] = { type: 'geojson', data: { type: 'FeatureCollection', features: [] } }
@@ -238,4 +239,5 @@ export function Battlefield(props: Props) {
     {error && <div className="map-loading" role="alert"><span className="max-w-sm text-center text-sm">{error}</span><button className="map-control" onClick={() => window.location.reload()}>Reload battlefield</button></div>}
   </>
 }
+
 
