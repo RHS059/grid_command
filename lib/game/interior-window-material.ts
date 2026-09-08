@@ -9,6 +9,12 @@ const vertexShader = /* glsl */`
   varying vec3 vWorldOut;
   uniform vec4 roomDataUniform;
   varying vec4 vRoomData;
+  varying float vBuildingFade;
+  varying float vBuildingReveal;
+  #ifdef USE_BUILDING_FADE
+    attribute float buildingFade;
+    attribute float buildingReveal;
+  #endif
   #ifdef USE_INSTANCING
     attribute vec4 roomData;
   #endif
@@ -29,6 +35,12 @@ const vertexShader = /* glsl */`
     vWorldUp = normalize((world * vec4(0.0, 0.0, 1.0, 0.0)).xyz);
     vWorldOut = normalize(cross(vWorldRight, vWorldUp));
     vRoomData = roomDataUniform;
+    vBuildingFade = 1.0;
+    vBuildingReveal = 0.0;
+    #ifdef USE_BUILDING_FADE
+      vBuildingFade = buildingFade;
+      vBuildingReveal = buildingReveal;
+    #endif
     #ifdef USE_INSTANCING
       vRoomData = roomData;
     #endif
@@ -47,6 +59,10 @@ const fragmentShader = /* glsl */`
   varying vec3 vWorldUp;
   varying vec3 vWorldOut;
   varying vec4 vRoomData;
+  varying float vBuildingFade;
+  varying float vBuildingReveal;
+  uniform float buildingGlobalFade;
+  uniform float buildingRevealProgress;
   #ifdef USE_INSTANCING_COLOR
     varying vec3 vInstanceColor;
   #endif
@@ -69,6 +85,13 @@ const fragmentShader = /* glsl */`
   }
 
   void main() {
+    float dither = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+    float coverage = clamp(abs(vBuildingFade), 0.0, 1.0);
+    #ifdef USE_BUILDING_FADE
+      coverage *= buildingGlobalFade * smoothstep(vBuildingReveal, min(1.0, vBuildingReveal + 0.52), buildingRevealProgress);
+    #endif
+    float threshold = vBuildingFade < 0.0 ? 1.0 - dither : dither;
+    if (coverage <= threshold) discard;
     vec3 tint = windowTint;
     #ifdef USE_INSTANCING_COLOR
       tint *= vInstanceColor;
@@ -213,11 +236,12 @@ const fragmentShader = /* glsl */`
 export function createInteriorWindowMaterial(color = '#35596b', vertexColors = false, room: InteriorRoomData = { type: 2, span: 1, offset: 0, seed: .5 }) {
   return new T.ShaderMaterial({
     name: 'interior-window',
-    uniforms: { windowTint: { value: new T.Color(color) }, roomDataUniform: { value: new T.Vector4(room.type, room.span, room.offset, room.seed) } },
+    uniforms: { windowTint: { value: new T.Color(color) }, roomDataUniform: { value: new T.Vector4(room.type, room.span, room.offset, room.seed) }, buildingGlobalFade: { value: 1 }, buildingRevealProgress: { value: 1 } },
     vertexShader,
     fragmentShader,
     side: T.FrontSide,
     toneMapped: true,
     vertexColors,
+    defines: vertexColors ? { USE_BUILDING_FADE: '' } : {},
   })
 }
