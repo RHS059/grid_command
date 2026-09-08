@@ -1,4 +1,4 @@
-import bpy, math, os, json, sys
+import bpy, math, os, json, sys, base64, struct
 sys.path.insert(0,os.path.dirname(__file__))
 import vehicle_rigging
 from mathutils import Vector
@@ -478,7 +478,23 @@ def export(name):
    tri+=1
    for vi in t.vertices:a['p'] += [round(v,4) for v in o.matrix_world@o.data.vertices[vi].co];a['c'] += [round(v,4) for v in color]
  native=os.path.join(REPO,'lib/game/generated');os.makedirs(native,exist_ok=True)
- with open(os.path.join(native,name+'.json'),'w') as f:json.dump(data,f,separators=(',',':'))
+ compact={}
+ for key,part in data.items():
+  scale=max(max((abs(v) for v in part['p']),default=0)/16380,1e-6)
+  quantized=[max(-16384,min(16383,round(v/scale))) for v in part['p']]
+  palette=[];indices=[]
+  for i in range(0,len(part['c']),3):
+   color=tuple(part['c'][i:i+3])
+   if color not in palette:palette.append(color)
+   indices.append(palette.index(color))
+  packed_indices=bytes((indices[i] | ((indices[i+1] if i+1<len(indices) else 0)<<4)) for i in range(0,len(indices),2))
+  packed=bytearray();buffer=bits=0
+  for value in quantized:
+   buffer|=(value&0x7fff)<<bits;bits+=15
+   while bits>=8:packed.append(buffer&255);buffer>>=8;bits-=8
+  if bits:packed.append(buffer&255)
+  compact[key]={'q':base64.b64encode(packed).decode(),'n':len(quantized),'s':scale,'i':base64.b64encode(packed_indices).decode(),'palette':palette}
+ with open(os.path.join(native,name+'.json'),'w') as f:json.dump(compact,f,separators=(',',':'))
  with open(os.path.join(native,name+'_rig.json'),'w') as f:json.dump(rig,f,separators=(',',':'))
  vehicle_rigging.animations(root,groups,rig)
  bpy.ops.export_scene.gltf(filepath=os.path.join(OUT,name+'.glb'),export_format='GLB',use_selection=True,export_yup=False,export_extras=True,export_animation_mode='NLA_TRACKS',export_frame_range=False)
@@ -528,3 +544,4 @@ for name in args:
  names[name]();refine(base);detail_pass(base)
  if name!='vtol_attack':interiors(base)
  vehicle_rigging.variants(name,box);objs=export(name);studio(name,objs)
+

@@ -10,7 +10,7 @@ import { vehicleRig, poseVehicleClip } from './vehicle-animation'
 import cas from './generated/cas.json'
 import fighter from './generated/fighter.json'
 
-type Part = { p: number[]; c: number[] }
+type Part = { q: string; n: number; s: number; i: string; palette: number[][] }
 type Asset = Record<string, Part>
 const assets: Partial<Record<Role, Asset>> = {
   TANK: tank, TROOP_TRUCK: troop, APC: apc, HEAVY_LIFT_HELI: cargo,
@@ -18,10 +18,28 @@ const assets: Partial<Record<Role, Asset>> = {
 }
 export const hasBlenderVehicle = (role: Role) => !!assets[role]
 
+function bytes(value: string) {
+  const decoded = atob(value), result = new Uint8Array(decoded.length)
+  for (let i = 0; i < decoded.length; i++) result[i] = decoded.charCodeAt(i)
+  return result
+}
+
 function geometry(parts: Part[]) {
   const g = new T.BufferGeometry()
-  g.setAttribute('position', new T.Float32BufferAttribute(parts.flatMap(p => p.p), 3))
-  g.setAttribute('color', new T.Float32BufferAttribute(parts.flatMap(p => p.c), 3))
+  const positions: number[] = [], colors: number[] = []
+  for (const part of parts) {
+    const packed = bytes(part.q); let buffer = 0, bits = 0, cursor = 0
+    for (let i = 0; i < part.n; i++) {
+      while (bits < 15) { buffer |= packed[cursor++] << bits; bits += 8 }
+      let value = buffer & 0x7fff; buffer >>>= 15; bits -= 15
+      if (value & 0x4000) value -= 0x8000
+      positions.push(value * part.s)
+    }
+    const indices = bytes(part.i), vertices = part.n / 3
+    for (let vertex = 0; vertex < vertices; vertex++) colors.push(...part.palette[(indices[vertex >> 1] >> ((vertex & 1) * 4)) & 15])
+  }
+  g.setAttribute('position', new T.Float32BufferAttribute(positions, 3))
+  g.setAttribute('color', new T.Float32BufferAttribute(colors, 3))
   g.computeVertexNormals()
   return g
 }
@@ -80,3 +98,4 @@ export function createBlenderVehicle(role: Role, side: Side) {
   }
   return root
 }
+
