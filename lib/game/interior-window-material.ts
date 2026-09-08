@@ -126,10 +126,14 @@ const fragmentShader = /* glsl */`
         furniture = rectangle(backUv, vec4(0.08, 0.08, 0.36, 0.42)) + rectangle(backUv, vec4(0.62, 0.08, 0.92, 0.58));
         secondary = rectangle(backUv, vec4(0.12, 0.42, 0.31, 0.68)) + rectangle(backUv, vec4(0.50, 0.08, 0.58, 0.78));
         wallDetail = rectangle(backUv, vec4(0.10, 0.75, 0.90, 0.82));
-      } else {
+      } else if (roomType < 7.5) {
         furniture = rectangle(backUv, vec4(0.08, 0.10, 0.92, 0.24));
         secondary = rectangle(backUv, vec4(0.16, 0.24, 0.27, 0.44)) + rectangle(backUv, vec4(0.43, 0.24, 0.54, 0.44)) + rectangle(backUv, vec4(0.70, 0.24, 0.81, 0.44));
         wallDetail = rectangle(backUv, vec4(0.40, 0.58, 0.60, 0.86));
+      } else {
+        furniture = rectangle(backUv, vec4(0.04, 0.08, 0.96, 0.16));
+        secondary = rectangle(backUv, vec4(0.08, 0.16, 0.42, 0.36)) + rectangle(backUv, vec4(0.58, 0.16, 0.92, 0.36));
+        wallDetail = rectangle(backUv, vec4(0.12, 0.60, 0.16, 0.90)) + rectangle(backUv, vec4(0.48, 0.60, 0.52, 0.90)) + rectangle(backUv, vec4(0.84, 0.60, 0.88, 0.90));
       }
       furniture = clamp(furniture, 0.0, 1.0); secondary = clamp(secondary, 0.0, 1.0); wallDetail = clamp(wallDetail, 0.0, 1.0);
       interior = mix(interior, mix(vec3(0.035, 0.03, 0.025), vec3(0.10, 0.15, 0.13), roomSeed), furniture);
@@ -137,8 +141,8 @@ const fragmentShader = /* glsl */`
       interior = mix(interior, mix(vec3(0.18, 0.25, 0.27), vec3(0.36, 0.24, 0.12), roomSeed), wallDetail * 0.72);
     }
 
-    float roomType = floor(vRoomData.x + 0.5), propA = 10000.0, propB = 10000.0, propC = 10000.0;
-    vec3 propColorA = vec3(0.17, 0.12, 0.08), propColorB = vec3(0.08, 0.10, 0.10), propColorC = vec3(0.20, 0.18, 0.13);
+    float roomType = floor(vRoomData.x + 0.5), propA = 10000.0, propB = 10000.0, propC = 10000.0, propD = 10000.0, propE = 10000.0;
+    vec3 propColorA = vec3(0.17, 0.12, 0.08), propColorB = vec3(0.08, 0.10, 0.10), propColorC = vec3(0.20, 0.18, 0.13), propColorD = vec3(0.17, 0.12, 0.08), propColorE = vec3(0.08, 0.10, 0.10);
     if (roomType < 0.5) {
       propA = boxHit(origin, ray, vec3(-.43, -.48, .28), vec3(.22, -.20, .82));
       propB = boxHit(origin, ray, vec3(-.46, -.19, .68), vec3(.25, .10, .86));
@@ -170,14 +174,24 @@ const fragmentShader = /* glsl */`
       propB = boxHit(origin, ray, vec3(.12, -.48, .50), vec3(.44, .24, .86));
       propC = boxHit(origin, ray, vec3(-.04, -.48, .22), vec3(.04, .32, .30));
       propColorA = vec3(.27, .22, .14); propColorB = vec3(.16, .23, .22); propColorC = vec3(.34, .30, .19);
-    } else {
+    } else if (roomType < 7.5) {
       propA = boxHit(origin, ray, vec3(-.44, -.46, .34), vec3(.44, -.33, .78));
       propB = boxHit(origin, ray, vec3(-.31, -.33, .45), vec3(-.22, -.08, .56));
       propC = boxHit(origin, ray, vec3(.22, -.33, .56), vec3(.31, -.08, .67));
+    } else {
+      propA = boxHit(origin, ray, vec3(-.46, -.45, .25), vec3(-.05, -.27, .82));
+      propB = boxHit(origin, ray, vec3(-.38, -.27, .38), vec3(-.13, -.10, .68));
+      propC = min(boxHit(origin, ray, vec3(-.43, -.48, .32), vec3(-.34, -.40, .46)), boxHit(origin, ray, vec3(-.17, -.48, .32), vec3(-.08, -.40, .46)));
+      propD = boxHit(origin, ray, vec3(.05, -.45, .34), vec3(.46, -.27, .88));
+      propE = boxHit(origin, ray, vec3(.13, -.27, .46), vec3(.38, -.10, .74));
+      propColorA = mix(vec3(.16, .25, .31), vec3(.42, .16, .10), roomSeed);
+      propColorB = propColorA * 1.16; propColorC = vec3(.025, .028, .03);
+      propColorD = mix(vec3(.36, .34, .29), vec3(.12, .26, .20), roomSeed);
+      propColorE = propColorD * 1.14;
     }
-    float nearestProp = min(propA, min(propB, propC));
+    float nearestProp = min(min(propA, propB), min(propC, min(propD, propE)));
     if (nearestProp < distanceToRoom) {
-      vec3 propColor = propA <= propB && propA <= propC ? propColorA : propB <= propC ? propColorB : propColorC;
+      vec3 propColor = propA <= propB && propA <= propC && propA <= propD && propA <= propE ? propColorA : propB <= propC && propB <= propD && propB <= propE ? propColorB : propC <= propD && propC <= propE ? propColorC : propD <= propE ? propColorD : propColorE;
       float propShade = .72 + .22 * max(0.0, normalize(ray).y);
       interior = propColor * propShade;
     }

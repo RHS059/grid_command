@@ -48,10 +48,27 @@ export function createWireSpriteMaterial(color = '#252a29', vertexColors = false
 }
 
 export function createColoredBuildingMaterial(kind: string) {
-  return new T.MeshBasicMaterial({
-    color: '#ffffff',
-    vertexColors: true,
-    toneMapped: false,
+  return new T.ShaderMaterial({
+    name: 'building-direct-color',
     side: kind === 'gable' || kind === 'detail-plane' ? T.DoubleSide : T.FrontSide,
+    vertexShader: /* glsl */`
+      attribute vec3 buildingColor;
+      varying vec3 vBuildingColor;
+      void main() {
+        mat4 world = modelMatrix;
+        #ifdef USE_INSTANCING
+          world = modelMatrix * instanceMatrix;
+        #endif
+        vBuildingColor = buildingColor;
+        gl_Position = projectionMatrix * viewMatrix * world * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */`
+      varying vec3 vBuildingColor;
+      void main() {
+        gl_FragColor = vec4(vBuildingColor, 1.0);
+        #include <colorspace_fragment>
+      }
+    `,
   })
 }

@@ -15,12 +15,12 @@ export class ModularBuildingRenderer {
   constructor(private scene: T.Scene) {
     for (const kind of Object.keys(BUILDING_PART_CAPACITY) as BuildingPartKind[]) {
       const material = kind === 'window' ? createInteriorWindowMaterial('#ffffff', true)
-        : kind === 'window-flat' ? new T.MeshBasicMaterial({ color: '#ffffff', vertexColors: true, toneMapped: true })
         : kind === 'wire' ? createWireSpriteMaterial('#ffffff', true)
         : createColoredBuildingMaterial(kind)
       const geometry = buildingGeometry(kind), capacity = BUILDING_PART_CAPACITY[kind]
       if (kind === 'window') geometry.setAttribute('roomData', new T.InstancedBufferAttribute(new Float32Array(capacity * 4), 4).setUsage(T.DynamicDrawUsage))
-      const mesh = new T.InstancedMesh(geometry, material, capacity); mesh.instanceColor = new T.InstancedBufferAttribute(new Float32Array(capacity * 3).fill(1), 3).setUsage(T.DynamicDrawUsage); mesh.count = 0; mesh.visible = false; mesh.frustumCulled = false; mesh.instanceMatrix.setUsage(T.DynamicDrawUsage); this.meshes.set(kind, mesh); scene.add(mesh)
+      if (kind !== 'window' && kind !== 'wire') geometry.setAttribute('buildingColor', new T.InstancedBufferAttribute(new Float32Array(capacity * 3).fill(1), 3).setUsage(T.DynamicDrawUsage))
+      const mesh = new T.InstancedMesh(geometry, material, capacity); if (kind === 'window' || kind === 'wire') mesh.instanceColor = new T.InstancedBufferAttribute(new Float32Array(capacity * 3).fill(1), 3).setUsage(T.DynamicDrawUsage); mesh.count = 0; mesh.visible = false; mesh.frustumCulled = false; mesh.instanceMatrix.setUsage(T.DynamicDrawUsage); this.meshes.set(kind, mesh); scene.add(mesh)
     }
   }
   import(packet: GeometryPacket) {
@@ -46,10 +46,10 @@ export class ModularBuildingRenderer {
         const renderKind: BuildingPartKind = part.kind === 'window' && !close ? 'window-flat' : part.kind, mesh = this.meshes.get(renderKind)!, index = counts.get(renderKind) || 0
         if (index >= BUILDING_PART_CAPACITY[renderKind]) continue
         applyBuildingPartTransform(this.dummy, part, { x: building.x, y: building.y, z: terrain ? building.elevation : 0 }, building.rotation)
-        mesh.setMatrixAt(index, this.dummy.matrix); mesh.setColorAt(index, new T.Color(part.color)); if (renderKind === 'window') { const room = part.room || { type: 2, span: 1, offset: 0, seed: .5 }; (mesh.geometry.getAttribute('roomData') as T.InstancedBufferAttribute).setXYZW(index, room.type, room.span, room.offset, room.seed) } counts.set(renderKind, index + 1)
+        mesh.setMatrixAt(index, this.dummy.matrix); const color = new T.Color(part.color), buildingColor = mesh.geometry.getAttribute('buildingColor') as T.InstancedBufferAttribute | undefined; if (buildingColor) buildingColor.setXYZ(index, color.r, color.g, color.b); else mesh.setColorAt(index, color); if (renderKind === 'window') { const room = part.room || { type: 2, span: 1, offset: 0, seed: .5 }; (mesh.geometry.getAttribute('roomData') as T.InstancedBufferAttribute).setXYZW(index, room.type, room.span, room.offset, room.seed) } counts.set(renderKind, index + 1)
       }
     }
-    for (const [kind, mesh] of this.meshes) { mesh.count = counts.get(kind) || 0; mesh.visible = mesh.count > 0; if (mesh.count) { mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true; if (kind === 'window') (mesh.geometry.getAttribute('roomData') as T.InstancedBufferAttribute).needsUpdate = true } }
+    for (const [kind, mesh] of this.meshes) { mesh.count = counts.get(kind) || 0; mesh.visible = mesh.count > 0; if (mesh.count) { mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true; const buildingColor = mesh.geometry.getAttribute('buildingColor') as T.InstancedBufferAttribute | undefined; if (buildingColor) buildingColor.needsUpdate = true; if (kind === 'window') (mesh.geometry.getAttribute('roomData') as T.InstancedBufferAttribute).needsUpdate = true } }
   }
   dispose() { for (const mesh of this.meshes.values()) { this.scene.remove(mesh); mesh.geometry.dispose(); (mesh.material as T.Material).dispose(); mesh.dispose() } this.meshes.clear(); this.features.clear(); this.sectors.clear() }
 }
