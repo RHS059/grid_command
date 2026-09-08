@@ -202,7 +202,8 @@ const fragmentShader = /* glsl */`
     float edge = min(min(vWindowUv.x, 1.0 - vWindowUv.x), min(vWindowUv.y, 1.0 - vWindowUv.y));
     float rim = 1.0 - smoothstep(0.0, 0.11, edge);
     float diagonalSheen = smoothstep(0.055, 0.0, abs(vWindowUv.x + vWindowUv.y * 0.48 - 0.84));
-    vec3 glass = tint * (0.12 + rim * 0.16) + vec3(0.20, 0.29, 0.34) * diagonalSheen * 0.22;
+    float openParkingBay = step(7.5, roomType);
+    vec3 glass = (tint * (0.12 + rim * 0.16) + vec3(0.20, 0.29, 0.34) * diagonalSheen * 0.22) * (1.0 - openParkingBay);
     gl_FragColor = vec4(interior + glass, 1.0);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
