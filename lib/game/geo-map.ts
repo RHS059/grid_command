@@ -60,7 +60,7 @@ export class GeoMap {
     this.resizeObserver = new ResizeObserver(() => this.resize()); this.resizeObserver.observe(options.container); this.resize()
     this.ready = BabylonRuntime.create(this.canvas).then(runtime => {
       if (this.disposed) { runtime.dispose(); return }
-      this.runtime = runtime; this.canvas = runtime.canvas
+      this.runtime = runtime; this.canvas = runtime.canvas; runtime.resize(this.width, this.height, this.ratio)
       const ambient = new HemisphericLight('map-ambient', new Vector3(0, 0, 1), runtime.scene); ambient.intensity = .8
       runtime.configure({ ...DEFAULT_GRAPHICS, performanceMode: options.interactive === false })
       this.tiles = new GeographicTiles(runtime.scene, elevation => { this.triggerRepaint(); if (elevation) this.emit('sourcedata', { sourceId: 'elevation', isSourceLoaded: true }) })
@@ -100,7 +100,7 @@ export class GeoMap {
   private loop = () => {
     if (this.disposed) return
     this.frame = requestAnimationFrame(this.loop)
-    if (document.hidden || !this.runtime) return
+    if (document.hidden || !this.runtime || this.options.container.clientWidth < 2 || this.options.container.clientHeight < 2) return
     if (this.animation) { const a = this.animation, progress = Math.min(1, (performance.now() - a.start) / a.duration), t = progress * progress * (3 - 2 * progress), target = a.to.center ? LngLat.convert(a.to.center) : a.from.center; this.apply({ center: [a.from.center.lng + (target.lng - a.from.center.lng) * t, a.from.center.lat + (target.lat - a.from.center.lat) * t], zoom: a.from.zoom + ((a.to.zoom ?? a.from.zoom) - a.from.zoom) * t, pitch: a.from.pitch + ((a.to.pitch ?? a.from.pitch) - a.from.pitch) * t, bearing: a.from.bearing + ((a.to.bearing ?? a.from.bearing) - a.from.bearing) * t }); if (progress === 1) this.animation = undefined; this.dirty = true }
     if (!this.dirty) return
     this.dirty = false; this.camera(); this.tiles?.update(this.center, this.zoom, !!this.terrain, this.getLayer('road-labels')?.layout?.visibility !== 'none')

@@ -8,18 +8,18 @@ export class GraphicsRenderer {
   private runtime?: BabylonRuntime
   private disposed = false
   private ratio = 1
-  private width = 1
-  private height = 1
+  private width = 0
+  private height = 0
   constructor(_options: { antialias?: boolean; alpha?: boolean } = {}) {
     this.ready = BabylonRuntime.create(this.domElement).then(runtime => {
       if (this.disposed) { runtime.dispose(); return }
       this.runtime = runtime; this.domElement = runtime.canvas
-      runtime.configure(DEFAULT_GRAPHICS); runtime.resize(this.width, this.height, this.ratio)
+      runtime.resize(Math.max(2,this.width),Math.max(2,this.height),this.ratio);runtime.configure(DEFAULT_GRAPHICS)
     })
   }
   setPixelRatio(ratio: number) { this.ratio = ratio }
   setSize(width: number, height: number) { this.width = width; this.height = height; this.domElement.style.width = `${width}px`; this.domElement.style.height = `${height}px`; this.runtime?.resize(width, height, this.ratio) }
-  render(scene: Scene, camera: PerspectiveCamera) { if (!this.runtime || this.disposed) return; this.runtime.setCamera(camera.position, camera.target, camera.up, camera.fov * Math.PI / 180, camera.near, camera.far); this.runtime.sync(scene); this.runtime.render() }
+  render(scene: Scene, camera: PerspectiveCamera) { if (!this.runtime || this.disposed || this.width < 2 || this.height < 2) return; this.runtime.setCamera(camera.position, camera.target, camera.up, camera.fov * Math.PI / 180, camera.near, camera.far); this.runtime.sync(scene); this.runtime.render() }
   dispose() { this.disposed = true; this.runtime?.dispose() }
 }
 export class OrbitControls {
