@@ -189,7 +189,22 @@ export class PerspectiveCamera extends Camera{target=new Vector3();constructor(p
 export class Sphere{constructor(public center=new Vector3(),public radius=1){}}
 export class Frustum{private matrix=new Matrix4();setFromProjectionMatrix(m:Matrix4){this.matrix.copy(m);return this}intersectsSphere(s:Sphere){const e=this.matrix.elements;for(const [a,sign]of [[0,1],[0,-1],[1,1],[1,-1],[2,1],[2,-1]]){const x=e[3]+sign*e[a],y=e[7]+sign*e[a+4],z=e[11]+sign*e[a+8],w=e[15]+sign*e[a+12];if(x*s.center.x+y*s.center.y+z*s.center.z+w < -s.radius*Math.hypot(x,y,z))return false}return true}}
 export class Box3{constructor(public min=new Vector3(Infinity,Infinity,Infinity),public max=new Vector3(-Infinity,-Infinity,-Infinity)){}expandByPoint(p:Vector3){this.min.min(p);this.max.max(p);return this}isEmpty(){return this.max.x<this.min.x||this.max.y<this.min.y||this.max.z<this.min.z}getSize(target:Vector3){return this.isEmpty()?target.set(0,0,0):target.copy(this.max).sub(this.min)}getCenter(target:Vector3){return this.isEmpty()?target.set(0,0,0):target.copy(this.max).add(this.min).multiplyScalar(.5)}setFromObject(root:Object3D){root.updateMatrixWorld(true);root.traverse(node=>{if(node instanceof Mesh){const p=node.geometry.attributes.position;for(let i=0;p&&i<p.count;i++)this.expandByPoint(new Vector3().fromBufferAttribute(p,i).applyMatrix4(node.matrixWorld))}});return this}}
-export class GridHelper extends Mesh{constructor(size:number,_divisions:number,color:string,_minor:string){super(new PlaneGeometry(size,size).rotateX(-Math.PI/2),new MeshBasicMaterial({color,wireframe:true,transparent:true,opacity:.2}))}}
+/** Ruled floor grid: thin quads per line, every fifth line in the major color. */
+function gridGeometry(size:number,divisions:number,color:string,minor:string){
+  const steps=Math.max(1,Math.floor(divisions)),step=size/steps,half=size/2,width=Math.max(size*.0007,1e-5)
+  const positions:number[]=[],colors:number[]=[],major=new Color(color),small=new Color(minor)
+  const bar=(x0:number,y0:number,x1:number,y1:number,c:Color)=>{
+    positions.push(x0,y0,0,x1,y0,0,x1,y1,0,x0,y0,0,x1,y1,0,x0,y1,0)
+    for(let i=0;i<6;i++)colors.push(c.r,c.g,c.b)
+  }
+  for(let i=0;i<=steps;i++){const p=-half+i*step,c=i%5===0?major:small;bar(-half,p-width,half,p+width,c);bar(p-width,-half,p+width,half,c)}
+  const g=new BufferGeometry()
+  g.setAttribute('position',new Float32BufferAttribute(positions,3))
+  g.setAttribute('color',new Float32BufferAttribute(colors,3))
+  g.computeVertexNormals()
+  return g.rotateX(-Math.PI/2)
+}
+export class GridHelper extends Mesh{constructor(size:number,divisions:number,color:string,minor:string){super(gridGeometry(size,divisions,color,minor),new MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.62,depthWrite:false}))}}
 
 // Imported animation tracks remain data; the Babylon asset bridge applies the
 // selected actions to native AnimationGroups and preserves their skeletons.

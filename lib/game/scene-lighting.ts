@@ -25,10 +25,13 @@ export interface StudioRig{
  */
 export function addStudioLighting(scene:T.Scene):StudioRig{
   scene.profile='studio'
-  const key=new T.DirectionalLight('#fff3e0',2.4),fill=new T.DirectionalLight('#dce8ff',.8),rim=new T.DirectionalLight('#f4f4f4',1.6)
+  const key=new T.DirectionalLight('#fff3e0',2.9),fill=new T.DirectionalLight('#dce8ff',.8),rim=new T.DirectionalLight('#f4f4f4',1.9)
   key.name='studio-key';fill.name='studio-fill';rim.name='studio-rim'
   key.castShadow=true
-  scene.add(key,fill,rim)
+  const ambient=new T.HemisphereLight('#93b4d8','#2b3340',.22)
+  ambient.name='studio-ambient'
+  scene.add(key,fill,rim,ambient)
+  scene.background=new T.Color('#0c1826')
   let basis={forward:new T.Vector3(0,1,0),right:new T.Vector3(1,0,0),up:new T.Vector3(0,0,1)}
   const update=(camera:{position:T.Vector3;up:T.Vector3},target:T.Vector3,center:T.Vector3,radius:number)=>{
     const forward=camera.position.clone().sub(target)
