@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AudioLines, Building2, ChevronLeft, ChevronRight, CircleHelp, Crosshair, Flag, Layers, LocateFixed, Menu, Maximize2, Minus, Pause, Play, Plus, RotateCcw, Settings2, Shield, SkipForward, VolumeX, X, Navigation2 } from 'lucide-react'
+import { AudioLines, ChevronLeft, ChevronRight, CircleHelp, Crosshair, Flag, Layers, LocateFixed, Menu, Maximize2, Minus, Pause, Play, Plus, RotateCcw, Settings2, Shield, SkipForward, VolumeX, X, Navigation2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -13,17 +13,15 @@ import { cn } from '@/lib/utils'
 import { BattlefieldAudio } from '@/lib/game/audio'
 import { UnitLab } from './unit-lab'
 import { SoundSettings } from './sound-settings'
-import { BuildingEditor } from './building-editor'
 import { eligibleBuilder } from '@/lib/game/electronic-warfare'
 import { troopSeats, isVehicle, isAir, CATALOG } from '@/lib/game/types'
 import { nearestPersonnelCarrier, transportSquad } from '@/lib/game/transport'
 import styles from './game-hud.module.css'
 
-type GameView = 'battlefield' | 'models' | 'buildings' | 'sfx'
+type GameView = 'battlefield' | 'models' | 'sfx'
 const WORKSPACES: { id: GameView; label: string; hint: string; icon: typeof Crosshair }[] = [
   { id: 'battlefield', label: 'Battlefield', hint: 'F1', icon: Crosshair },
   { id: 'models', label: 'Model Preview', hint: 'F2', icon: Layers },
-  { id: 'buildings', label: 'Building Designer', hint: 'F3', icon: Building2 },
   { id: 'sfx', label: 'SFX Designer', hint: 'F4', icon: AudioLines },
 ]
 
@@ -32,7 +30,7 @@ function IconButton({ label, onClick, children, active = false }: { label: strin
 }
 
 function WorkspaceMenu({ view, open, setOpen, setView, openCommand, openHelp, openSettings, restart }: { view: GameView; open: boolean; setOpen: (open: boolean) => void; setView: (view: GameView) => void; openCommand: () => void; openHelp: () => void; openSettings: () => void; restart: () => void }) {
-  const subtitle = view === 'battlefield' ? 'San Diego · City theater' : view === 'models' ? 'Unit catalog · 3D preview' : view === 'buildings' ? 'Modular preset generator' : 'Three-layer tone generator'
+  const subtitle = view === 'battlefield' ? 'San Diego · City theater' : view === 'models' ? 'Unit catalog · 3D preview' : 'Three-layer tone generator'
   return <div className={styles.workspaceNav}>
     <button className={styles.workspaceButton} aria-haspopup="menu" aria-expanded={open} aria-controls="workspace-menu" onClick={() => setOpen(!open)}>
       <span className={styles.brandOrb}><Crosshair size={17} /></span><span><strong>GRID COMMAND</strong><small>{subtitle}</small></span><Menu className={styles.menuIcon} size={20} />
@@ -93,7 +91,7 @@ export function Game() {
   useEffect(() => {
     const handle = (e: KeyboardEvent) => {
       const editing = e.target instanceof HTMLElement && (e.target.isContentEditable || ['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(e.target.tagName))
-      if (!editing && ['F1', 'F2', 'F3', 'F4'].includes(e.key)) { e.preventDefault(); setView(WORKSPACES[Number(e.key.slice(1)) - 1].id); setWorkspaceOpen(false); return }
+      if (!editing && ['F1', 'F2', 'F3', 'F4'].includes(e.key)) { e.preventDefault(); const workspace=WORKSPACES.find(item=>item.hint===e.key);if(workspace)setView(workspace.id); setWorkspaceOpen(false); return }
       if (e.key === 'Escape') { setWorkspaceOpen(false); setMobileOpen(false); if (view === 'battlefield') setSelected(null) }
       if (view !== 'battlefield' || modal || editing) return
       if (e.code === 'Space') { e.preventDefault(); pause() }
@@ -144,9 +142,8 @@ export function Game() {
       <div className={cn(styles.commandDrawer, mobileOpen && styles.open)}><button className={styles.drawerClose} aria-label="Close command center" onClick={() => setMobileOpen(false)}><X /></button><CommandPanel state={state} perspective={perspective} preferredSide={activeSide} selected={selected} onSelect={selectUnit} focus={focus} mobileOpen={mobileOpen} onUpgradeMob={upgradeMob} onBuildObjective={buildObjectiveFacility} /></div>
     </div>
     <div id="panel-models" role="tabpanel" aria-label="Model Preview" className={cn('model-tab-panel', styles.workspacePanel)} hidden={view !== 'models'}><UnitLab embedded active={view === 'models'} simulationPaused={state.paused || !!state.winner} soundEngine={soundEngine} /></div>
-    <div id="panel-buildings" role="tabpanel" aria-label="Building Designer" className={cn('model-tab-panel', styles.workspacePanel)} hidden={view !== 'buildings'}><BuildingEditor /></div>
     <div id="panel-sfx" role="tabpanel" aria-label="SFX Designer" className={cn('model-tab-panel', styles.workspacePanel)} hidden={view !== 'sfx'}><SoundSettings engine={soundEngine} /></div>
-    <div className={styles.diagnostics}>{view === 'battlefield' ? `${fps === null ? '—' : fps === 0 ? '<1' : fps} FPS · ` : ''}BUILD 0.9.31</div>
+    <div className={styles.diagnostics}>{view === 'battlefield' ? `${fps === null ? '—' : fps === 0 ? '<1' : fps} FPS · ` : ''}BUILD 0.9.32</div>
     <GameDialogs modal={modal} onClose={() => setModal(null)} graphics={graphics} setGraphics={setGraphics} restart={restart} />
   </main>
 }
