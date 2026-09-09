@@ -1,4 +1,5 @@
 import { WebGPUEngine } from '@babylonjs/core/Engines/webgpuEngine'
+import { WebGPUShaderProcessorWGSL } from '@babylonjs/core/Engines/WebGPU/webgpuShaderProcessorsWGSL'
 import { Engine } from '@babylonjs/core/Engines/engine'
 import type { AbstractEngine } from '@babylonjs/core/Engines/abstractEngine'
 import { Scene } from '@babylonjs/core/scene'
@@ -28,6 +29,24 @@ import type { Graphics } from './types'
 
 type DrawRecord={mesh:Mesh;geometry:D.BufferGeometry;version:string;instanceVersion:string;sectors?:Map<string,number[]>;sectorVersion?:string;instanceCount?:number}
 const color=(c:D.Color)=>new Color3(c.r,c.g,c.b)
+/** Babylon 9.25 injects a Chromium-only rule and an unused fragment builtin. */
+export function sanitizeFirefoxWGSL(code:string){
+  let result=code.replace(/diagnostic\s*\(\s*off\s*,\s*chromium\.unreachable_code\s*\)\s*;[ \t]*\r?\n?/g,'')
+  const withoutFacing=result.replace(/@builtin\(front_facing\)\s+frontFacing\s*:\s*bool\s*,?/g,'')
+  // Retain the builtin whenever two-sided lighting (or another shader) actually reads it.
+  if(!/\bfrontFacing\b/.test(withoutFacing.replace(/\/\/[^\n]*/g,'')))result=withoutFacing
+  return result
+}
+let firefoxWGSLPatched=false
+export const prepareFirefoxWGSL=()=>{
+  if(firefoxWGSLPatched||typeof navigator==='undefined'||!navigator.userAgent.includes('Firefox'))return
+  firefoxWGSLPatched=true
+  const prototype=WebGPUShaderProcessorWGSL.prototype,finalize=prototype.finalizeShaders
+  prototype.finalizeShaders=function(vertexCode:string,fragmentCode:string){
+    const result=finalize.call(this,vertexCode,fragmentCode)
+    return{vertexCode:sanitizeFirefoxWGSL(result.vertexCode),fragmentCode:sanitizeFirefoxWGSL(result.fragmentCode)}
+  }
+}
 export class BabylonRuntime {
   readonly scene:Scene
   readonly camera:FreeCamera
@@ -50,6 +69,7 @@ export class BabylonRuntime {
     if(!forceWebGL&&window.isSecureContext&&'gpu'in navigator){
       let candidate:WebGPUEngine|undefined
       try{
+        prepareFirefoxWGSL()
         candidate=new WebGPUEngine(canvas,{antialias:false,powerPreference:'high-performance'})
         await candidate.initAsync()
         engine=candidate
@@ -74,7 +94,7 @@ export class BabylonRuntime {
   }
   getViewProjection(){return this.camera.getViewMatrix().multiply(this.camera.getProjectionMatrix())}
   private getMaterial(source:D.Material){
-    let material=this.materials.get(source);if(!material){material=new PBRMaterial(source.name||`material-${source.id}`,this.scene);this.materials.set(source,material);if(source.name==='interior-window')new InteriorRoomPlugin(material);material.maxSimultaneousLights=8;material.backFaceCulling=source.side!==D.DoubleSide;material.twoSidedLighting=source.side===D.DoubleSide;material.unlit=source instanceof D.MeshBasicMaterial;material.wireframe=source.wireframe;material.disableDepthWrite=!source.depthWrite;material.alphaMode=source.blending===D.AdditiveBlending?Engine.ALPHA_ADD:Engine.ALPHA_COMBINE;material.transparencyMode=source.transparent?PBRMaterial.PBRMATERIAL_ALPHABLEND:PBRMaterial.PBRMATERIAL_OPAQUE}
+    let material=this.materials.get(source);if(!material){material=new PBRMaterial(source.name||`material-${source.id}`,this.scene);this.materials.set(source,material);if(source.name==='interior-window')new InteriorRoomPlugin(material);material.maxSimultaneousLights=4;material.backFaceCulling=source.side!==D.DoubleSide;material.twoSidedLighting=source.side===D.DoubleSide;material.unlit=source instanceof D.MeshBasicMaterial;material.wireframe=source.wireframe;material.disableDepthWrite=!source.depthWrite;material.alphaMode=source.blending===D.AdditiveBlending?Engine.ALPHA_ADD:Engine.ALPHA_COMBINE;material.transparencyMode=source.transparent?PBRMaterial.PBRMATERIAL_ALPHABLEND:PBRMaterial.PBRMATERIAL_OPAQUE}
     material.albedoColor=color(source.color);material.emissiveColor=color(source.emissive).scale(source.emissiveIntensity);material.roughness=source.roughness;material.metallic=source.metalness;material.alpha=source.opacity;if(source.uniforms.wireColor)material.albedoColor=color(source.uniforms.wireColor.value)
     if(source.name==='interior-window'){material.albedoColor=color(source.uniforms.windowTint?.value||new D.Color('#35596b'));material.roughness=.2;material.metallic=.45;material.emissiveColor=new Color3(.025,.03,.035)}
     return material
@@ -122,7 +142,7 @@ export class BabylonRuntime {
         if(source.userData.nativeNodeName){const selected=entries.rootNodes.flatMap(root=>[root,...root.getDescendants(false)]).find(node=>node.name===source.userData.nativeNodeName);if(selected instanceof TransformNode){selected.position.set(0,0,0);selected.rotationQuaternion=Quaternion.Identity();selected.scaling.set(1,1,1)}}
         const nodes=entries.rootNodes.flatMap(root=>[root,...root.getDescendants(false)])
         source.traverse(node=>{const native=nodes.find(value=>value.name===node.name);if(native instanceof TransformNode)this.nativeNodes.set(node.id,native)})
-        for(const node of nodes)if(node instanceof Mesh){node.receiveShadows=true;this.shadows?.addShadowCaster(node);if(source.userData.teamColor&&node.material instanceof PBRMaterial&&node.material.name.includes('Team marking'))node.material.albedoColor=Color3.FromHexString(source.userData.teamColor)}
+        for(const node of nodes)if(node instanceof Mesh){node.receiveShadows=true;this.shadows?.addShadowCaster(node);if(node.material instanceof PBRMaterial){node.material.maxSimultaneousLights=4;if(!node.material.getActiveTextures().length){for(const kind of [VertexBuffer.UVKind,VertexBuffer.UV2Kind,VertexBuffer.UV3Kind,VertexBuffer.UV4Kind,VertexBuffer.UV5Kind,VertexBuffer.UV6Kind])node.removeVerticesData(kind);if(/\/(tank|troop_transport|apc|vtol_cargo|vtol_attack|cas|fighter)\.glb(?:[?#]|$)/.test(url)){node.material.backFaceCulling=true;node.material.twoSidedLighting=false}}}if(source.userData.teamColor&&node.material instanceof PBRMaterial&&node.material.name.includes('Team marking'))node.material.albedoColor=Color3.FromHexString(source.userData.teamColor)}
       }).catch(error=>console.warn('Model asset failed to load',url,error))
     }
     const parent=source.parent?this.nativeNodes.get(source.parent.id):undefined
@@ -147,7 +167,9 @@ export class BabylonRuntime {
   sync(root:D.Scene){
     if(this.disposed)return
     root.updateMatrixWorld(true)
-    const live=new Set<number>(),nativeLive=new Set<number>()
+    const live=new Set<number>(),nativeLive=new Set<number>(),lightLive=new Set<number>()
+    root.traverse(object=>{if(object instanceof D.HemisphereLight||object instanceof D.DirectionalLight||object instanceof D.PointLight)lightLive.add(object.id)})
+    for(const[id,light]of this.lights)if(!lightLive.has(id)){if(light instanceof PointLight&&this.clustered.isSupported)this.clustered.removeLight(light);if(light===this.sun){this.shadows?.dispose();this.shadows=null;this.sun=null}light.dispose();this.lights.delete(id)}
     const visit=(object:D.Object3D,parentVisible:boolean)=>{
       const visible=parentVisible&&object.visible
       if(object.userData.nativeAssetURL){nativeLive.add(object.id);this.syncNative(object);this.native.get(object.id)!.pivot.setEnabled(visible)}
@@ -157,7 +179,7 @@ export class BabylonRuntime {
     }
     visit(root,true)
     for(const[id,record]of this.draws)if(!live.has(id)){record.mesh.dispose();this.draws.delete(id)}
-    for(const[id,record]of this.native)if(!nativeLive.has(id)){record.entries?.dispose();record.pivot.dispose();this.native.delete(id)}
+    for(const[id,record]of this.native)if(!nativeLive.has(id)){record.source.traverse(node=>this.nativeNodes.delete(node.id));record.entries?.dispose();record.pivot.dispose();this.native.delete(id)}
     for(const[source,material]of this.materials)if(source.disposed){material.dispose();this.materials.delete(source)}
     if(root.background)this.scene.clearColor=new Color4(root.background.r,root.background.g,root.background.b,1)
   }

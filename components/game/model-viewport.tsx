@@ -13,21 +13,21 @@ import { MODEL_NAMES, type ModelId } from '@/lib/game/model-catalog'
 
 interface Props { model: ModelId; side: Side; active: boolean; animate: boolean; rotate: boolean; action: SoldierAction; stance: Stance; condition: Soldier['status']; reset: number; clip?:string; loop?:boolean; seek?:{serial:number;time:number}; onTime?:(time:number)=>void }
 export function ModelViewport(props: Props) {
-  const host = useRef<HTMLDivElement>(null), current = useRef(props); current.current = props
+  const host = useRef<HTMLDivElement>(null), rendererRef=useRef<GraphicsRenderer|null>(null), current = useRef(props); current.current = props
   const [error, setError] = useState('')
+  useEffect(()=>()=>{rendererRef.current?.dispose();rendererRef.current?.domElement.remove();rendererRef.current=null},[])
   useEffect(() => {
     if (!props.active || !host.current) return
     setError('')
-    let renderer: GraphicsRenderer
-    try { renderer = new GraphicsRenderer({ antialias: true, alpha: true }) } catch { setError('3D preview could not start. Enable hardware acceleration and reload.'); return }
-    void renderer.ready.catch(() => setError('3D preview could not start. Enable hardware acceleration and reload.'))
+    let renderer=rendererRef.current
+    if(!renderer){try { renderer = new GraphicsRenderer({ antialias: true, alpha: true });rendererRef.current=renderer;void renderer.ready.catch(() => setError('3D preview could not start. Enable hardware acceleration and reload.')) } catch { setError('3D preview could not start. Enable hardware acceleration and reload.'); return }}
     const element = host.current, scene = new T.Scene(), camera = new T.PerspectiveCamera(38, 1, .05, 5000)
     camera.up.set(0, 0, 1); renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5))
     renderer.domElement.setAttribute('aria-label', `${MODEL_NAMES[props.model]} interactive 3D model`); element.append(renderer.domElement)
     const orbit = new OrbitControls(camera, renderer.domElement); orbit.enableDamping = true; orbit.autoRotateSpeed = .65; orbit.maxPolarAngle = Math.PI * .49
-    const sky = new T.HemisphereLight('#dbe7ef', '#172432', 2.8); sky.position.set(0, 0, 1); scene.add(sky)
-    const sun = new T.DirectionalLight('#dbe7ef', 3.2); sun.position.set(-30, 30, 60); scene.add(sun)
-    const fill = new T.DirectionalLight('#a4afb4', 1.4); fill.position.set(30, -20, 20); scene.add(fill)
+    const sky = new T.HemisphereLight('#dbe7ef', '#172432', .65); sky.position.set(0, 0, 1); scene.add(sky)
+    const sun = new T.DirectionalLight('#dbe7ef', 1.1); sun.position.set(-30, 30, 60); scene.add(sun)
+    const fill = new T.DirectionalLight('#a4afb4', .35); fill.position.set(30, -20, 20); scene.add(fill)
     const material = new T.MeshStandardMaterial({ vertexColors: true, roughness: .85, metalness: .08, flatShading: true })
     let object: T.Object3D | null = null, batch: SoldierBatch | null = null
     const id = props.model
@@ -55,7 +55,7 @@ export function ModelViewport(props: Props) {
       orbit.autoRotate = c.rotate; orbit.update(); renderer.render(scene, camera)
     }
     frame = requestAnimationFrame(render)
-    return () => { cancelAnimationFrame(frame); observer.disconnect(); orbit.dispose(); batch?.dispose(); disposeModel(scene); material.dispose(); renderer.dispose(); renderer.domElement.remove() }
+    return () => { cancelAnimationFrame(frame); observer.disconnect(); orbit.dispose(); batch?.dispose(); disposeModel(scene); material.dispose() }
   }, [props.model, props.side, props.active])
   return <div className="model-viewport" ref={host}>{error && <p role="alert" className="p-6 text-sm text-destructive">{error}</p>}</div>
 }
