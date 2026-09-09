@@ -68,7 +68,7 @@ export class BabylonRuntime {
     this.effects=new BattlefieldEffects(this.scene,this.camera)
   }
   configure(graphics:Graphics){this.settings=graphics;const low=!!graphics.performanceMode||graphics.quality==='performance'||!this.engine.getCaps().drawBuffersExtension||!this.engine.getCaps().textureHalfFloatRender;this.effects.configure(low);if(this.shadows)this.shadows.getShadowMap()!.refreshRate=graphics.shadows&&!low?1:0;this.scene.shadowsEnabled=graphics.shadows&&!low}
-  resize(width:number,height:number,ratio:number){this.engine.setHardwareScalingLevel(1/ratio);this.engine.setSize(Math.max(1,width*ratio),Math.max(1,height*ratio))}
+  resize(width:number,height:number,ratio:number){const scale=1/ratio;if(this.engine.getHardwareScalingLevel()!==scale)this.engine.setHardwareScalingLevel(scale);this.engine.setSize(Math.max(2,Math.round(width*ratio)),Math.max(2,Math.round(height*ratio)))}
   setCamera(position:{x:number;y:number;z:number},target:{x:number;y:number;z:number},up:{x:number;y:number;z:number},fov:number,near:number,far:number){
     this.camera.position.copyFromFloats(position.x,position.y,position.z);this.camera.upVector.copyFromFloats(up.x,up.y,up.z);this.camera.fov=fov;this.camera.minZ=near;this.camera.maxZ=far;this.camera.setTarget(new Vector3(target.x,target.y,target.z));this.camera.getViewMatrix(true);this.camera.getProjectionMatrix(true);this.shadows?.splitFrustum()
   }
@@ -161,7 +161,7 @@ export class BabylonRuntime {
     for(const[source,material]of this.materials)if(source.disposed){material.dispose();this.materials.delete(source)}
     if(root.background)this.scene.clearColor=new Color4(root.background.r,root.background.g,root.background.b,1)
   }
-  render(){if(!this.disposed)this.scene.render()}
+  render(){if(this.disposed)return;this.engine.beginFrame();try{this.scene.render()}finally{this.engine.endFrame()}}
   dispose(){if(this.disposed)return;this.disposed=true;this.effects.dispose();this.scene.dispose();this.engine.dispose();this.draws.clear();this.materials.clear();this.native.clear();this.nativeNodes.clear()}
 }
 
