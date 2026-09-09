@@ -1,32 +1,25 @@
 import * as T from './scene-data'
-import { mergeGeometries } from './scene-data'
-import { soldierParts } from './unit-models'
-import type { Side, Unit, BattleState } from './types'
+import { assetPath } from '@/lib/asset-path'
+import { vehicleRig } from './vehicle-animation'
+import { SIDE_COLOR, type Side, type Unit, type BattleState } from './types'
 
-// Baked seated variants reuse the infantry art without seven independent rigs.
-export function addCarrierOccupants(root:T.Object3D,side:Side){
-  const parts=soldierParts(side),material=new T.MeshStandardMaterial({vertexColors:true,roughness:.85,metalness:.08,flatShading:true})
-  const build=(driver:boolean)=>{
-    const pieces:T.BufferGeometry[]=[]
-    const place=(key:keyof typeof parts,x:number,y:number,z:number)=>pieces.push(parts[key].clone().scale(.85,.85,.85).translate(x,y,z))
-    const limb=(key:keyof typeof parts,a:[number,number,number],b:[number,number,number],length:number)=>{
-      const from=new T.Vector3(...a),to=new T.Vector3(...b),delta=to.sub(from),g=parts[key].clone()
-      g.scale(.85,.85,delta.length()/length);g.applyQuaternion(new T.Quaternion().setFromUnitVectors(new T.Vector3(0,0,-1),delta.normalize()));g.translate(...a);pieces.push(g)
+/** Canonical full-size crew; each imported clip contains its own vehicle-space root motion. */
+export function addCarrierOccupants(root:T.Object3D,side:Side,preview=false){
+  const seats=vehicleRig('TROOP_TRUCK')?.seats||[]
+  const clips=new Map<string,T.AnimationClip>()
+  const crew=seats.map((seat,index)=>{
+    const actor=new T.Group();actor.name=index===0?'seated-driver':`seated-passenger-${index-1}`
+    actor.userData.nativeAssetURL=assetPath('/models/carrier-soldier.glb');actor.userData.teamColor=SIDE_COLOR[side]
+    actor.userData.seatId=seat.id;actor.visible=preview||index===0;root.add(actor);return actor
+  })
+  const pose=(clip:string,time:number)=>{
+    for(let i=0;i<crew.length;i++){
+      const id=seats[i].id,name=clip===`mount_${id}`||clip===`dismount_${id}`?clip:`seat_${id}`
+      if(!clips.has(name))clips.set(name,new T.AnimationClip(name,80/24,[]))
+      crew[i].userData.animationState=[{name,time:name.startsWith('seat_')?0:time,weight:1,clip:clips.get(name)!}]
     }
-    place('pelvis',0,0,0);place('torso',0,0,.034);place('head',0,0,.527)
-    for(const sign of [-1,1]){
-      const hip:[number,number,number]=[sign*.098,0,-.05],knee:[number,number,number]=[sign*.098,.32,-.09]
-      limb('thigh',hip,knee,.4);limb('shin',knee,[sign*.098,.34,-.4],.37);place('boot',sign*.098,.34,-.42)
-      const shoulder:[number,number,number]=[sign*.264,0,.306]
-      const elbow:[number,number,number]=[sign*.22,driver?.03:.12,.12]
-      const hand:[number,number,number]=[sign*.12,driver?.27:.27,driver?.34:.08]
-      limb('arm',shoulder,elbow,.28);limb('forearm',elbow,hand,.31)
-    }
-    const geometry=mergeGeometries(pieces);pieces.forEach(g=>g.dispose());return geometry
   }
-  const driver=new T.Mesh(build(true),material);driver.name='seated-driver';driver.position.set(-.49,.12,1.14);root.add(driver)
-  const passengers=build(false)
-  for(let i=0;i<6;i++){const person=new T.Mesh(passengers,material);person.name=`seated-passenger-${i}`;person.position.set(i%2?.49:-.49,[-.78,-1.68,-2.35][Math.floor(i/2)],1.14);person.visible=false;root.add(person)}
-  Object.values(parts).forEach(g=>g.dispose())
+  root.userData.poseCrewClip=pose;root.userData.crewCount=crew.length;pose('idle',0)
 }
+
 export { updateCarrierOccupants } from './carrier-runtime-occupants'

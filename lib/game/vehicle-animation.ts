@@ -10,7 +10,8 @@ import fighter from './generated/fighter_rig.json'
 
 export interface VehicleClip { id:string; label:string; duration:number; loop:boolean }
 export interface RigNode { pivot:number[]; kind:string; parent?:string; closed?:number; phase?:number }
-export interface VehicleRig { nodes:Record<string,RigNode>; clips:VehicleClip[]; variant:string }
+export interface VehicleSeat { name:string; id:string; position:number[]; yaw:number; anchor:string; forward_axis:string; canonical_soldier_yaw:number }
+export interface VehicleRig { nodes:Record<string,RigNode>; clips:VehicleClip[]; variant:string; seats?:VehicleSeat[] }
 const rigs:Partial<Record<Role,VehicleRig>>={TANK:tank,TROOP_TRUCK:troop,APC:apc,HEAVY_LIFT_HELI:cargo,ATTACK_HELI:attack,CAS_FIGHTER:cas,JET:fighter}
 export const vehicleRig=(role:string)=>rigs[role as Role]
 export const vehicleClips=(role:string):VehicleClip[]=>vehicleRig(role)?.clips||[]
@@ -41,7 +42,9 @@ export function sampleVehicleNode(node:RigNode,clip:string,time:number,duration:
   if(clip==='fly'&&node.kind==='control')rotation[0]=Math.sin(q*Math.PI*2)*.2
   if(clip==='tilt'&&node.kind==='nacelle')rotation[0]=q*Math.PI/2
   if((clip==='gear'||clip==='gear_down')&&node.kind==='gear'){const a=(clip==='gear'?q:1-q)*Math.PI/2;if(Math.abs(node.pivot[0])<.5)rotation[0]=-a;else rotation[1]=a*(node.pivot[0]>0?1:-1)}
-  return{rotation,offset}
+  const phase=Math.round((time-.05)*1e6)%180000
+  const scale=node.kind==='muzzle_flash'?(clip==='shoot'&&time>=.05&&time<1.05&&phase<100000?1:0):1
+  return{rotation,offset,scale}
 }
 export function poseVehicleClip(root:T.Object3D,clipId:string,time:number){
   const rig=vehicleRig(root.name);if(!rig)return
@@ -50,8 +53,10 @@ export function poseVehicleClip(root:T.Object3D,clipId:string,time:number){
     const object=root.getObjectByName(name);if(!object)continue
     const base=node.pivot.map((v,i)=>v-(node.parent?rig.nodes[node.parent].pivot[i]:0)),sample=sampleVehicleNode(node,clip.id,t,clip.duration)
     object.position.set(base[0]+sample.offset[0],base[1]+sample.offset[1],base[2]+sample.offset[2]);object.rotation.set(...sample.rotation)
+    object.scale.setScalar(sample.scale)
   }
   root.userData.activeVehicleClip=clip.id;root.userData.vehicleClipTime=t
+  root.userData.poseCrewClip?.(clip.id,t)
 }
 export function animateVehicleGameplay(root:T.Object3D,time:number,motion?:{heading:number;aim?:number;active:boolean;x?:number;y?:number;time?:number}){
   const rig=vehicleRig(root.name);if(!rig)return

@@ -49,7 +49,7 @@ export function blenderVehicleGeometry(role: Role, side: Side, attachment = fals
   const asset = assets[role]!
   const rig=vehicleRig(role)!
   const turretPart=(name:string)=>name==='turret'||rig.nodes[name]?.parent==='turret'
-  const parts = Object.entries(asset).filter(([name]) => attachment ? turretPart(name) : !turretPart(name)).map(([, part]) => part)
+  const parts = Object.entries(asset).filter(([name]) => rig.nodes[name]?.kind!=='muzzle_flash'&&(attachment ? turretPart(name) : !turretPart(name))).map(([, part]) => part)
   const g = geometry(parts)
   if (!attachment && g.getAttribute('position').count) {
     const mark = new T.BoxGeometry(role === 'TROOP_TRUCK' ? .45 : .7, .035, .1).toNonIndexed()
@@ -67,11 +67,14 @@ export function createBlenderVehicle(role: Role, side: Side) {
   const root = new T.Group(); root.name = role
   const material = new T.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, flatShading: true, roughness: .85 })
   root.userData.materials = [material]
+  const flashMaterial = role==='CAS_FIGHTER'?new T.MeshStandardMaterial({color:'#ffffff',vertexColors:true,emissive:'#ffb526',emissiveIntensity:4,flatShading:true,roughness:1,toneMapped:false}):material
+  if(flashMaterial!==material)root.userData.materials.push(flashMaterial)
   const rig=vehicleRig(role)!, groups:Record<string,T.Group>={}
   for(const [name,node] of Object.entries(rig.nodes)){const g=new T.Group();g.name=name;groups[name]=g;g.position.set(...node.pivot as [number,number,number])}
   for(const [name,node] of Object.entries(rig.nodes)){const g=groups[name];if(node.parent){const p=rig.nodes[node.parent].pivot;g.position.set(node.pivot[0]-p[0],node.pivot[1]-p[1],node.pivot[2]-p[2]);groups[node.parent].add(g)}else root.add(g)}
-  for(const [part,data] of Object.entries(assets[role]!)){const g=geometry([data]),p=rig.nodes[part]?.pivot||[0,0,0];g.translate(-p[0],-p[1],-p[2]);const mesh=new T.Mesh(g,material);mesh.name=part+'_mesh';(groups[part]||root).add(mesh)}
+  for(const [part,data] of Object.entries(assets[role]!)){const g=geometry([data]),p=rig.nodes[part]?.pivot||[0,0,0];g.translate(-p[0],-p[1],-p[2]);const mesh=new T.Mesh(g,rig.nodes[part]?.kind==='muzzle_flash'?flashMaterial:material);mesh.name=part+'_mesh';(groups[part]||root).add(mesh)}
   poseVehicleClip(root,'idle',0)
+  for(const seat of rig.seats||[]){const marker=new T.Group();marker.name=seat.name;marker.position.set(...seat.position as [number,number,number]);marker.rotation.z=seat.yaw;marker.userData={...seat};root.add(marker)}
   root.userData.blenderVehicle = true
   root.userData.side = side
   if (['APC','HEAVY_LIFT_HELI'].includes(role)) {

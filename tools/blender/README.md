@@ -5,11 +5,11 @@ Seven Blender-authored assets now feed the existing scene-data/Babylon bridge an
 | Role | Asset | Preview actions |
 | --- | --- | --- |
 | TANK | tank | Drive, shoot/recoil, turret traverse |
-| TROOP_TRUCK | troop_transport | Drive; eight seats including two transverse rear seats |
+| TROOP_TRUCK | troop_transport | Drive; eight full-size occupants, with individual board/exit actions for six forward seats and two transverse rear seats |
 | APC | apc | Drive, shoot, traverse, ramp open/close |
 | HEAVY_LIFT_HELI | vtol_cargo | Fly, rotors, nacelle tilt, cargo door open/close |
 | ATTACK_HELI | vtol_attack | Fly, rotors, nacelle tilt, cannon fire |
-| CAS_FIGHTER | cas | Fly, propeller, stores release, gear retract/deploy |
+| CAS_FIGHTER | cas | Fly, propeller, paired cowl-cannon muzzle flashes, gear retract/deploy; fuel pods remain fixed |
 | JET | fighter | Fly/control surfaces, stores release, gear retract/deploy |
 
 All expose a static rest pose. Animated GLB tracks omit static rest channels. Model Preview offers individual selection, play/pause, restart, loop, and a scrub timeline. Gameplay uses movement-driven tracks/wheels, propellers, and aimed turrets; weapon/door/gear demonstration clips are selected in the preview, not automatically tied to simulation events.
@@ -29,3 +29,11 @@ Set GC_OUTPUT_DIR for source/render destination, GC_REPO for checkout destinatio
 Validation: TypeScript no-emit check; models.test.ts and vehicle-animation.test.ts; seven headless Blender reopen/render passes; seven GLB structural/channel checks; /lab HTTP 200 with animation controls present. Browser runtime had no connected browsers, so live pointer interaction was not exercised. Playback and articulation were exercised through the same deterministic functions used by ModelViewport. The headless renders were visually inspected.
 
 Tradeoffs: track paths are simplified capsule loops; rigid control/gear groups are suitable for strategy-scale viewing, not mechanical engineering simulation. Source and GLB are fully modular; game geometry is grouped per moving part. Stylized source geometry intentionally preserves faceted shading.
+
+## Canonical troop carrier crew
+
+The troop carrier uses `Seat_<id>` cushion-contact empties and matching JSON metadata from `vehicle_seating.py`. The first six anchors face +Y; the rear pair face inward across the vehicle. Seat anchors are distinct from the soldier armature root. `carrier-soldier.glb` is derived from the canonical Astra 2 Rigify source at scale 1; its mount, dismount, and seated actions contain vehicle-space root transforms. Model Preview shows all eight occupants and exposes each of the sixteen board/exit clips. Gameplay crew visibility remains driven by the existing transport state; simulation events do not yet play these board/exit clips automatically.
+
+To regenerate the crew, set `GC_SOLDIER_SOURCE` to the canonical rigified `.blend` and `GC_OUTPUT_DIR` to the directory containing the generated `troop_transport.blend`, then run Blender with `--background --python tools/blender/build_carrier_boarding.py`. It writes the derived authoring source and copies the crew GLB into `public/models`. The canonical source is opened read-only by this workflow and never saved. Every animation frame is keyed, quaternion signs remain continuous, and static armature-root channels are retained so seated clones cannot inherit the driver anchor or a preceding clip's endpoint.
+
+Run `node --import tsx tools/blender/verify_carrier_runtime.ts` against the shipped GLB. It checks 24 actions, 1,360 native pose samples, foot/handhold targets, reverse/scrub determinism, seated endpoints, and eight simultaneous independent crew instances. `verify_carrier_fit.py` measures and renders all eight actual seated clips against the final vehicle; `verify_carrier_boarding.py` renders representative side and rear boarding stages. The actual seated fit has no occupant-envelope overlaps, boots on the floor, and 82 mm minimum helmet clearance. These checks do not constitute a complete mesh-intersection sweep of every transition, and a connected browser is still required for live visual inspection of the viewer.

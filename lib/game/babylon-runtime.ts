@@ -18,6 +18,7 @@ import { ClusteredLightContainer } from '@babylonjs/core/Lights/Clustered/cluste
 import { CascadedShadowGenerator } from '@babylonjs/core/Lights/Shadows/cascadedShadowGenerator'
 import { Animation } from '@babylonjs/core/Animations/animation'
 import { AnimationGroup } from '@babylonjs/core/Animations/animationGroup'
+import '@babylonjs/core/Animations/animatable'
 import { LoadAssetContainerAsync } from '@babylonjs/core/Loading/sceneLoader'
 import type { AssetContainer, InstantiatedEntries } from '@babylonjs/core/assetContainer'
 import '@babylonjs/core/Meshes/thinInstanceMesh'
