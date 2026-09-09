@@ -210,9 +210,6 @@ export class BabylonRuntime {
           // shadow texel exceeds it, so a lit surface stripes itself. normalBias offsets
           // along the normal in proportion to the light angle, which is what removes it.
           if(studio)this.shadows.normalBias=.02
-          // Lift the preview's contact shadow off pure black: it is there to seat the
-          // subject on the floor, not to become the darkest value in frame.
-          if(studio)this.shadows.darkness=.38
           // A single small preview subject has no fixed size to hardcode a shadow-frustum
           // distance for; let Babylon fit near/far to what's actually on screen instead of
           // reusing battlefield's 8000-unit CSM distance at studio scale.
