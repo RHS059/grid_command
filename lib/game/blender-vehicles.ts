@@ -1,4 +1,5 @@
 import * as T from './scene-data'
+import { computeAngleNormals } from './geometry-normals'
 import { SIDE_COLOR, type Role, type Side } from './types'
 import { createInteriorWindowMaterial } from './interior-window-material'
 import tank from './generated/tank.json'
@@ -26,21 +27,29 @@ function bytes(value: string) {
 
 function geometry(parts: Part[]) {
   const g = new T.BufferGeometry()
-  const positions: number[] = [], colors: number[] = []
+  const positions: number[] = [], colors: number[] = [], normals: number[] = []
   for (const part of parts) {
     const packed = bytes(part.q); let buffer = 0, bits = 0, cursor = 0
+    const partPositions: number[] = []
     for (let i = 0; i < part.n; i++) {
       while (bits < 15) { buffer |= packed[cursor++] << bits; bits += 8 }
       let value = buffer & 0x7fff; buffer >>>= 15; bits -= 15
       if (value & 0x4000) value -= 0x8000
-      positions.push(value * part.s)
+      partPositions.push(value * part.s)
     }
+    // Each packed part is smoothed on its own and only then concatenated: hull, turret and
+    // coincident markings are separate surfaces and must not weld into each other. Note the
+    // packed JSON carries no normal channel at all — 'n' is a position component count.
+    const source = new T.BufferGeometry().setAttribute('position', new T.Float32BufferAttribute(partPositions, 3))
+    const partNormals = computeAngleNormals(source).getAttribute('normal')
+    positions.push(...partPositions)
+    for (let i = 0; i < partNormals.count; i++) normals.push(partNormals.getX(i), partNormals.getY(i), partNormals.getZ(i))
     const indices = bytes(part.i), vertices = part.n / 3
     for (let vertex = 0; vertex < vertices; vertex++) colors.push(...part.palette[(indices[vertex >> 1] >> ((vertex & 1) * 4)) & 15])
   }
   g.setAttribute('position', new T.Float32BufferAttribute(positions, 3))
   g.setAttribute('color', new T.Float32BufferAttribute(colors, 3))
-  g.computeVertexNormals()
+  g.setAttribute('normal', new T.Float32BufferAttribute(normals, 3))
   return g
 }
 

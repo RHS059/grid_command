@@ -1,6 +1,7 @@
 import * as T from './scene-data'
+import { computeAngleNormals } from './geometry-normals'
 
-/** Small flat-shaded meshes, baked once and merged before instancing. Z is up. */
+/** Small meshes, baked once and merged before instancing. Z is up. */
 export function tint(g: T.BufferGeometry, color: string, variation = 0) {
   const base = new T.Color(color), a = new Float32Array(g.getAttribute('position').count * 3)
   for (let i = 0; i < a.length / 3; i++) {
@@ -12,7 +13,9 @@ export function tint(g: T.BufferGeometry, color: string, variation = 0) {
 function geometry(vertices: number[]) {
   const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(vertices, 3))
   g.setAttribute('uv', new T.Float32BufferAttribute(new Float32Array(vertices.length / 3 * 2), 2))
-  g.computeVertexNormals(); return g
+  // Smoothed per part, before anything merges or instances it: bevels and gentle tapers
+  // round off, corners at more than 30 degrees stay crisp.
+  return computeAngleNormals(g)
 }
 /** Beveled rectangular cross sections, ordered from bottom to top. */
 export function shell(rings: { z: number; w: number; d: number; y?: number }[], color: string, bevel = .2) {
