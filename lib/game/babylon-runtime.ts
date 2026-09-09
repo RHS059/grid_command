@@ -116,7 +116,9 @@ export class BabylonRuntime {
     return material
   }
   private updateGeometry(record:DrawRecord,source:D.Mesh){
-    const geometry=source.geometry,version=Object.entries(geometry.attributes).filter(([n])=>['position','normal','uv','color'].includes(n)).map(([n,a])=>`${n}:${a.version}`).join(':')
+    // Key on buffer identity as well as its version: swapping in a freshly built normal
+    // buffer (which starts back at version 0) must still upload.
+    const geometry=source.geometry,version=Object.entries(geometry.attributes).filter(([n])=>['position','normal','uv','color'].includes(n)).map(([n,a])=>`${n}:${a.id}:${a.version}`).join(':')
     if(record.geometry===geometry&&record.version===version)return
     record.geometry=geometry;record.version=version
     for(const [name,kind]of [['position',VertexBuffer.PositionKind],['normal',VertexBuffer.NormalKind],['uv',VertexBuffer.UVKind]]as const){const a=geometry.attributes[name];if(a)record.mesh.setVerticesData(kind,new Float32Array(a.array),true,a.itemSize)}

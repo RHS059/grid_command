@@ -81,7 +81,7 @@ export class Color {
   toArray(){return[this.r,this.g,this.b]}
 }
 export class BufferAttribute {
-  version=0;usage=0
+  id=++identity;version=0;usage=0
   constructor(public array:Float32Array|Uint32Array|Uint16Array,public itemSize:number){}
   get count(){return this.array.length/this.itemSize} set needsUpdate(value:boolean){if(value)this.version++}
   setUsage(v:number){this.usage=v;return this}
@@ -98,7 +98,26 @@ export class BufferGeometry {
   setIndex(index:number[]|BufferAttribute|null){this.index=index===null?null:index instanceof BufferAttribute?index:new BufferAttribute(new Uint32Array(index),1);return this}
   clone(){const result=new BufferGeometry();for(const[name,a]of Object.entries(this.attributes))result.attributes[name]=a.clone();result.index=this.index?.clone()||null;return result}
   toNonIndexed(){if(!this.index)return this.clone();const g=new BufferGeometry();for(const[name,a]of Object.entries(this.attributes)){const out=new Float32Array(this.index.count*a.itemSize);for(let i=0;i<this.index.count;i++)for(let k=0;k<a.itemSize;k++)out[i*a.itemSize+k]=a.array[this.index.getX(i)*a.itemSize+k];g.setAttribute(name,new BufferAttribute(out,a.itemSize))}return g}
-  applyMatrix4(m:Matrix4){const p=this.getAttribute('position');if(!p)return this;const v=new Vector3();for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(m);p.setXYZ(i,v.x,v.y,v.z)}p.needsUpdate=true;this.computeVertexNormals();return this}
+  applyMatrix4(m:Matrix4){
+    const p=this.getAttribute('position');if(!p)return this
+    const v=new Vector3();for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(m);p.setXYZ(i,v.x,v.y,v.z)}
+    p.needsUpdate=true
+    // Transforming a geometry must not throw away authored or angle-smoothed normals.
+    // Normals follow the inverse transpose of the upper-left 3x3, so a translation leaves
+    // them untouched and a non-uniform scale still yields perpendicular normals.
+    const n=this.getAttribute('normal')
+    if(!n){this.computeVertexNormals();return this}
+    const e=m.clone().invert().elements,normal=new Vector3()
+    for(let i=0;i<n.count;i++){
+      const x=n.getX(i),y=n.getY(i),z=n.getZ(i)
+      normal.set(e[0]*x+e[1]*y+e[2]*z,e[4]*x+e[5]*y+e[6]*z,e[8]*x+e[9]*y+e[10]*z)
+      const length=normal.length()
+      if(!Number.isFinite(length)||length<1e-12){this.computeVertexNormals();return this}
+      n.setXYZ(i,normal.x/length,normal.y/length,normal.z/length)
+    }
+    n.needsUpdate=true
+    return this
+  }
   translate(x:number,y:number,z:number){return this.applyMatrix4(new Matrix4().makeTranslation(x,y,z))}
   rotateX(a:number){return this.applyQuaternion(new Quaternion().setFromAxisAngle(new Vector3(1,0,0),a))}rotateY(a:number){return this.applyQuaternion(new Quaternion().setFromAxisAngle(new Vector3(0,1,0),a))}rotateZ(a:number){return this.applyQuaternion(new Quaternion().setFromAxisAngle(new Vector3(0,0,1),a))}
   scale(x:number,y:number,z:number){return this.applyMatrix4(new Matrix4().scale(new Vector3(x,y,z)))}
