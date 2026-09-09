@@ -19,6 +19,10 @@
 .loadingCopy { width: min(420px, calc(100vw - 40px)); display: flex; justify-content: space-between; color: #b3bfc8; font: 9px var(--font-mono); letter-spacing: .12em; }
 .loadingTrack { width: min(420px, calc(100vw - 40px)); height: 4px; overflow: hidden; border-radius: 2px; background: rgba(255,255,255,.12); }
 .loadingTrack i { display: block; height: 100%; background: var(--hud-blue); transition: width .12s linear; }
+.loadingTrackIndeterminate i { width: 35%; animation: loadingSweep 1.15s ease-in-out infinite; }
+@keyframes loadingSweep { from { transform: translateX(-110%); } to { transform: translateX(290%); } }
+
+@media (prefers-reduced-motion: reduce) { .loadingTrackIndeterminate i { width: 100%; animation: none; opacity: .45; } }
 
 .shell :global(.battle-workspace) {
   position: absolute;

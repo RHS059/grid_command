@@ -11,8 +11,13 @@ import { ELEVATION_TEMPLATE, MercatorCoordinate, fetchVectorTile, tileAt, tileKe
 import { toPoint } from './theater'
 
 type Tile = { address: TileAddress; mesh: Mesh; texture: DynamicTexture; material: PBRMaterial; dem?: ImageData }
+export type GeographicTileEvent = { address: TileAddress; elevation: boolean; error?: Error }
 type TilePoint = { x: number; y: number }
 const layerColors: Record<string, string> = { landcover: '#20322e', landuse: '#293332', park: '#203c34', water: '#102d42', building: '#3a4950' }
+/** Upload a canvas whose rows run north-to-south into Babylon's bottom-left UV space. */
+export function uploadGeographicTexture(texture: Pick<DynamicTexture, 'update'>) { texture.update(true) }
+/** Tile row zero is north; after Babylon's Y inversion it belongs at the top of the mesh (v=1). */
+export function geographicTileUV(column: number, row: number, resolution: number): [number, number] { return [column / resolution, 1 - row / resolution] }
 /** Bounded geographic tile cache. Tile textures and terrain are ordinary native GPU meshes. */
 export class GeographicTiles {
   private tiles = new Map<string, Tile>()
@@ -23,7 +28,7 @@ export class GeographicTiles {
   private signature = ''
   private terrain = false
   private labels = true
-  constructor(private scene: Scene, private changed: (elevation: boolean) => void) {}
+  constructor(private scene: Scene, private changed: (event: GeographicTileEvent) => void) {}
   update(center: LngLatLike, zoom: number, terrain: boolean, labels: boolean) {
     const address = tileAt(center, Math.max(7, Math.min(14, Math.floor(zoom) - 1)))
     const signature = `${tileKey(address)}:${terrain}:${labels}`
@@ -56,8 +61,14 @@ export class GeographicTiles {
         if (this.disposed || controller.signal.aborted || !this.wanted.has(key)) { this.disposeTile(result); return }
         this.tiles.set(key, result)
         for (const [oldKey, old] of this.tiles) if (old.address.z !== tile.z) { this.disposeTile(old); this.tiles.delete(oldKey) }
-        this.changed(!!result.dem)
-      }).catch(error => { if (!controller.signal.aborted) console.warn('Geographic tile unavailable', key, error) }).finally(() => { if (this.pending.get(key) === controller) this.pending.delete(key); this.pump() })
+        this.changed({ address: tile, elevation: !!result.dem })
+      }).catch(error => {
+        if (!controller.signal.aborted) {
+          const failure = error instanceof Error ? error : new Error(String(error))
+          console.warn('Geographic tile unavailable', key, failure)
+          this.changed({ address: tile, elevation: false, error: failure })
+        }
+      }).finally(() => { if (this.pending.get(key) === controller) this.pending.delete(key); this.pump() })
     }
   }
   private async load(address: TileAddress, terrain: boolean, labels: boolean, signal: AbortSignal): Promise<Tile> {
@@ -86,11 +97,14 @@ export class GeographicTiles {
       for (let i = 0; layer && i < layer.length; i++) { const feature = layer.feature(i), point = feature.loadGeometry()[0]?.[0], name = feature.properties['name:en'] || feature.properties.name; if (!point || !name) continue; const x = point.x * 512 / layer.extent, y = point.y * 512 / layer.extent; context.strokeText(String(name), x, y); context.fillText(String(name), x, y) }
     }
     const texture = new DynamicTexture(`geography-${tileKey(address)}`, canvas, this.scene, true)
-    const material = new PBRMaterial(`ground-${tileKey(address)}`, this.scene); material.albedoTexture = texture; material.roughness = .92; material.metallic = .02; material.backFaceCulling = false; material.albedoColor = Color3.White(); material.maxSimultaneousLights = 8
+    // DynamicTexture does not upload a supplied canvas automatically. Without this
+    // update WebGPU samples its initial white allocation, hiding the real map data.
+    uploadGeographicTexture(texture)
+    const material = new PBRMaterial(`ground-${tileKey(address)}`, this.scene); material.albedoTexture = texture; material.roughness = .92; material.metallic = .02; material.backFaceCulling = false; material.albedoColor = Color3.White(); material.maxSimultaneousLights = 8; material.unlit = true
     const mesh = new Mesh(`terrain-${tileKey(address)}`, this.scene), data = new VertexData(), positions: number[] = [], uvs: number[] = [], indices: number[] = [], resolution = terrain ? 24 : 1, extent = 2 ** address.z
     for (let row = 0; row <= resolution; row++) for (let col = 0; col <= resolution; col++) {
       const u = col / resolution, v = row / resolution, ll = new MercatorCoordinate((address.x + u) / extent, (address.y + v) / extent).toLngLat(), point = toPoint(ll.lng, ll.lat)
-      positions.push(point.x, point.y, dem ? this.sampleDEM(dem, u, v) : 0); uvs.push(u, 1 - v)
+      positions.push(point.x, point.y, dem ? this.sampleDEM(dem, u, v) : 0); uvs.push(...geographicTileUV(col, row, resolution))
     }
     for (let row = 0; row < resolution; row++) for (let col = 0; col < resolution; col++) { const a = row * (resolution + 1) + col, b = a + resolution + 1; indices.push(a, b, a + 1, a + 1, b, b + 1) }
     data.positions = positions; data.indices = indices; data.uvs = uvs; const normals: number[] = []; VertexData.ComputeNormals(positions, indices, normals, { useRightHandedSystem: true }); data.normals = normals; data.applyToMesh(mesh); mesh.material = material; mesh.sideOrientation = Material.CounterClockWiseSideOrientation; mesh.receiveShadows = true

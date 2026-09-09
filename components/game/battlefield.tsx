@@ -13,6 +13,7 @@ import { BATTLE_BUILDINGS_ENABLED, loadBattleGeometry } from '@/lib/game/geometr
 import type { GeometryPacket } from '@/lib/game/types'
 import type { BuildingAssessmentProgress } from '@/lib/game/building-consolidation'
 import type { PlacedBuilding } from '@/lib/game/building-system'
+import { theaterStartupDisplay } from '@/lib/game/theater-startup'
 import { AIRBASES, BASES, CENTER, SIDE_COLOR, lngLat, type BattleState, type Graphics, type Perspective, type Side } from '@/lib/game/types'
 import styles from './game-hud.module.css'
 
@@ -29,10 +30,11 @@ export function Battlefield(props: Props) {
   const latest = useRef(props); latest.current = { ...props, graphics: effectiveGraphics(props.graphics) }
   const mapRef = useRef<GeoMap | null>(null)
   const renderRef = useRef<import('@/lib/game/renderer').BattlefieldRenderer | null>(null)
-  const [loading, setLoading] = useState(true), [error, setError] = useState(''), [progress, setProgress] = useState<BuildingAssessmentProgress>({ done: 0, total: 0, phase: 'discovering' })
+  const [loading, setLoading] = useState(true), [error, setError] = useState(''), [graphicsReady, setGraphicsReady] = useState(false), [tileStatus, setTileStatus] = useState<'pending' | 'failed' | 'ready'>('pending'), [progress, setProgress] = useState<BuildingAssessmentProgress>({ done: 0, total: 0, phase: 'discovering' })
 
   useEffect(() => {
     if (!container.current) return
+    setTileStatus('pending')
     let disposed = false, interval: ReturnType<typeof setInterval> | undefined
     const homeZoom = () => 10
     let map: GeoMap
@@ -124,8 +126,9 @@ export function Battlefield(props: Props) {
     map.on('error', e => {
       const message = e.error?.message || ''
       if (/webgpu|webgl|graphics initialization|context lost/i.test(message)) { setError('The geographic map renderer stopped. Restart the app, then check browser graphics support if the problem continues.'); setLoading(false); latest.current.onStatus('Map graphics interrupted') }
-      else if (/tile|fetch|network/i.test(message)) latest.current.onStatus('Some map tiles unavailable · retry by panning')
+      else if (/tile|fetch|network/i.test(message)) setTileStatus(status => status === 'ready' ? status : 'failed')
     })
+    map.on('sourcedata', event => { if (event.sourceId === 'openmaptiles' && event.isSourceLoaded) setTileStatus('ready') })
     map.on('resize', () => { if(!latest.current.selected&&map.getZoom()<12)map.fitBounds(THEATER_BOUNDS,{padding:{top:85,bottom:45,left:35,right:35},duration:0,pitch:0,bearing:0}) })
     map.on('click', () => latest.current.onSelect(null))
     const syncMinimap = () => {
@@ -144,7 +147,7 @@ export function Battlefield(props: Props) {
     }
     map.on('load', () => {
       if (disposed) return
-      mapLoaded = true; latest.current.onStatus('Geographic renderer online'); finishLoading()
+      mapLoaded = true; setGraphicsReady(true); latest.current.onStatus('Geographic renderer online'); finishLoading()
       const initialGraphics = latest.current.graphics
       for (const [id, enabled] of [['buildings-3d', false], ['buildings-3d-detail', false], ['tactical-grid', initialGraphics.grid], ['unit-routes', initialGraphics.routes], ['road-labels', initialGraphics.labels], ['hillshade', initialGraphics.shadows]] as const) map.setLayoutProperty(id, 'visibility', enabled ? 'visible' : 'none')
       map.setPixelRatio(Math.min(window.devicePixelRatio, initialGraphics.quality === 'performance' ? 1 : initialGraphics.quality === 'balanced' ? 1.5 : 2))
@@ -231,11 +234,14 @@ export function Battlefield(props: Props) {
 
   useEffect(() => { if (props.active) { const frame = requestAnimationFrame(() => { mapRef.current?.resize(); renderRef.current?.resize() }); return () => cancelAnimationFrame(frame) } else mapRef.current?.stop() }, [props.active])
 
+  const startup = theaterStartupDisplay({ graphicsReady, geometry: progress }, BATTLE_BUILDINGS_ENABLED)
+
   return <>
     <div ref={container} className="map-root" aria-label="Interactive geographic battlefield of San Diego" />
     <div className="map-vignette" />
+    {!loading && !error && tileStatus !== 'ready' && <div className={`map-tile-status ${tileStatus === 'failed' ? 'warning' : ''}`} role={tileStatus === 'failed' ? 'alert' : 'status'}>{tileStatus === 'failed' ? 'San Diego map tiles unavailable · check connection' : 'Loading San Diego map…'}</div>}
     <div className="minimap-card desktop-only" style={props.graphics.performanceMode ? { display: 'none' } : undefined}><div className="minimap-header"><span>THEATER OVERVIEW</span><span>N ↑</span></div><div ref={miniContainer} className="minimap-map" /></div>
-    {loading && <div className={styles.loadingScreen} role="status"><div className={styles.loadingBrand}><span className={styles.brandOrb}><Crosshair size={17} /></span><span><strong>GRID COMMAND</strong><small>Preparing San Diego · City theater</small></span></div><div className={styles.loadingCopy}><strong>INITIALIZING THEATER</strong><span>{BATTLE_BUILDINGS_ENABLED ? `${progress.done.toLocaleString()} / ${progress.total ? progress.total.toLocaleString() : '…'} world sectors` : 'Buildings and building loading are disabled'}</span></div><div className={styles.loadingTrack}><i style={{ width: `${BATTLE_BUILDINGS_ENABLED && progress.total ? Math.min(100, progress.done / progress.total * 100) : 100}%` }} /></div></div>}
+    {loading && <div className={styles.loadingScreen} role="status"><div className={styles.loadingBrand}><span className={styles.brandOrb}><Crosshair size={17} /></span><span><strong>GRID COMMAND</strong><small>Preparing San Diego · City theater</small></span></div><div className={styles.loadingCopy}><strong>{startup.heading}</strong><span>{startup.detail}</span></div><div className={`${styles.loadingTrack} ${startup.percent === null ? styles.loadingTrackIndeterminate : ''}`}><i style={startup.percent === null ? undefined : { width: `${Math.min(100, startup.percent)}%` }} /></div></div>}
     {error && <div className="map-loading" role="alert"><span className="max-w-sm text-center text-sm">{error}</span><button className="map-control" onClick={() => window.location.reload()}>Reload battlefield</button></div>}
   </>
 }

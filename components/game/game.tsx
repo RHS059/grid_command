@@ -143,7 +143,7 @@ export function Game() {
     </div>
     <div id="panel-models" role="tabpanel" aria-label="Model Preview" className={cn('model-tab-panel', styles.workspacePanel)} hidden={view !== 'models'}><UnitLab embedded active={view === 'models'} simulationPaused={state.paused || !!state.winner} soundEngine={soundEngine} /></div>
     <div id="panel-sfx" role="tabpanel" aria-label="SFX Designer" className={cn('model-tab-panel', styles.workspacePanel)} hidden={view !== 'sfx'}><SoundSettings engine={soundEngine} /></div>
-    <div className={styles.diagnostics}>{view === 'battlefield' ? `${fps === null ? '—' : fps === 0 ? '<1' : fps} FPS · ` : ''}BUILD 0.9.32</div>
+    <div className={styles.diagnostics}>{view === 'battlefield' ? `${fps === null ? '—' : fps === 0 ? '<1' : fps} FPS · ` : ''}BUILD 0.9.33</div>
     <GameDialogs modal={modal} onClose={() => setModal(null)} graphics={graphics} setGraphics={setGraphics} restart={restart} loadScenario={scenario => { worker.current?.postMessage({type:'restart',scenario}); setSelected(null); setModal(null); setView('battlefield'); if(scenario.units[0])mapAPI.current?.focus(scenario.units[0].position) }} />
   </main>
 }

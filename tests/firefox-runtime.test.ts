@@ -1,7 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { NullEngine } from '@babylonjs/core/Engines/nullEngine'
-import { BabylonRuntime, sanitizeFirefoxWGSL } from '../lib/game/babylon-runtime'
+import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
+import { BabylonRuntime, sanitizeFirefoxWGSL, srgbChannelToLinear } from '../lib/game/babylon-runtime'
 import * as D from '../lib/game/scene-data'
 
 test('Firefox WGSL removes only Chromium diagnostics and unused front-facing input',()=>{
@@ -13,6 +14,18 @@ test('Firefox WGSL removes only Chromium diagnostics and unused front-facing inp
  const inputs='struct FragmentInputs { @builtin(position) position: vec4<f32>, @builtin(front_facing) frontFacing : bool, };'
  assert.ok(!sanitizeFirefoxWGSL(inputs).includes('front_facing'))
  assert.ok(sanitizeFirefoxWGSL(inputs+' fn normal() { let front=fragmentInputs.frontFacing; }').includes('front_facing'))
+})
+
+test('authored sRGB colors are converted to linear PBR inputs',()=>{
+ assert.equal(srgbChannelToLinear(0),0);assert.equal(srgbChannelToLinear(1),1)
+ assert.ok(Math.abs(srgbChannelToLinear(.5)-.214041)<1e-6)
+ const engine=new NullEngine(),runtime=new (BabylonRuntime as unknown as new(canvas:HTMLCanvasElement,engine:NullEngine)=>BabylonRuntime)({dataset:{}} as HTMLCanvasElement,engine)
+ try{
+  const root=new D.Scene(),material=new D.MeshStandardMaterial({color:'#808080'}),mesh=new D.Mesh(new D.BoxGeometry(),material)
+  root.add(mesh);runtime.sync(root)
+  const pbr=runtime.scene.materials.find(candidate=>candidate.name===`material-${material.id}`)
+  assert.ok(pbr instanceof PBRMaterial);assert.ok(Math.abs(pbr.albedoColor.r-.215861)<1e-6)
+ }finally{runtime.dispose()}
 })
 
 test('a reused preview runtime prunes lights and geometry across model scenes',()=>{

@@ -63,7 +63,14 @@ export class GeoMap {
       this.runtime = runtime; this.canvas = runtime.canvas; runtime.resize(this.width, this.height, this.ratio)
       const ambient = new HemisphericLight('map-ambient', new Vector3(0, 0, 1), runtime.scene); ambient.intensity = .8
       runtime.configure({ ...DEFAULT_GRAPHICS, performanceMode: options.interactive === false })
-      this.tiles = new GeographicTiles(runtime.scene, elevation => { this.triggerRepaint(); if (elevation) this.emit('sourcedata', { sourceId: 'elevation', isSourceLoaded: true }) })
+      this.tiles = new GeographicTiles(runtime.scene, event => {
+        this.triggerRepaint()
+        if (event.error) this.emit('error', { error: new Error(`Map tile ${event.address.z}/${event.address.x}/${event.address.y} failed: ${event.error.message}`) })
+        else {
+          this.emit('sourcedata', { sourceId: 'openmaptiles', isSourceLoaded: true })
+          if (event.elevation) this.emit('sourcedata', { sourceId: 'elevation', isSourceLoaded: true })
+        }
+      })
       if (options.interactive !== false) this.connectInput()
       this.loaded = true; this.resize(); this.emit('load', {}); this.loop()
     }).catch(error => { this.emit('error', { error: new Error(`Graphics initialization failed: ${String(error)}`) }); throw error })
