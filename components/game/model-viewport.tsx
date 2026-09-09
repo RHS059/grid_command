@@ -26,7 +26,7 @@ export function ModelViewport(props: Props) {
     camera.up.set(0, 0, 1); renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5))
     renderer.domElement.setAttribute('aria-label', `${MODEL_NAMES[props.model]} interactive 3D model`); element.append(renderer.domElement)
     const orbit = new OrbitControls(camera, renderer.domElement); orbit.enableDamping = true; orbit.autoRotateSpeed = .65; orbit.maxPolarAngle = Math.PI * .49
-    const material = new T.MeshStandardMaterial({ vertexColors: true, roughness: .85, metalness: .08, flatShading: false })
+    const material = new T.MeshStandardMaterial({ vertexColors: true, roughness: .62, metalness: .08, flatShading: false })
     let object: T.Object3D | null = null, batch: SoldierBatch | null = null
     const id = props.model
     if (id === 'MOB' || id === 'AIRFIELD') object = createBase(id, props.side)

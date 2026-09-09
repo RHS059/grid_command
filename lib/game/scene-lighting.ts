@@ -25,10 +25,10 @@ export interface StudioRig{
  */
 export function addStudioLighting(scene:T.Scene):StudioRig{
   scene.profile='studio'
-  const key=new T.DirectionalLight('#fff3e0',2.9),fill=new T.DirectionalLight('#dce8ff',.8),rim=new T.DirectionalLight('#f4f4f4',1.9)
+  const key=new T.DirectionalLight('#fff3e0',4.6),fill=new T.DirectionalLight('#dce8ff',.32),rim=new T.DirectionalLight('#cfe2fb',6.2)
   key.name='studio-key';fill.name='studio-fill';rim.name='studio-rim'
   key.castShadow=true
-  const ambient=new T.HemisphereLight('#93b4d8','#2b3340',.22)
+  const ambient=new T.HemisphereLight('#93b4d8','#2b3340',.15)
   ambient.name='studio-ambient'
   scene.add(key,fill,rim,ambient)
   scene.background=new T.Color('#0c1826')
@@ -47,7 +47,7 @@ export function addStudioLighting(scene:T.Scene):StudioRig{
     }
     const distance=Math.max(radius,.01)*3
     const place=(light:T.DirectionalLight,direction:T.Vector3)=>{light.position.copy(center).addScaledVector(direction,distance);light.target.position.copy(center)}
-    place(key,offset(-1,1,1));place(fill,offset(1,1,.35));place(rim,offset(.4,-1,.8))
+    place(key,offset(-1.15,.75,.85));place(fill,offset(1,1,.35));place(rim,offset(.62,-1,.52))
   }
   return {key,fill,rim,update}
 }
