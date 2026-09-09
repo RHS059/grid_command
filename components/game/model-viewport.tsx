@@ -10,6 +10,7 @@ import { createBase } from '@/lib/game/base-models'
 import { isAir, isVehicle, type Side, type SoldierAction, type Stance, type Soldier } from '@/lib/game/types'
 import { vehicleClips, poseVehicleClip, advanceVehiclePlayback } from '@/lib/game/vehicle-animation'
 import { MODEL_NAMES, type ModelId } from '@/lib/game/model-catalog'
+import { addWestSun } from '@/lib/game/scene-lighting'
 
 interface Props { model: ModelId; side: Side; active: boolean; animate: boolean; rotate: boolean; action: SoldierAction; stance: Stance; condition: Soldier['status']; reset: number; clip?:string; loop?:boolean; seek?:{serial:number;time:number}; onTime?:(time:number)=>void }
 export function ModelViewport(props: Props) {
@@ -25,9 +26,7 @@ export function ModelViewport(props: Props) {
     camera.up.set(0, 0, 1); renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5))
     renderer.domElement.setAttribute('aria-label', `${MODEL_NAMES[props.model]} interactive 3D model`); element.append(renderer.domElement)
     const orbit = new OrbitControls(camera, renderer.domElement); orbit.enableDamping = true; orbit.autoRotateSpeed = .65; orbit.maxPolarAngle = Math.PI * .49
-    const sky = new T.HemisphereLight('#dbe7ef', '#172432', .65); sky.position.set(0, 0, 1); scene.add(sky)
-    const sun = new T.DirectionalLight('#dbe7ef', 1.1); sun.position.set(-30, 30, 60); scene.add(sun)
-    const fill = new T.DirectionalLight('#a4afb4', .35); fill.position.set(30, -20, 20); scene.add(fill)
+    addWestSun(scene,60)
     const material = new T.MeshStandardMaterial({ vertexColors: true, roughness: .85, metalness: .08, flatShading: true })
     let object: T.Object3D | null = null, batch: SoldierBatch | null = null
     const id = props.model

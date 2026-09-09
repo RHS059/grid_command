@@ -39,3 +39,11 @@
   - Replaced the misleading disabled buildings startup message with graphics initialization and navigation progress.
   - Added a 10 second WebGPU startup deadline, safe cleanup after partial initialization, and compatibility fallback that also disposes late GPU initialization.
   - Verification: GitHub Pages production export and TypeScript passed. Final suite: 163/173 passing, with the same ten failures present on the unchanged baseline. Local browser preview was inaccessible; no hardware FPS result is claimed.
+
+
+- v0.9.34
+  - Corrected both axes of right-button camera orbit while preserving sensitivity and pitch limits.
+  - Added one warm global directional sun from the west at a low angle, shared by battlefield and model previews. Removed duplicate global fill and ambient lights.
+  - Base platforms are placed from their complete initial terrain footprint with slight clearance and retain that fixed elevation afterward.
+  - Improved terrain-surface alignment, camera depth precision, and material depth settings.
+  - Map styling remains customizable in the native tile painter: land, water, roads, buildings, and labels. There is no live style editor yet.

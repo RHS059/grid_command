@@ -5,6 +5,7 @@ import * as T from '@/lib/game/scene-data'
 import { GraphicsRenderer, OrbitControls } from '@/lib/game/graphics-preview'
 import { createBuildingModel, disposeBuildingModel } from '@/lib/game/building-model'
 import type { BuildingPreset } from '@/lib/game/building-system'
+import { addWestSun } from '@/lib/game/scene-lighting'
 
 export function BuildingViewport({ preset }: { preset: BuildingPreset }) {
   const host = useRef<HTMLDivElement>(null)
@@ -28,9 +29,7 @@ export function BuildingViewport({ preset }: { preset: BuildingPreset }) {
     const ground = new T.Mesh(new T.PlaneGeometry(planeSize, planeSize), new T.MeshStandardMaterial({ color: '#1a2935', roughness: 1 }))
     ground.position.z = bounds.min.z - .03; ground.receiveShadow = true; scene.add(ground)
     const grid = new T.GridHelper(planeSize, 32, '#3d6070', '#263b47'); grid.rotation.x = Math.PI / 2; grid.position.z = bounds.min.z; scene.add(grid)
-    scene.add(new T.HemisphereLight('#dcecff', '#182431', 2.4))
-    const sun = new T.DirectionalLight('#fff1d5', 4); sun.position.set(-radius, radius * 1.4, radius * 2.5); sun.castShadow = true; scene.add(sun)
-    const fill = new T.DirectionalLight('#7bb7d5', 1.6); fill.position.set(radius * 2, -radius, radius); scene.add(fill)
+    addWestSun(scene,radius*3)
     building.traverse(object => { if (object instanceof T.Mesh) { object.castShadow = true; object.receiveShadow = true } })
     const frameModel = () => {
       const fov = T.MathUtils.degToRad(camera.fov), horizontal = Math.max(size.x, size.y) / Math.max(.65, camera.aspect)

@@ -7,6 +7,7 @@ import { RUNWAY } from './theater'
 
 export type BaseKind = 'MOB' | 'AIRFIELD'
 export type BaseElevation = { high: number; low: number }
+export const BASE_GRADE_CLEARANCE=.1
 export const airfieldPlatform = (tier: AirfieldTier) => ({ width: tier === 3 ? 240 : 170, depth: RUNWAY.halfLength * 2, x: tier === 3 ? -35 : 0 })
 export function createBase(kind: BaseKind, side: Side, tier: AirfieldTier = 1) {
   const root = new T.Group(); root.name = kind; root.userData.tier = tier
@@ -83,15 +84,18 @@ export function conformBase(root: T.Group, elevation?: (x: number, y: number) =>
       high = Math.max(high, height); low = Math.min(low, height)
     }
   }
-  root.userData.platformHeight=high
+  const deck=high+BASE_GRADE_CLEARANCE
+  root.userData.platformHeight=deck
   // A level graded platform keeps runway paint and roofs coplanar; its skirt extends down to the sampled terrain.
   root.traverse(o => {
     if (!(o instanceof T.Mesh)||o.userData.skipTerrainConform) return
     const p = o.geometry.getAttribute('position')
     const original: Float32Array = o.userData.originalPositions ||= new Float32Array(p.array)
-    for (let i = 0; i < p.count; i++) p.setZ(i, original[i * 3 + 2] + (original[i * 3 + 2] < -.3 ? low - 2 : high))
+    for (let i = 0; i < p.count; i++) p.setZ(i, original[i * 3 + 2] + (original[i * 3 + 2] < -.3 ? low - 2 : deck))
     p.needsUpdate = true; o.geometry.computeVertexNormals(); o.geometry.computeBoundingSphere()
   })
   return { high, low }
 }
+
+export const baseSurfaceElevation=(kind:BaseKind,elevation:BaseElevation)=>elevation.high+BASE_GRADE_CLEARANCE+(kind==='AIRFIELD'?.08:0)
 

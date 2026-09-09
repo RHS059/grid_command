@@ -3,16 +3,26 @@ import { VertexData } from '@babylonjs/core/Meshes/mesh.vertexData'
 import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture'
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
 import { Material } from '@babylonjs/core/Materials/material'
+import { VertexBuffer } from '@babylonjs/core/Buffers/buffer'
 import { Color3 } from '@babylonjs/core/Maths/math.color'
 import { VectorTile } from '@mapbox/vector-tile'
 import Pbf from 'pbf'
 import type { Scene } from '@babylonjs/core/scene'
-import { ELEVATION_TEMPLATE, MercatorCoordinate, fetchVectorTile, tileAt, tileKey, tileURL, type TileAddress, type LngLatLike } from './geography'
-import { toPoint } from './theater'
+import { ELEVATION_TEMPLATE, LngLat, MercatorCoordinate, fetchVectorTile, tileAt, tileKey, tileURL, type TileAddress, type LngLatLike } from './geography'
+import { fromPoint, toPoint } from './theater'
 
 type Tile = { address: TileAddress; mesh: Mesh; texture: DynamicTexture; material: PBRMaterial; dem?: ImageData }
 export type GeographicTileEvent = { address: TileAddress; elevation: boolean; error?: Error }
 type TilePoint = { x: number; y: number }
+export type TerrainBounds = { minX: number; maxX: number; minY: number; maxY: number }
+type TerrainVertex={x:number;y:number;z:number}
+export function clippedTriangleRange(triangle:TerrainVertex[],bounds:TerrainBounds){
+  let polygon=triangle
+  const clips:[keyof Pick<TerrainVertex,'x'|'y'>,number,boolean][]=[['x',bounds.minX,true],['x',bounds.maxX,false],['y',bounds.minY,true],['y',bounds.maxY,false]]
+  for(const[axis,edge,minimum]of clips){const input=polygon;polygon=[];for(let i=0;i<input.length;i++){const a=input[i],b=input[(i+1)%input.length],aIn=minimum?a[axis]>=edge:a[axis]<=edge,bIn=minimum?b[axis]>=edge:b[axis]<=edge;if(aIn)polygon.push(a);if(aIn!==bIn){const t=(edge-a[axis])/(b[axis]-a[axis]);polygon.push({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,z:a.z+(b.z-a.z)*t})}}if(!polygon.length)return undefined}
+  return{high:Math.max(...polygon.map(v=>v.z)),low:Math.min(...polygon.map(v=>v.z))}
+}
+export const terrainTriangleHeightAt=(a:TerrainVertex,b:TerrainVertex,c:TerrainVertex,p:{x:number;y:number})=>{const den=(b.y-c.y)*(a.x-c.x)+(c.x-b.x)*(a.y-c.y),u=((b.y-c.y)*(p.x-c.x)+(c.x-b.x)*(p.y-c.y))/den,v=((c.y-a.y)*(p.x-c.x)+(a.x-c.x)*(p.y-c.y))/den,w=1-u-v;return u>=-1e-7&&v>=-1e-7&&w>=-1e-7?a.z*u+b.z*v+c.z*w:undefined}
 const layerColors: Record<string, string> = { landcover: '#20322e', landuse: '#293332', park: '#203c34', water: '#102d42', building: '#3a4950' }
 /** Upload a canvas whose rows run north-to-south into Babylon's bottom-left UV space. */
 export function uploadGeographicTexture(texture: Pick<DynamicTexture, 'update'>) { texture.update(true) }
@@ -126,8 +136,19 @@ export class GeographicTiles {
   elevation(point: LngLatLike): number | null {
     if (!this.terrain) return 0
     const coordinate = MercatorCoordinate.fromLngLat(point)
-    for (const tile of this.tiles.values()) { if (!tile.dem) continue; const size = 2 ** tile.address.z, u = coordinate.x * size - tile.address.x, v = coordinate.y * size - tile.address.y; if (u >= 0 && u <= 1 && v >= 0 && v <= 1) return this.sampleDEM(tile.dem, u, v) }
+    for (const tile of this.tiles.values()) { if (!tile.dem) continue; const size = 2 ** tile.address.z, u = coordinate.x * size - tile.address.x, v = coordinate.y * size - tile.address.y; if (u >= 0 && u <= 1 && v >= 0 && v <= 1){const positions=tile.mesh.getVerticesData(VertexBuffer.PositionKind);if(!positions)return null;const resolution=24,col=Math.min(resolution-1,Math.floor(u*resolution)),row=Math.min(resolution-1,Math.floor(v*resolution)),a=(row*(resolution+1)+col)*3,b=a+3,c=a+(resolution+1)*3,d=c+3,vertex=(offset:number)=>({x:positions[offset],y:positions[offset+1],z:positions[offset+2]}),ll=LngLat.convert(point),p=toPoint(ll.lng,ll.lat);return terrainTriangleHeightAt(vertex(a),vertex(c),vertex(b),p)??terrainTriangleHeightAt(vertex(b),vertex(c),vertex(d),p)??null} }
     return null
+  }
+  elevationRange(bounds:TerrainBounds){
+    const terrainTiles=[...this.tiles.values()].filter((tile):tile is Tile&{dem:ImageData}=>!!tile.dem);if(!terrainTiles.length)return undefined
+    const z=terrainTiles[0].address.z,size=2**z,coordinates=[fromPoint({x:bounds.minX,y:bounds.minY}),fromPoint({x:bounds.minX,y:bounds.maxY}),fromPoint({x:bounds.maxX,y:bounds.minY}),fromPoint({x:bounds.maxX,y:bounds.maxY})].map(value=>MercatorCoordinate.fromLngLat(value)),xs=coordinates.map(c=>c.x*size),ys=coordinates.map(c=>c.y*size)
+    for(let x=Math.floor(Math.min(...xs));x<=Math.floor(Math.max(...xs));x++)for(let y=Math.floor(Math.min(...ys));y<=Math.floor(Math.max(...ys));y++)if(!terrainTiles.some(tile=>tile.address.z===z&&tile.address.x===x&&tile.address.y===y))return undefined
+    let high=-Infinity,low=Infinity
+    for(const tile of this.tiles.values()){
+      const positions=tile.mesh.getVerticesData(VertexBuffer.PositionKind),indices=tile.mesh.getIndices();if(!tile.dem||!positions||!indices)continue
+      for(let i=0;i<indices.length;i+=3){const triangle=[indices[i],indices[i+1],indices[i+2]].map(index=>({x:positions[index*3],y:positions[index*3+1],z:positions[index*3+2]})),range=clippedTriangleRange(triangle,bounds);if(range){high=Math.max(high,range.high);low=Math.min(low,range.low)}}
+    }
+    return Number.isFinite(high)&&Number.isFinite(low)?{high,low}:undefined
   }
   get elevationReady() { return [...this.tiles.values()].some(tile => !!tile.dem) }
   private disposeTile(tile: Tile) { tile.mesh.dispose(); tile.material.dispose(); tile.texture.dispose() }
