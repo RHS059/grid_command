@@ -1,4 +1,4 @@
-import { AIRBASES, BASES, CATALOG, isAir, isArmored, isVehicle, troopSeats, type BattleState, type Point, type Role, type Side, type Stock, type Unit } from './types'
+import { AIRBASES, BASES, CATALOG, isNaval, isAir, isArmored, isVehicle, troopSeats, type BattleState, type Point, type Role, type Side, type Stock, type Unit } from './types'
 import { distance, travel } from './movement'
 import type { Navigation } from './navigation'
 import { nearestObjectiveService, nearestOperationalObjectiveService, objectiveCanService, objectiveFacilityPoint } from './objective-logistics'
@@ -102,7 +102,7 @@ export function serviceVehicle(state: BattleState, u: Unit, dt = DT) {
 export function updateVehicleService(state: BattleState, nav: Navigation) {
   for (const u of state.units) {
     u.engine = false
-    if (u.crewBailed || u.deployment || !isVehicle(u.role) || u.external || u.hp <= 0 || u.emergency || u.role === 'UAV_JAMMER') continue
+    if (isNaval(u.role) || u.crewBailed || u.deployment || !isVehicle(u.role) || u.external || u.hp <= 0 || u.emergency || u.role === 'UAV_JAMMER') continue
     if (u.role === 'TRANSPORT_HELI' && u.transport?.phase === 'disembarking' && (u.altitude || 0) <= .1 && u.fuel > vehicleResources(u.role).burn * 25) continue
     const specs = vehicleResources(u.role), armed = specs.ammo > 0
     const required = {fuel: Math.max(specs.fuel * .15, (100 - u.fuel) / 100 * specs.fuel), repair: (100 - u.hp) / 100 * specs.repair}

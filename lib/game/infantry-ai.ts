@@ -1,3 +1,5 @@
+import { decideSquad } from './ai/squad-leader'
+import { trace } from './ai/model'
 import { BASES, CATALOG, isVehicle, type BattleState, type ContactMemory, type MovementIntent, type Objective, type Point, type StrategicAction, type StrategicTask, type TacticalAction, type Unit } from './types'
 import { distance } from './movement'
 import { Navigation } from './navigation'
@@ -8,7 +10,7 @@ import { FINAL_APPROACH_WALK_DISTANCE } from './transport'
 const DECISION_TICKS = 10
 const hash = (id: string) => [...id].reduce((value, char) => (Math.imul(value, 33) + char.charCodeAt(0)) >>> 0, 5381)
 const validAction = (action: string): StrategicAction => ['ASSEMBLE', 'MASS', 'FLANK', 'SEIZE', 'RESUPPLY'].includes(action) ? action as StrategicAction : 'SEIZE'
-export const aiInfantry = (unit: Unit) => !isVehicle(unit.role) && !['COMMAND', 'PILOT', 'LOGISTICS'].includes(unit.role) && unit.hp > 0 && !!unit.soldiers?.some(s => s.status === 'active')
+export const aiInfantry = (unit: Unit) => !isVehicle(unit.role) && !['COMMAND', 'PILOT', 'LOGISTICS'].includes(unit.role) && unit.hp > 0 && !unit.surrendered && !!unit.soldiers?.some(s => s.status === 'active')
 const taskFor = (unit: Unit): StrategicTask => unit.role === 'MEDIC' ? 'SUPPORT' : ['RIFLE', 'SCOUT', 'AT'].includes(unit.role) ? 'CAPTURE' : 'OVERWATCH'
 const display = (action: TacticalAction) => ({ ADVANCE: 'ADVANCING', HOLD: 'HOLDING', ENGAGE: 'ENGAGING', COVER: 'TAKING COVER', SUPPRESS: 'SUPPRESSING', LOCAL_FLANK: 'LOCAL FLANK', WITHDRAW: 'WITHDRAWING', RESCUE: 'CASUALTY RECOVERY', RESUPPLY: 'RESUPPLY', MOUNT: 'WAITING FOR TRANSPORT' }[action])
 const destinationFor = (unit: Unit, objective: Objective, action: StrategicAction) => {
@@ -34,6 +36,7 @@ export class InfantryDirector {
   reset() { this.coverClaims.clear() }
 
   private ensureOrder(state: BattleState, unit: Unit) {
+    if (state.behavior) return // Only delivered hierarchical orders may replace local intent.
     const force = state.forces[unit.side], objective = state.objectives.find(o => o.id === force.target)
     if (!objective) return
     const action = validAction(force.action)
@@ -52,9 +55,15 @@ export class InfantryDirector {
   private decide(state: BattleState, unit: Unit, perception: Perception, visibility: Visibility, nav: Navigation, downed: { unit: Unit; point: Point }[]) {
     if (state.tick % DECISION_TICKS !== hash(unit.id) % DECISION_TICKS) return
     const current = unit.tacticalIntent
-    const threats = perception.contacts(state, unit.side, unit, 950), threat = threats[0]
+    const mind = state.behavior?.units[unit.id]
+    const threats = mind ? mind.contacts.filter(c => distance(c.position, unit) <= 950).sort((a, b) => distance(a.position, unit) - distance(b.position, unit) || a.unitId.localeCompare(b.unitId)) : perception.contacts(state, unit.side, unit, 950), threat = threats[0]
     const order = unit.strategicOrder, destination = order?.destination
     const suppression = unit.suppression || 0, candidates: Candidate[] = []
+    const leadership = mind && state.behavior ? decideSquad(unit, mind.factors, mind.personality, threats, mind.mission, state.time, state.behavior.sides[unit.side].doctrine) : undefined
+    if (leadership?.posture === 'SURRENDER') { unit.surrendered = true; unit.ammo = 0; unit.path = []; unit.movementIntent = undefined; unit.tacticalIntent = { action: 'HOLD', score: 999, decidedAt: state.time, committedUntil: Infinity }; unit.mission = 'SURRENDERED'; return }
+    if (leadership && ['WITHDRAW', 'ROUT'].includes(leadership.posture)) candidates.push({ action: 'WITHDRAW', score: 150, destination: BASES[unit.side], commitment: 6 })
+    if (leadership?.hold) candidates.push({ action: 'HOLD', score: 88, commitment: 2 })
+    if (order?.task === 'RESUPPLY') candidates.push({ action: 'RESUPPLY', score: 120, destination: BASES[unit.side], commitment: 5 })
     const casualty = downed.filter(entry => entry.unit.side === unit.side && distance(unit, entry.point) <= 40)
       .sort((a, b) => distance(unit, a.point) - distance(unit, b.point) || a.unit.id.localeCompare(b.unit.id))[0]
     if (unit.ammo < 12) candidates.push({ action: 'RESUPPLY', score: 96 + (12 - unit.ammo), destination: BASES[unit.side], commitment: 5 })
@@ -71,7 +80,7 @@ export class InfantryDirector {
       const range = CATALOG[unit.role].range || 600, separation = distance(unit, threat.position)
       if (['MG', 'MORTAR', 'AA_TEAM'].includes(unit.role) && separation <= range) candidates.push({ action: 'SUPPRESS', score: 62 + threat.confidence * 18, targetId: threat.unitId, commitment: 3 })
       else if (separation <= range) candidates.push({ action: 'ENGAGE', score: 60 + threat.confidence * 20, targetId: threat.unitId, commitment: 2.5 })
-      if (order?.task === 'CAPTURE' && suppression < .38 && separation < 650) {
+      if (order?.task === 'CAPTURE' && (!leadership || leadership.initiative > .25) && suppression < .38 && separation < 650) {
         const dx = threat.position.x - unit.x, dy = threat.position.y - unit.y, d = Math.hypot(dx, dy) || 1, side = hash(unit.id) % 2 ? 1 : -1
         candidates.push({ action: 'LOCAL_FLANK', score: 58 + threat.confidence * 15,
           destination: nav.nearest({ x: threat.position.x + side * dy / d * 65 - dx / d * 35, y: threat.position.y - side * dx / d * 65 - dy / d * 35 }), targetId: threat.unitId, commitment: 5 })
@@ -86,6 +95,11 @@ export class InfantryDirector {
     const chosen = candidates[0]
     if (!chosen) return
     if (current && current.committedUntil > state.time && chosen.score < current.score + 14 && !(chosen.action === 'WITHDRAW' && current.action !== 'WITHDRAW')) return
+    if (state.behavior && (current?.action !== chosen.action || current?.targetId !== chosen.targetId)) trace(state.behavior, {
+      time: state.time, actor: unit.id, level: 'squad', decision: chosen.action,
+      reasons: [leadership?.reason || 'Local tactical utility selection.', `Chosen utility ${chosen.score.toFixed(1)} from ${candidates.length} feasible actions.`],
+      scores: Object.fromEntries(candidates.map(candidate => [candidate.action, candidate.score])),
+    })
     if (chosen.action === 'COVER' && chosen.destination) this.coverClaims.set(`${Math.round(chosen.destination.x / 2)},${Math.round(chosen.destination.y / 2)}`, { unitId: unit.id, until: state.time + chosen.commitment + 2 })
     unit.tacticalIntent = { action: chosen.action, score: chosen.score, decidedAt: state.time, committedUntil: state.time + chosen.commitment,
       destination: chosen.destination ? { ...chosen.destination } : undefined, targetId: chosen.targetId }
@@ -99,6 +113,7 @@ export class InfantryDirector {
       if (!unit.carrier && !reserved.has(unit.id)) this.ensureOrder(state, unit)
       if (unit.carrier || reserved.has(unit.id) || unit.emergency || unit.servicing || unit.deployment) { unit.movementIntent = undefined; continue }
       this.decide(state, unit, perception, visibility, nav, downed)
+      if (unit.surrendered) continue
       const tactical = unit.tacticalIntent, order = unit.strategicOrder
       let destination = tactical?.destination, source: MovementIntent['source'] = 'tactical'
       if (!destination && tactical?.action === 'ADVANCE') destination = order?.destination
@@ -113,9 +128,8 @@ export class InfantryDirector {
   }
 
   movement(state: BattleState, unit: Unit) {
-    if (!aiInfantry(unit) || unit.carrier || unit.emergency || unit.servicing || unit.deployment || state.units.some(carrier => carrier.hp > 0 && carrier.transport?.passengers?.includes(unit.id))) return undefined
+    if (!aiInfantry(unit) || unit.carrier || unit.emergency || unit.servicing || unit.deployment || state.units.some(carrier => carrier.hp > 0 && (carrier.transport?.passengers?.includes(unit.id) || carrier.maritime?.passengers.includes(unit.id)))) return undefined
     if (unit.transportIntent && !unit.path.length && (unit.walkFallbackUntil || 0) <= state.time) return undefined
     return unit.movementIntent
   }
 }
-

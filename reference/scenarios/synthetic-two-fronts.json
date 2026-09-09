@@ -1,0 +1,172 @@
+{
+  "version": 1,
+  "id": "synthetic-two-fronts",
+  "name": "Synthetic two-front headquarters exercise",
+  "seed": 37,
+  "sources": [
+    {
+      "id": "author",
+      "title": "Synthetic regression authoring",
+      "reference": "Not a historical ORBAT or empirical calibration dataset."
+    }
+  ],
+  "units": [
+    {
+      "id": "BLU-command",
+      "side": "BLU",
+      "role": "COMMAND",
+      "position": {
+        "x": 0,
+        "y": -1000
+      }
+    },
+    {
+      "id": "RED-command",
+      "side": "RED",
+      "role": "COMMAND",
+      "position": {
+        "x": 0,
+        "y": 1000
+      }
+    },
+    {
+      "id": "a",
+      "side": "BLU",
+      "role": "RIFLE",
+      "position": {
+        "x": 0,
+        "y": -1000
+      },
+      "ammo": 100,
+      "sourceIds": [
+        "author"
+      ]
+    },
+    {
+      "id": "b",
+      "side": "BLU",
+      "role": "MORTAR",
+      "position": {
+        "x": 8,
+        "y": -1000
+      },
+      "ammo": 100,
+      "sourceIds": [
+        "author"
+      ]
+    },
+    {
+      "id": "c",
+      "side": "BLU",
+      "role": "RIFLE",
+      "position": {
+        "x": 16,
+        "y": -1000
+      },
+      "ammo": 100,
+      "sourceIds": [
+        "author"
+      ]
+    },
+    {
+      "id": "d",
+      "side": "BLU",
+      "role": "RIFLE",
+      "position": {
+        "x": 24,
+        "y": -1000
+      },
+      "ammo": 100,
+      "sourceIds": [
+        "author"
+      ]
+    },
+    {
+      "id": "e",
+      "side": "BLU",
+      "role": "RIFLE",
+      "position": {
+        "x": 32,
+        "y": -1000
+      },
+      "ammo": 100,
+      "sourceIds": [
+        "author"
+      ]
+    },
+    {
+      "id": "f",
+      "side": "BLU",
+      "role": "RIFLE",
+      "position": {
+        "x": 40,
+        "y": -1000
+      },
+      "ammo": 100,
+      "sourceIds": [
+        "author"
+      ]
+    }
+  ],
+  "objectives": [
+    {
+      "id": "west",
+      "name": "West objective",
+      "position": {
+        "x": -200,
+        "y": 0
+      }
+    },
+    {
+      "id": "east",
+      "name": "East objective",
+      "position": {
+        "x": 200,
+        "y": 0
+      }
+    }
+  ],
+  "sides": {
+    "BLU": {
+      "communications": {
+        "delay": 2,
+        "loss": 0
+      },
+      "organization": [
+        {
+          "id": "brigade",
+          "name": "Brigade headquarters",
+          "echelon": "BRIGADE",
+          "commanderUnitId": "BLU-command",
+          "unitIds": []
+        },
+        {
+          "id": "left",
+          "name": "Left company",
+          "echelon": "COMPANY",
+          "parentId": "brigade",
+          "commanderUnitId": "a",
+          "unitIds": [
+            "a",
+            "b",
+            "c"
+          ]
+        },
+        {
+          "id": "right",
+          "name": "Right company",
+          "echelon": "COMPANY",
+          "parentId": "brigade",
+          "commanderUnitId": "d",
+          "unitIds": [
+            "d",
+            "e",
+            "f"
+          ]
+        }
+      ]
+    }
+  },
+  "automaticSupply": false,
+  "automaticReinforcements": false
+}

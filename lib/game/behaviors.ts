@@ -6,9 +6,15 @@ import type { Perception } from './perception'
 const dist=(a:{x:number;y:number},b:{x:number;y:number})=>Math.hypot(a.x-b.x,a.y-b.y)
 const formation=(u:{x:number;y:number;heading:number},i:number,anchor:{x:number;y:number}=u)=>{const lateral=(i%3-1)*2.5,forward=-Math.floor(i/3)*3;return{x:anchor.x+Math.cos(u.heading)*lateral+Math.sin(u.heading)*forward,y:anchor.y-Math.sin(u.heading)*lateral+Math.cos(u.heading)*forward}}
 export function updateSoldiers(state:BattleState,v:Visibility,nav:Navigation,nextId:()=>number,perception?:Perception){
+  // Completed exits walk clear while the remaining passengers finish their clips.
+  for(const u of state.units.filter(u=>u.carrier))for(const s of u.soldiers||[]){
+    if(s.status!=='active'||!s.disembarked||!s.path?.length)continue
+    const target=s.path[0];move(s,target,nav,3);if(dist(s,target)<.1)s.path.shift()
+  }
   const down=state.units.flatMap(u=>(u.soldiers||[]).filter(s=>s.status==='downed').map(s=>({s,u})))
-  for(const u of state.units){if(isVehicle(u.role)||u.carrier)continue;u.suppression=Math.max(0,(u.suppression||0)-.003)
-    const enemy=(perception?perception.enemies(u.side,u,900):state.units.filter(e=>e.side!==u.side&&e.hp>0&&dist(u,e)<900)).filter(e=>e.spotted).sort((a,b)=>dist(a,u)-dist(b,u)||a.id.localeCompare(b.id))[0]
+  for(const u of state.units){if(isVehicle(u.role)||u.carrier||u.surrendered||u.mission==='BOARDING')continue;u.suppression=Math.max(0,(u.suppression||0)-.003)
+    const local = state.behavior?.units[u.id]?.contacts.filter(c => c.confidence > .2 && dist(c.position, u) < 900).sort((a, b) => dist(a.position, u) - dist(b.position, u) || a.unitId.localeCompare(b.unitId))[0]
+    const enemy=state.behavior ? local?.position : (perception?perception.enemies(u.side,u,900):state.units.filter(e=>e.side!==u.side&&e.hp>0&&dist(u,e)<900)).filter(e=>e.spotted).sort((a,b)=>dist(a,u)-dist(b,u)||a.id.localeCompare(b.id))[0]
     const active=u.soldiers?.filter(s=>s.status==='active')||[]
     for(const [i,s] of (u.soldiers||[]).entries()){
       if(s.status==='downed'){if(state.time-s.since>75){s.status='dead';s.since=state.time}continue}if(s.status==='dead')continue

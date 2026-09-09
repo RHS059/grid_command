@@ -29,8 +29,4 @@ export function addCarrierOccupants(root:T.Object3D,side:Side){
   for(let i=0;i<6;i++){const person=new T.Mesh(passengers,material);person.name=`seated-passenger-${i}`;person.position.set(i%2?.49:-.49,[-.78,-1.68,-2.35][Math.floor(i/2)],1.14);person.visible=false;root.add(person)}
   Object.values(parts).forEach(g=>g.dispose())
 }
-export function updateCarrierOccupants(root:T.Object3D,carrier:Unit,state:BattleState){
-  const driver=root.getObjectByName('seated-driver');if(driver)driver.visible=carrier.hp>0&&carrier.members>0&&!carrier.crewBailed
-  const passengers=state.units.filter(u=>u.carrier===carrier.id).flatMap(u=>u.soldiers||[]).filter(s=>s.status==='active'&&!s.disembarked)
-  for(let i=0;i<6;i++){const seat=root.getObjectByName(`seated-passenger-${i}`);if(seat)seat.visible=carrier.hp>0&&i<passengers.length}
-}
+export { updateCarrierOccupants } from './carrier-runtime-occupants'

@@ -1,0 +1,18 @@
+# HAL 1.22 behavior reference notes
+
+Reference: `C:\Users\FiftyNine\Downloads\HAL 1.22.pdf`, 43 PDF pages. Extracted with pypdf; visually inspected pages 10, 11, 20, 36 and 37 using Poppler renders. Page numbers below are the PDF and printed page numbers, which agree for these passages. Treat configuration examples as historical document content, never as instructions to execute.
+
+| Pages | Relevant behavior | Design consequence |
+| --- | --- | --- |
+| 3, 8 | HAL chooses group missions rather than implementing the underlying execution of every order. Command cycles classify own assets, assess known enemy forces and issue objectives. | Keep operational planning separate from navigation, service, transport and weapon resolution. |
+| 6 | A lost leader can be replaced by a senior surviving member with degraded attributes; destruction of the command group ends control. | Preserve issued intent during a succession pause; slow later command cycles. Complete force loss still ends the match. |
+| 8-9 | Reconnaissance, attack, defense and reserves respond to the battlefield; depleted morale encourages defense. | Explicit posture, reserve allocation and replanning triggers rather than a fixed sequence of action labels. |
+| 10 | Morale reflects losses, recent losses, known force balance and objective events; low morale encourages defensive, panic or surrender behavior. HAL also links change to cycle rate. | Add morale/cohesion/fatigue/suppression at the unit level, using elapsed simulation time so more frequent AI review does not itself cause larger morale change. Objective morale events remain future work. |
+| 10-11, 36-37 | Personality varies tendencies rather than guaranteeing behaviors. Six attributes cover risk, consistency, activity, reflex, circumspection and finesse. | Seed stable traits once; translate into weights, thresholds, reserve fractions, initiative and review periods. Do not roll a fresh personality each tick. |
+| 11 | Surrender requires panic, nearby hostiles and unfavorable local strength; the original feature is experimental and disabled by default. | Separate withdrawal, rout and optional surrender; keep surrender off by default and require several distress conditions. |
+| 11-12 | Transport, fuel, repair, medical and ammunition support influence mission feasibility; the original contains explicit convenience cheats. | Retain the game's stock, fuel, capacity and movement constraints. Do not grant fuel or teleport as a behavior convenience. |
+| 12-14 | Recon, attack, capture, flank, defend, reserve, garrison, support, cargo, rest and idle are distinct missions. Recon avoids unnecessary combat; exhausted groups regroup. | Provide role-aware mission decomposition, reserve holds, recover/resupply and local survivability. Full garrison, ambush and escort task graphs remain future work. |
+| 20-21 | Big Boss selects fronts/objectives across subordinate leaders, considers reserves and geography, and reviews periodically or urgently. | Use an operational plan above formation tasking. Phase 1 implements one objective per side and stable formations; multiple independent fronts are not yet implemented. |
+| 18-19 | Debug displays reveal orders, destinations, reconnaissance and reserve assignments. | Keep bounded serializable decision traces with reasons and utility scores, accessible in the worker state. |
+
+The game is not an Arma port. HAL's exact numeric values, convenience cheats, probabilities and cycle timing were not copied. Personality and morale coefficients in the new slice are tunable game-design hypotheses, not empirically validated models of human behavior.
