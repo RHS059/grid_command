@@ -26,7 +26,7 @@ export function ModelViewport(props: Props) {
     camera.up.set(0, 0, 1); renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5))
     renderer.domElement.setAttribute('aria-label', `${MODEL_NAMES[props.model]} interactive 3D model`); element.append(renderer.domElement)
     const orbit = new OrbitControls(camera, renderer.domElement); orbit.enableDamping = true; orbit.autoRotateSpeed = .65; orbit.maxPolarAngle = Math.PI * .49
-    const material = new T.MeshStandardMaterial({ vertexColors: true, roughness: .85, metalness: .08, flatShading: false })
+    const material = new T.MeshStandardMaterial({ vertexColors: true, roughness: .62, metalness: .08, flatShading: false })
     let object: T.Object3D | null = null, batch: SoldierBatch | null = null
     const id = props.model
     if (id === 'MOB' || id === 'AIRFIELD') object = createBase(id, props.side)
@@ -42,7 +42,11 @@ export function ModelViewport(props: Props) {
     if (batch) for (const mesh of batch.parts.values()) { mesh.castShadow = true; mesh.receiveShadow = true }
     const bounds = object ? new T.Box3().setFromObject(object) : new T.Box3(new T.Vector3(-1, -1, 0), new T.Vector3(1.5, 1, 2.1))
     const size = bounds.getSize(new T.Vector3()), center = bounds.getCenter(new T.Vector3()), radius = Math.max(size.length() / 2, .01)
-    const grid = new T.GridHelper(radius * 5, 30, '#34473f', '#18222b'); grid.rotation.x = Math.PI / 2; grid.position.z = bounds.min.z - .04; scene.add(grid)
+    // Matte floor under the grid: catches the key light's shadow and gives the subject
+    // somewhere to stand. Receive-only, and created after bounds so it never affects framing.
+    const floor = new T.Mesh(new T.PlaneGeometry(radius * 40, radius * 40), new T.MeshStandardMaterial({ color: '#16243c', roughness: .96, metalness: 0 }))
+    floor.position.z = bounds.min.z - .05; floor.receiveShadow = true; scene.add(floor)
+    const grid = new T.GridHelper(radius * 8, 32, '#5f9fc4', '#2d4a63'); grid.rotation.x = Math.PI / 2; grid.position.z = bounds.min.z - .04; scene.add(grid)
     const studio = addStudioLighting(scene)
     const frameModel = () => { const direction = new T.Vector3(1, 1.55, 1.05).normalize(), right = new T.Vector3().crossVectors(camera.up, direction).normalize(), up = new T.Vector3().crossVectors(direction, right), tan = Math.tan(T.MathUtils.degToRad(camera.fov / 2)); let distance = 0; for (const x of [-1, 1]) for (const y of [-1, 1]) for (const z of [-1, 1]) { const p = new T.Vector3(x * size.x / 2, y * size.y / 2, z * size.z / 2); distance = Math.max(distance, Math.abs(p.dot(right)) / (tan * camera.aspect) + p.dot(direction), Math.abs(p.dot(up)) / tan + p.dot(direction)) } distance *= 1.1; camera.position.copy(center).add(direction.multiplyScalar(distance)); orbit.target.copy(center); orbit.minDistance = radius * .3; orbit.maxDistance = distance * 4; camera.near = Math.max(.015, radius / 1000); camera.far = distance * 20; camera.updateProjectionMatrix(); orbit.update() }
     const resize = () => { const r = element.getBoundingClientRect(); if (!r.width || !r.height) return; renderer.setSize(r.width, r.height); camera.aspect = r.width / r.height; frameModel() }

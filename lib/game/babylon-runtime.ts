@@ -77,6 +77,7 @@ export class BabylonRuntime {
   private disposed=false
   private settings:Graphics|null=null
   private sun:DirectionalLight|null=null
+  private profile:D.SceneProfile='legacy'
 
   static async create(canvas:HTMLCanvasElement,forceWebGL=false){
     let engine:AbstractEngine|undefined
@@ -160,7 +161,7 @@ export class BabylonRuntime {
         if(source.userData.nativeNodeName){const selected=entries.rootNodes.flatMap(root=>[root,...root.getDescendants(false)]).find(node=>node.name===source.userData.nativeNodeName);if(selected instanceof TransformNode){selected.position.set(0,0,0);selected.rotationQuaternion=Quaternion.Identity();selected.scaling.set(1,1,1)}}
         const nodes=entries.rootNodes.flatMap(root=>[root,...root.getDescendants(false)])
         source.traverse(node=>{const native=nodes.find(value=>value.name===node.name);if(native instanceof TransformNode)this.nativeNodes.set(node.id,native)})
-        for(const node of nodes)if(node instanceof Mesh){node.receiveShadows=true;this.shadows?.addShadowCaster(node);if(node.material instanceof PBRMaterial){node.material.maxSimultaneousLights=4;if(!node.material.getActiveTextures().length){for(const kind of [VertexBuffer.UVKind,VertexBuffer.UV2Kind,VertexBuffer.UV3Kind,VertexBuffer.UV4Kind,VertexBuffer.UV5Kind,VertexBuffer.UV6Kind])node.removeVerticesData(kind);if(/\/(tank|troop_transport|apc|vtol_cargo|vtol_attack|cas|fighter)\.glb(?:[?#]|$)/.test(url)){node.material.backFaceCulling=true;node.material.twoSidedLighting=false}}}if(source.userData.teamColor&&node.material instanceof PBRMaterial&&node.material.name.includes('Team marking'))node.material.albedoColor=Color3.FromHexString(source.userData.teamColor).toLinearSpace()}
+        for(const node of nodes)if(node instanceof Mesh){node.receiveShadows=true;this.shadows?.addShadowCaster(node);if(node.material instanceof PBRMaterial){node.material.maxSimultaneousLights=4;if(this.profile==='studio')node.material.roughness=Math.min(node.material.roughness??1,.58);if(!node.material.getActiveTextures().length){for(const kind of [VertexBuffer.UVKind,VertexBuffer.UV2Kind,VertexBuffer.UV3Kind,VertexBuffer.UV4Kind,VertexBuffer.UV5Kind,VertexBuffer.UV6Kind])node.removeVerticesData(kind);if(/\/(tank|troop_transport|apc|vtol_cargo|vtol_attack|cas|fighter)\.glb(?:[?#]|$)/.test(url)){node.material.backFaceCulling=true;node.material.twoSidedLighting=false}}}if(source.userData.teamColor&&node.material instanceof PBRMaterial&&node.material.name.includes('Team marking'))node.material.albedoColor=Color3.FromHexString(source.userData.teamColor).toLinearSpace()}
       }).catch(error=>console.warn('Model asset failed to load',url,error))
     }
     const parent=source.parent?this.nativeNodes.get(source.parent.id):undefined
@@ -184,6 +185,7 @@ export class BabylonRuntime {
   }
   sync(root:D.Scene){
     if(this.disposed)return
+    this.profile=root.profile
     root.updateMatrixWorld(true)
     const live=new Set<number>(),nativeLive=new Set<number>(),lightLive=new Set<number>()
     root.traverse(object=>{if(object instanceof D.HemisphereLight||object instanceof D.DirectionalLight||object instanceof D.PointLight)lightLive.add(object.id)})

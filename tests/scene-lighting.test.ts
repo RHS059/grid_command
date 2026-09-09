@@ -33,7 +33,13 @@ test('the studio rig is exactly key, fill and rim, with only the key owning shad
   const scene=new T.Scene(),rig=addStudioLighting(scene)
   assert.equal(scene.profile,'studio')
   const globalLights=scene.children.filter(node=>node instanceof T.DirectionalLight||node instanceof T.HemisphereLight)
-  assert.deepEqual(new Set(globalLights),new Set([rig.key,rig.fill,rig.rim]))
+  const directional=globalLights.filter(light=>light instanceof T.DirectionalLight)
+  const ambient=globalLights.filter(light=>light instanceof T.HemisphereLight)
+  assert.deepEqual(new Set(directional),new Set([rig.key,rig.fill,rig.rim]),'exactly three directional roles')
+  assert.ok(ambient.length<=1,'at most one weak hemisphere fill accompanies the three roles')
+  for(const light of ambient)assert.ok(light.intensity<rig.fill.intensity,'ambient never becomes a fourth key')
+  // Four lights total is the PBR maxSimultaneousLights ceiling; a fifth would silently drop one.
+  assert.ok(globalLights.length<=4,'the studio rig fits inside maxSimultaneousLights')
   assert.deepEqual(globalLights.filter(light=>light.castShadow),[rig.key])
   assert.ok(rig.fill.intensity<rig.key.intensity,'fill stays weaker than the key so the key still shapes the form')
   for(const light of [rig.key,rig.fill,rig.rim]){
