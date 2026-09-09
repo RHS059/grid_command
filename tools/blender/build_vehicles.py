@@ -1,6 +1,7 @@
 import bpy, math, os, json, sys, base64, struct
 sys.path.insert(0,os.path.dirname(__file__))
 import vehicle_rigging
+import vehicle_seating
 from mathutils import Vector
 BASE=os.path.abspath(os.path.join(os.path.dirname(__file__),'../..'))
 REPO=os.environ.get('GC_REPO',BASE if os.path.exists(os.path.join(BASE,'package.json')) else os.path.join(BASE,'work/grid_command'))
@@ -271,7 +272,15 @@ def refine(name):
    plate('aileron',[(s*3.25,-.97),(s*5.22,-.85),(s*5.25,-1.02),(s*3.25,-1.13)],1.374,.025,'shade')
    plate('wing_identification_band',[(s*4.3,-.12),(s*4.55,-.16),(s*4.61,-1.07),(s*4.36,-1.09)],1.386,.02,'light')
    box('cowl_service_panel',(s*.582,2.0,1.65),(.025,.44,.29),'shade',.025)
-   rod('wing_gun',(s*1.05,.42,1.36),(s*1.05,1.09,1.36),.035,'steel')
+   # Paired synchronized cowl cannons fire forward immediately aft of the propeller.
+   box('cowl_cannon_fairing',(s*.49,2.85,1.69),(.24,.78,.28),'shade',.05)
+   rod('cowl_cannon_barrel',(s*.53,2.91,1.69),(s*.53,3.48,1.69),.065,'steel',10)
+   rod('cowl_cannon_muzzle',(s*.53,3.39,1.69),(s*.53,3.53,1.69),.09,'rubber',10)
+   # Solid faceted flame volumes remain readable from every viewing angle.
+   for core,radius,length,material in [('gold',.49,1.85,'muzzle_gold'),('core',.24,1.27,'muzzle_core')]:
+    flare=fus('cannon_flash_'+core,[(3.53,.055,.055,1.69),(3.77,radius,radius,1.69),(4.14,radius*.5,radius*.5,1.69),(3.53+length,.005,.005,1.69)],material,s*.53)
+    for i in range(12,24):
+     if i%2:flare.data.vertices[i].co.x=s*.53+(flare.data.vertices[i].co.x-s*.53)*.5;flare.data.vertices[i].co.z=1.69+(flare.data.vertices[i].co.z-1.69)*.5
   box('anti_glare_panel',(0,2.23,2.23),(.49,.8,.028),'rubber')
  elif name=='fighter':
   for s in [-1,1]:
@@ -284,6 +293,8 @@ def scene_setup():
  bpy.ops.object.select_all(action='SELECT');bpy.ops.object.delete(use_global=False)
  M.clear()
  for n,c in {'paint':(.31,.36,.29),'light':(.48,.52,.43),'shade':(.21,.25,.21),'rubber':(.045,.058,.057),'steel':(.19,.23,.22),'glass':(.055,.14,.17),'lamp':(.72,.85,.73),'red':(.52,.09,.055),'canvas':(.3,.32,.21)}.items():mat(n,c)
+ for n,c,strength in [('muzzle_gold',(1,.48,.018),4),('muzzle_core',(1,.88,.32),7)]:
+  mat(n,c);p=M[n].node_tree.nodes.get('Principled BSDF');p.inputs['Emission Color'].default_value=(*c,1);p.inputs['Emission Strength'].default_value=strength
 def ring(n,center,r,minor=.025,m='steel',axis='X',segments=16):
  rot=(0,math.pi/2,0) if axis=='X' else (math.pi/2,0,0) if axis=='Y' else (0,0,0)
  bpy.ops.mesh.primitive_torus_add(major_segments=segments,minor_segments=4,location=center,major_radius=r,minor_radius=minor,rotation=rot);return finish(bpy.context.object,n,m)
@@ -439,6 +450,7 @@ def interiors(name):
 def export(name):
  objs=[o for o in bpy.context.scene.objects if o.type=='MESH'];bpy.context.view_layer.update()
  rig=vehicle_rigging.assign(name,objs)
+ rig['seats']=vehicle_seating.seat_contract(name)
  # Recalculate outward normals before flat shaded triangulation.
  for o in objs:
   import bmesh
@@ -447,6 +459,7 @@ def export(name):
   for p in o.data.polygons:p.use_smooth=False
  # Center each mesh at its attachment point and link exact repeated modules.
  root=bpy.data.objects.new('GC_'+name.upper(),None);bpy.context.collection.objects.link(root);root['forward_axis']='+Y';root['up_axis']='+Z'
+ vehicle_seating.markers(name,root)
  groups={};cache={};linked=0;counts={}
  for part,node in rig['nodes'].items():
   group=bpy.data.objects.new('Assembly_'+part,None);bpy.context.collection.objects.link(group);groups[part]=group;group.location=node['pivot']
@@ -506,6 +519,7 @@ def export(name):
    for track in group.animation_data.nla_tracks:track.mute=True
   node=rig['nodes'][part];group.location=Vector(node['pivot'])-(Vector(rig['nodes'][node['parent']]['pivot']) if node.get('parent') else Vector())
   group.rotation_euler=(0,0,0)
+  group.scale=(0,0,0) if node['kind']=='muzzle_flash' else (1,1,1)
  bpy.context.view_layer.update()
  shutil.copy2(os.path.join(OUT,name+'.glb'),os.path.join(REPO,'public/models',name+'.glb'))
  with open(os.path.join(OUT,name+'_stats.json'),'w') as f:json.dump({'triangles':tri,'mesh_objects':len(objs),'unique_mesh_datablocks':len(cache),'linked_mesh_instances':linked,'mount_empties':len(objs),'parts':list(data),'axis':'+Y forward, +Z up','seats':8 if name=='troop_transport' else None,'revision':REV},f,indent=2)
@@ -542,6 +556,7 @@ for name in args:
   c=(.20,.26,.27) if name!='cas' else (.28,.34,.32);M['paint'].diffuse_color=(*c,1);M['paint'].node_tree.nodes.get('Principled BSDF').inputs['Base Color'].default_value=(*c,1)
  base='vtol' if name.startswith('vtol_') else name
  names[name]();refine(base);detail_pass(base)
+ if name=='troop_transport':vehicle_seating.fit_troop_transport(box,rod)
  if name!='vtol_attack':interiors(base)
  vehicle_rigging.variants(name,box);objs=export(name);studio(name,objs)
 

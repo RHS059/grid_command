@@ -1,4 +1,5 @@
 import bpy,math
+import vehicle_seating
 from mathutils import Vector
 
 def variants(name,box):
@@ -39,7 +40,7 @@ def variants(name,box):
 def assign(name,objs):
  meta={'hull':{'pivot':[0,0,0],'kind':'fixed'}}
  air=name in ['cas','fighter','vtol_cargo','vtol_attack']
- wheel_y=[-2.35,-1.57,-.79,0,.79,1.57,2.35] if name in ['tank','apc'] else [-1.32,1.4]
+ wheel_y=[-2.35,-1.57,-.79,0,.79,1.57,2.35] if name in ['tank','apc'] else [vehicle_seating.stretch_y(y) for y in [-1.32,1.4]] if name=='troop_transport' else [-1.32,1.4]
  for o in objs:
   stem=o.name.split('.')[0];p=o.matrix_world@(sum((v.co for v in o.data.vertices),Vector())/len(o.data.vertices));s='L' if p.x<0 else 'R';key=o.get('part','hull');kind='fixed';pivot=[0,0,0];parent=None;extra={}
   if key=='turret':kind='turret';pivot=[0,0,2.5] if name=='apc' else [0,-.25,1.8]
@@ -48,13 +49,17 @@ def assign(name,objs):
   elif key=='propeller':kind='rotor';pivot=[0,3.66,1.64]
   elif name.startswith('vtol_') and stem.startswith(('tilt_nacelle','nacelle_','rotor_pitch','navigation_light')):
    key='nacelle_'+s;kind='nacelle';pivot=[-4.1 if s=='L' else 4.1,1.5 if name=='vtol_attack' else .9,2.04 if name=='vtol_attack' else 2.46]
+  elif name=='cas' and stem.startswith('cannon_flash_'):
+   key='muzzle_flash_'+s;kind='muzzle_flash';pivot=[-.53 if s=='L' else .53,3.53,1.69];parent='cannon_'+s
+  elif name=='cas' and stem.startswith(('cowl_cannon_barrel','cowl_cannon_muzzle')):
+   key='cannon_'+s;kind='recoil';pivot=[-.53 if s=='L' else .53,2.91,1.69]
   elif stem.startswith(('gun_base','gun_tube','fume_extractor','muzzle','bore','chin_weapon','chin_barrel','barrel_collar')):
    key='cannon';kind='recoil';pivot=[0,1.25,2.21] if name=='tank' else [0,2.36,.55];parent='turret' if name=='tank' else None
   elif name=='apc' and stem=='gun_barrel':key='cannon';kind='recoil';pivot=[.25,.96,3.04];parent='turret'
   elif name=='apc' and stem.startswith(('open_rear_ramp','ramp_grip')):key='ramp';kind='ramp';pivot=[0,-3.28,.87];extra={'closed':-2.14}
   elif name=='vtol_cargo' and stem.startswith(('cargo_door','door_inset','door_handle','door_warning')) and p.x<0:key='cargo_door';kind='door';pivot=[-1.065,-.1,1.55]
   elif not air and stem.startswith(('wheel','tire','hub','roadwheel','beadlock','chevron')):
-   y=min(wheel_y,key=lambda y:abs(p.y-y));i=wheel_y.index(y);key=f'wheel_{s}_{i}';kind='wheel';pivot=[(-1 if s=='L' else 1)*(1.425 if name!='troop_transport' else .99),y,.69 if name!='troop_transport' else .56]
+   y=min(wheel_y,key=lambda y:abs(p.y-y));i=wheel_y.index(y);key=f'wheel_{s}_{i}';kind='wheel';pivot=[(-1 if s=='L' else 1)*(1.425 if name!='troop_transport' else 1.2375),y,.69 if name!='troop_transport' else .56]
   elif name in ['tank','apc'] and stem.startswith(('track_shoe','track_end_shoe','track_rubber_pad')):
    key='track_'+s+'_'+str(sum(1 for k in meta if k.startswith('track_'+s)));kind='track';pivot=list(p)
    if abs(p.y)<=2.51:phase=p.y+2.5 if p.z>.7 else 5+math.pi*.66+2.5-p.y
@@ -67,7 +72,7 @@ def assign(name,objs):
    else:key='gear_N' if abs(p.x)<.5 else 'gear_'+s;kind='gear';pivot=[0,2.6 if name=='cas' else 3.15,1.15] if abs(p.x)<.5 else [(-1 if s=='L' else 1)*(1.22 if name=='cas' else 1.35),-.65 if name=='cas' else -2.7,1.3]
   elif air and stem.startswith(('aileron','delta_control','wing_control','elevator')):key='control_'+s;kind='control';pivot=list(p)
   elif name in ['cas','fighter'] and stem.startswith(('underwing_store','missile','store_vertical','store_horizontal')):
-   key='store_'+s+('_outer' if abs(p.x)>2.5 else '_inner');kind='store';pivot=[(-1 if s=='L' else 1)*(3.05 if name=='cas' else 3.4) if abs(p.x)>2.5 else (-1 if s=='L' else 1)*(1.6 if name=='cas' else 2.1),-.4 if name=='cas' else -2.1,.72 if name=='cas' else 1.27]
+   key=('fuel_pod_' if name=='cas' else 'store_')+s+('_outer' if abs(p.x)>2.5 else '_inner');kind='fixed' if name=='cas' else 'store';pivot=[(-1 if s=='L' else 1)*(3.05 if name=='cas' else 3.4) if abs(p.x)>2.5 else (-1 if s=='L' else 1)*(1.6 if name=='cas' else 2.1),-.4 if name=='cas' else -2.1,.72 if name=='cas' else 1.27]
   if key not in meta:meta[key]={'pivot':[round(v,5) for v in pivot],'kind':kind,**({'parent':parent} if parent else {}),**extra}
   o['part']=key
  for key,m in list(meta.items()):
@@ -75,7 +80,7 @@ def assign(name,objs):
  clips=[{'id':'idle','label':'Rest pose','duration':2,'loop':True}]
  def clip(i,label,d,loop=False):clips.append({'id':i,'label':label,'duration':d,'loop':loop})
  if not air:clip('drive','Driving',2,True)
- if name in ['tank','apc','vtol_attack','cas','fighter']:clip('shoot','Shooting / weapon release',1.2)
+ if name in ['tank','apc','vtol_attack','cas','fighter']:clip('shoot','Twin cannon burst' if name=='cas' else 'Shooting / weapon release',1.2)
  if name in ['tank','apc']:clip('aim','Turret traverse',4,True)
  if name in ['apc','vtol_cargo']:clip('open','Open ramp / cargo door',2);clip('close','Close ramp / cargo door',2)
  if air:clip('fly','Flying / control surfaces',4,True)
@@ -85,6 +90,7 @@ def assign(name,objs):
  if name.startswith('vtol_'):
   for m in meta.values():
    if m['kind'] in ['rotor','nacelle','door','recoil','gear']:m['pivot'][1]*=1.15;m['pivot'][2]*=.9
+ clips.extend(vehicle_seating.boarding_clips(name))
  return {'nodes':meta,'clips':clips,'variant':name}
 
 def sample(kind,clip,t,duration,node):
@@ -117,6 +123,12 @@ def sample(kind,clip,t,duration,node):
   else:rot[1]=amount*(1 if node['pivot'][0]>0 else -1)
  return move,rot
 
+def flash_scale(clip,t):
+ # Six broad pulses; frame zero, the gaps and clip end are fully extinguished.
+ if clip!='shoot' or t<.05 or t>=1.05:return 0.
+ phase=round((t-.05)*1000000)%180000
+ return 1. if phase<100000 else 0.
+
 def animations(root,groups,rig):
  scene=bpy.context.scene;scene.render.fps=24
  for key,o in groups.items():
@@ -124,14 +136,20 @@ def animations(root,groups,rig):
   if node['kind']=='fixed' and key!='hull':continue
   o.animation_data_create()
   for clip in rig['clips']:
-   allowed={'fixed':['idle'],'wheel':['drive'],'track':['drive'],'turret':['aim'],'recoil':['shoot'],'door':['open','close'],'ramp':['open','close'],'rotor':['rotors','fly'],'nacelle':['tilt'],'control':['fly'],'store':['shoot'],'gear':['gear','gear_down']}
+   allowed={'fixed':['idle'],'wheel':['drive'],'track':['drive'],'turret':['aim'],'recoil':['shoot'],'door':['open','close'],'ramp':['open','close'],'rotor':['rotors','fly'],'nacelle':['tilt'],'control':['fly'],'store':['shoot'],'gear':['gear','gear_down'],'muzzle_flash':['idle','shoot']}
    if clip['id'] not in allowed.get(node['kind'],[]):continue
    o.animation_data.action=None
-   for i in range(25):
-    t=i*clip['duration']/24;move,rot=sample(node['kind'],clip['id'],t,clip['duration'],node);o.location=base+Vector(move);o.rotation_euler=rot;o.keyframe_insert('location',frame=1+t*24);o.keyframe_insert('rotation_euler',frame=1+t*24)
+   times=[i*clip['duration']/24 for i in range(25)]
+   if node['kind']=='muzzle_flash' and clip['id']=='shoot':times=sorted(set([0,clip['duration']]+[round(.05+i*.18+d,6) for i in range(6) for d in [0,.1]]))
+   for t in times:
+    move,rot=sample(node['kind'],clip['id'],t,clip['duration'],node);o.location=base+Vector(move);o.rotation_euler=rot;o.keyframe_insert('location',frame=1+t*24);o.keyframe_insert('rotation_euler',frame=1+t*24)
+    if node['kind']=='muzzle_flash':o.scale=(flash_scale(clip['id'],t),)*3;o.keyframe_insert('scale',frame=1+t*24)
    action=o.animation_data.action;action.name=clip['id']+'__'+key;action.use_fake_user=True
+   if node['kind']=='muzzle_flash':
+    for curve in action.fcurves:
+     for point in curve.keyframe_points:point.interpolation='CONSTANT'
    track=o.animation_data.nla_tracks.new();track.name=clip['id'];strip=track.strips.new(clip['id'],1,action);strip.extrapolation='NOTHING'
-  o.animation_data.action=None;o.location=base;o.rotation_euler=(0,0,0)
+  o.animation_data.action=None;o.location=base;o.rotation_euler=(0,0,0);o.scale=(0,0,0) if node['kind']=='muzzle_flash' else (1,1,1)
  root['animation_clips']=[c['id'] for c in rig['clips']]
  scene.frame_set(0)
 
@@ -144,6 +162,11 @@ def repair_glb_pose(path,rig):
   key=node.get('name','').removeprefix('Assembly_')
   if not node.get('name','').startswith('Assembly_') or key not in rig['nodes']:continue
   m=rig['nodes'][key];parent=rig['nodes'][m['parent']]['pivot'] if m.get('parent') else [0,0,0]
-  node.pop('matrix',None);node['translation']=[m['pivot'][i]-parent[i] for i in range(3)];node['rotation']=[0,0,0,1];node['scale']=[1,1,1]
+  node.pop('matrix',None);node['translation']=[m['pivot'][i]-parent[i] for i in range(3)];node['rotation']=[0,0,0,1];node['scale']=[0,0,0] if m['kind']=='muzzle_flash' else [1,1,1]
+ # glTF baking converts constant curves to LINEAR; flashes must switch, never grow.
+ for animation in doc.get('animations',[]):
+  for channel in animation['channels']:
+   target=channel['target'];name=doc['nodes'][target['node']].get('name','')
+   if target['path']=='scale' and name.startswith('Assembly_muzzle_flash_'):animation['samplers'][channel['sampler']]['interpolation']='STEP'
  data=json.dumps(doc,separators=(',',':')).encode();data+=b' '*((-len(data))%4)
  open(path,'wb').write(struct.pack('<III',0x46546c67,2,20+len(data)+len(tail))+struct.pack('<II',len(data),0x4e4f534a)+data+tail)

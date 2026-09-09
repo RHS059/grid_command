@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createBlenderVehicle } from '../lib/game/blender-vehicles'
+import { addCarrierOccupants } from '../lib/game/carrier-occupants'
 import { vehicleRig, vehicleClips, poseVehicleClip, advanceVehiclePlayback, sampleVehicleNode } from '../lib/game/vehicle-animation'
 import type { Role } from '../lib/game/types'
 const roles:Role[]=['TANK','TROOP_TRUCK','APC','HEAVY_LIFT_HELI','ATTACK_HELI','CAS_FIGHTER','JET']
@@ -38,4 +39,43 @@ test('looping wheels return to matching orientation and gear folds inward',()=>{
  assert.ok(sampleVehicleNode(nodes.gear_L,'gear',2,2).rotation[1]<0)
  assert.ok(sampleVehicleNode(nodes.gear_R,'gear',2,2).rotation[1]>0)
  assert.ok(sampleVehicleNode(nodes.gear_N,'gear',2,2).rotation[0]<0)
+})
+
+test('CAS fires paired emissive cowl flashes while every fuel pod stays mounted',()=>{
+ const root=createBlenderVehicle('CAS_FIGHTER','BLU'),rig=vehicleRig('CAS_FIGHTER')!
+ const pods=Object.entries(rig.nodes).filter(([name])=>name.startsWith('fuel_pod_'))
+ assert.equal(pods.length,4);assert.ok(!Object.values(rig.nodes).some(node=>node.kind==='store'))
+ for(const [name,node] of pods){assert.equal(node.kind,'fixed');for(const clip of rig.clips)for(let i=0;i<=120;i++){poseVehicleClip(root,clip.id,i*clip.duration/120);assert.deepEqual(root.getObjectByName(name)!.position.toArray(),node.pivot);assert.deepEqual(root.getObjectByName(name)!.scale.toArray(),[1,1,1])}}
+ for(const side of ['L','R']){
+  const name='muzzle_flash_'+side,node=rig.nodes[name],flash=root.getObjectByName(name)!
+  assert.ok(node.pivot[1]<rig.nodes.propeller.pivot[1]&&node.pivot[1]>3.4)
+  assert.equal(flash.parent?.name,'cannon_'+side)
+  const mesh=root.getObjectByName(name+'_mesh') as import('../lib/game/scene-data').Mesh
+  const material=mesh.material as import('../lib/game/scene-data').Material
+  assert.ok(material.emissiveIntensity>=4);assert.ok(material.emissive.r>material.emissive.b)
+  poseVehicleClip(root,'shoot',.1);assert.equal(flash.scale.x,1)
+  poseVehicleClip(root,'shoot',.19);assert.equal(flash.scale.x,0)
+  poseVehicleClip(root,'shoot',.28);assert.equal(flash.scale.x,1)
+  poseVehicleClip(root,'shoot',1.2);assert.equal(flash.scale.x,0)
+  poseVehicleClip(root,'idle',0);assert.equal(flash.scale.x,0)
+  for(let i=0;i<6;i++){assert.equal(sampleVehicleNode(node,'shoot',Math.round((.05+i*.18)*1e6)/1e6,1.2).scale,1);assert.equal(sampleVehicleNode(node,'shoot',Math.round((.15+i*.18)*1e6)/1e6,1.2).scale,0)}
+ }
+})
+
+test('carrier seats eight canonical occupants and selects an independent boarding clip for every seat',()=>{
+ const root=createBlenderVehicle('TROOP_TRUCK','BLU'),rig=vehicleRig('TROOP_TRUCK')!,seats=rig.seats!
+ assert.equal(seats.length,8);assert.equal(seats.filter(s=>s.yaw===0).length,6)
+ assert.equal(seats[6].yaw,-Math.PI/2);assert.equal(seats[7].yaw,Math.PI/2)
+ addCarrierOccupants(root,'BLU',true);assert.equal(root.userData.crewCount,8)
+ const actors=root.children.filter(o=>o.userData.seatId)
+ assert.equal(actors.length,8);assert.ok(actors.every(o=>o.visible&&o.scale.x===1&&o.userData.nativeAssetURL.endsWith('/models/carrier-soldier.glb')))
+ for(const seat of seats){
+  const marker=root.getObjectByName(seat.name)!;assert.deepEqual(marker.position.toArray(),seat.position);assert.equal(marker.rotation.z,seat.yaw)
+  for(const mode of ['mount','dismount']){
+   const id=`${mode}_${seat.id}`;assert.ok(rig.clips.some(c=>c.id===id))
+   poseVehicleClip(root,id,1.2)
+   for(const actor of actors){const action=actor.userData.animationState[0];assert.equal(action.name,actor.userData.seatId===seat.id?id:`seat_${actor.userData.seatId}`);assert.equal(action.time,actor.userData.seatId===seat.id?1.2:0)}
+  }
+ }
+ poseVehicleClip(root,'idle',0);assert.ok(actors.every(o=>o.userData.animationState[0].name.startsWith('seat_')))
 })

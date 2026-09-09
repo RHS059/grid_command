@@ -1,0 +1,155 @@
+{
+  "version": 1,
+  "id": "synthetic-maritime",
+  "name": "Synthetic coastal lift and escort",
+  "seed": 408,
+  "sources": [],
+  "units": [
+    {
+      "id": "blue-command",
+      "side": "BLU",
+      "role": "COMMAND",
+      "position": {
+        "x": 0,
+        "y": 140
+      }
+    },
+    {
+      "id": "red-command",
+      "side": "RED",
+      "role": "COMMAND",
+      "position": {
+        "x": 300,
+        "y": 140
+      }
+    },
+    {
+      "id": "lift",
+      "side": "BLU",
+      "role": "LANDING_CRAFT",
+      "position": {
+        "x": 0,
+        "y": 80
+      },
+      "ammo": 100,
+      "fuel": 100,
+      "navalDirective": {
+        "mode": "AMPHIBIOUS_LIFT",
+        "pickupId": "west",
+        "landingId": "east",
+        "passengerIds": [
+          "riders"
+        ]
+      }
+    },
+    {
+      "id": "riders",
+      "side": "BLU",
+      "role": "RIFLE",
+      "position": {
+        "x": 0,
+        "y": 110
+      },
+      "ammo": 100
+    },
+    {
+      "id": "escort",
+      "side": "BLU",
+      "role": "FRIGATE",
+      "position": {
+        "x": 40,
+        "y": 70
+      },
+      "ammo": 100,
+      "fuel": 100,
+      "navalDirective": {
+        "mode": "ESCORT",
+        "escortId": "lift"
+      }
+    }
+  ],
+  "objectives": [
+    {
+      "id": "shore",
+      "name": "Landing zone",
+      "position": {
+        "x": 100,
+        "y": 110
+      }
+    }
+  ],
+  "maritime": {
+    "water": [
+      [
+        {
+          "x": -200,
+          "y": -200
+        },
+        {
+          "x": 400,
+          "y": -200
+        },
+        {
+          "x": 400,
+          "y": 100
+        },
+        {
+          "x": -200,
+          "y": 100
+        }
+      ]
+    ],
+    "ports": [
+      {
+        "id": "blue-port",
+        "side": "BLU",
+        "position": {
+          "x": 0,
+          "y": 80
+        },
+        "stock": {
+          "fuel": 200,
+          "ammo": 200,
+          "repair": 100
+        }
+      }
+    ],
+    "landings": [
+      {
+        "id": "west",
+        "water": {
+          "x": 0,
+          "y": 90
+        },
+        "shore": {
+          "x": 0,
+          "y": 110
+        }
+      },
+      {
+        "id": "east",
+        "water": {
+          "x": 100,
+          "y": 90
+        },
+        "shore": {
+          "x": 100,
+          "y": 110
+        }
+      }
+    ]
+  },
+  "sides": {
+    "BLU": {
+      "doctrine": {
+        "orderLifetime": 300,
+        "reserveFraction": 0
+      }
+    },
+    "RED": {
+      "doctrine": {
+        "reserveFraction": 0
+      }
+    }
+  }
+}

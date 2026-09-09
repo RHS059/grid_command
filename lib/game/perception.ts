@@ -1,5 +1,7 @@
 import { type BattleState, type ContactMemory, type Point, type Side, type Unit } from './types'
 
+import { observeDeceptions } from './ai/deception'
+
 const CELL = 500
 export const CONTACT_MEMORY_SECONDS = 18
 const key = (p: Point) => `${Math.floor(p.x / CELL)},${Math.floor(p.y / CELL)}`
@@ -37,7 +39,7 @@ export class Perception {
     state.contacts ??= { BLU: [], RED: [] }
     this.visible = { BLU: new Set(), RED: new Set() }
     const observers = new Map<string, string[]>(), living = state.units.filter(u => u.hp > 0 && !u.carrier).sort((a, b) => a.id.localeCompare(b.id)), byId = new Map(living.map(unit => [unit.id, unit]))
-    for (const observer of living) {
+    for (const observer of living.filter(u => !u.surrendered)) {
       for (const target of this.enemies(observer.side, observer, 2500)) {
         if (!sees(observer, target)) continue
         this.visible[observer.side].add(target.id)
@@ -57,13 +59,14 @@ export class Perception {
       const contacts: ContactMemory[] = []
       for (const contact of old.values()) {
         const age = state.time - contact.lastSeen
-        if (age > CONTACT_MEMORY_SECONDS || !byId.has(contact.unitId)) continue
+        if (age > CONTACT_MEMORY_SECONDS) continue
         if (!this.visible[side].has(contact.unitId)) contact.observers = []
         contact.confidence = Math.max(0, 1 - age / CONTACT_MEMORY_SECONDS)
         contacts.push(contact)
       }
       state.contacts[side] = contacts.sort((a, b) => a.unitId.localeCompare(b.unitId))
     }
+    observeDeceptions(state, sees)
     for (const unit of state.units) unit.spotted = this.visible[unit.side === 'BLU' ? 'RED' : 'BLU'].has(unit.id)
   }
 

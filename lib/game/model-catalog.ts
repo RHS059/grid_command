@@ -2,12 +2,14 @@ import { CATALOG, isAir, isVehicle, type Role } from './types'
 import type { BaseKind } from './base-models'
 export type ModelId = Role | BaseKind
 export const MODEL_NAMES: Record<ModelId, string> = {
+  PATROL_BOAT: 'Patrol boat', FRIGATE: 'Frigate', LANDING_CRAFT: 'Landing craft', AMPHIBIOUS_APC: 'Amphibious APC',
   FORKLIFT: 'Supply forklift', CARGO_PLANE: 'Tactical cargo plane', UAV_JAMMER: 'UAV jammer', AA_TEAM: 'Anti-air launcher team', TRANSPORT_HELI: 'Troop transport helicopter', HEAVY_LIFT_HELI: 'Heavy-lift helicopter', TROOP_TRUCK: 'Light troop carrier',
   RIFLE: 'Rifle squad', SCOUT: 'Scout team', MG: 'Machine gun team', AT: 'Anti-tank team', MORTAR: 'Mortar team', ENGINEER: 'Combat engineer', MEDIC: 'Combat medic', LOGISTICS: 'Logistics team', TANK: 'Main battle tank', PILOT: 'Pilot', COMMAND: 'Command officer', TRUCK: 'Supply truck', RECON_UAV: 'Reconnaissance UAV', APC: 'Armored personnel carrier', CANNON_APC: 'Cannon APC', IFV: 'Infantry fighting vehicle', CAS_FIGHTER: 'CAS fighter', JET: 'Strike fighter', ATTACK_HELI: 'Attack helicopter', MOB: 'Main operating base', AIRFIELD: 'Airfield compound',
 }
 export const MODEL_CATALOG = [...Object.keys(CATALOG) as Role[], 'MOB', 'AIRFIELD'] as ModelId[]
 export const modelCategory = (id: ModelId) => id === 'MOB' || id === 'AIRFIELD' ? 'Structures' : isAir(id) ? 'Aircraft' : isVehicle(id) ? 'Vehicles' : 'Personnel'
 export const MODEL_NOTES: Partial<Record<ModelId, string>> = {
+  PATROL_BOAT: 'Patrol boat', FRIGATE: 'Frigate', LANDING_CRAFT: 'Landing craft', AMPHIBIOUS_APC: 'Amphibious APC',
   FORKLIFT: 'Articulated forks and visible pallets. Transfers up to 750 supply units between apron and storage. Airfield tiers provide one, two or four forklifts.',
   CARGO_PLANE: 'Pale faceted strategic airlifter with four underwing jet engines, swept high wings, a T-tail, multi-wheel landing gear and a rear cargo ramp. Tier 1 delivers 3,300 supply units per wave; tier 2 delivers 6,600; tier 3 receives two simultaneous 6,600-unit flights on separate strips.',
   UAV_JAMMER: 'Static electronics and antenna array. Blocks hostile UAV reconnaissance within 600 m; 200 SP, 15-second construction, three per side.',

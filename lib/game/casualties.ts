@@ -1,4 +1,4 @@
-import { createUnit, isAir, isVehicle, type BattleState, type Unit, type Side } from './types'
+import { createUnit, isNaval, isAir, isVehicle, type BattleState, type Unit, type Side } from './types'
 import { Navigation } from './navigation'
 import { Visibility } from './visibility'
 import { distance } from './movement'
@@ -27,7 +27,7 @@ export function recordCasualties(state:BattleState,nav:Navigation,v:Visibility,r
       for(const [i,s] of (squad.soldiers||[]).entries())if(s.status==='active'){
         if(s.disembarked){s.disembarked=undefined;continue}
         const p=nav.nearest({x:carrier.x+12+i*2,y:carrier.y+8});Object.assign(s,p)
-        if(isAir(carrier.role)||random()<.65||!nav.covered(p)||!nav.clear(p,p)){s.status='dead';s.since=state.time}
+        if(isNaval(carrier.role)||isAir(carrier.role)||random()<.65||!nav.covered(p)||!nav.clear(p,p)){s.status='dead';s.since=state.time}
       }
       squad.x=carrier.x;squad.y=carrier.y;squad.members=squad.soldiers?.filter(s=>s.status==='active').length||0;squad.hp=squad.members/squad.maxMembers*100;state.forces[squad.side].casualties+=before-squad.members
     }
@@ -41,4 +41,3 @@ export function recordCasualties(state:BattleState,nav:Navigation,v:Visibility,r
     if(state.tick%20===0)for(const side of ['BLU','RED'] as Side[])if(!c.observed.includes(side)&&state.units.some(u=>u.hp>0&&!u.carrier&&u.side===side&&distance(u,c)<700&&v.ray({x:u.x,y:u.y,z:v.height(u)+1.7},{x:c.x,y:c.y,z:v.height(c)+.5}).kind==='clear'))c.observed.push(side)
   }
 }
-

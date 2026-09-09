@@ -1,3 +1,5 @@
+import type { Deception } from './ai/deception'
+import type { HierarchyState } from './ai/model'
 import type { MobState } from './mob'
 import { ORIGIN, CITY_BASES, CITY_AIRBASES, CITY_OBJECTIVES, toPoint, fromPoint } from './theater'
 export type Side = 'BLU' | 'RED'
@@ -8,7 +10,8 @@ export const AIRFIELD_TIERS = {
   3: { runways: 2, forklifts: 4, trucks: 4, trailers: 2, supplyMultiplier: 4, income: 40, cost: 1200, buildSeconds: 90 },
 } as const
 export interface AirfieldState { tier: AirfieldTier; upgrade?: { tier: AirfieldTier; due: number } }
-export interface MissionState { objectiveId?: string; manual?: boolean; autoDismount?: boolean; dismountCrew?: boolean; mobPad?: boolean; pickup?: Point; pickupFor?: string; containerState?: 'loaded' | 'empty'; containerCount?: number; unloadedContainers?: number; airfieldSlot?: number; mobHold?: number; mobDock?: number; queuedAt?: number; unloadStarted?: number; unloadSeconds?: number; phase: string; since: number; destination?: Point; passengers?: string[]; cargo?: number; manifest?: Stock; shipment?: string; home?: Point; location?: 'MOB' | 'AIRBASE'; runway?: number; trailers?: number; dispatchTroops?: number; unloaded?: number; lastUnload?: number }
+export interface CarrierOccupant { soldierId: string; squadId: string; seatId: string; phase: 'approaching' | 'mounting' | 'seated' | 'dismounting'; startedAt: number }
+export interface MissionState { occupants?: CarrierOccupant[]; occupantUpdatedAt?: number; objectiveId?: string; manual?: boolean; autoDismount?: boolean; dismountCrew?: boolean; mobPad?: boolean; pickup?: Point; pickupFor?: string; containerState?: 'loaded' | 'empty'; containerCount?: number; unloadedContainers?: number; airfieldSlot?: number; mobHold?: number; mobDock?: number; queuedAt?: number; unloadStarted?: number; unloadSeconds?: number; phase: string; since: number; destination?: Point; passengers?: string[]; cargo?: number; manifest?: Stock; shipment?: string; home?: Point; location?: 'MOB' | 'AIRBASE'; runway?: number; trailers?: number; dispatchTroops?: number; unloaded?: number; lastUnload?: number }
 export interface Stock { fuel: number; ammo: number; repair: number }
 export const emptyStock = (): Stock => ({ fuel: 0, ammo: 0, repair: 0 })
 export const stockTotal = (s: Stock) => s.fuel + s.ammo + s.repair
@@ -16,7 +19,7 @@ export interface Depot { airfield: Stock; pending: Stock; mob: Stock }
 export interface Missile { id: number; source: string; target: string; due: number; damage: number }
 export interface Casualty { id: string; side: Side; role: Role; soldier?: Soldier; x: number; y: number; heading: number; time: number; observed: Side[]; altitude: number }
 export type Perspective = Side | 'OBS'
-export type Role = 'RIFLE' | 'SCOUT' | 'MG' | 'AT' | 'MORTAR' | 'ENGINEER' | 'MEDIC' | 'LOGISTICS' | 'TANK' | 'PILOT' | 'COMMAND' | 'TRUCK' | 'RECON_UAV' | 'APC' | 'CANNON_APC' | 'IFV' | 'CAS_FIGHTER' | 'JET' | 'ATTACK_HELI' | 'FORKLIFT' | 'CARGO_PLANE' | 'UAV_JAMMER' | 'AA_TEAM' | 'TRANSPORT_HELI' | 'HEAVY_LIFT_HELI' | 'TROOP_TRUCK'
+export type Role = 'PATROL_BOAT' | 'FRIGATE' | 'LANDING_CRAFT' | 'AMPHIBIOUS_APC' | 'RIFLE' | 'SCOUT' | 'MG' | 'AT' | 'MORTAR' | 'ENGINEER' | 'MEDIC' | 'LOGISTICS' | 'TANK' | 'PILOT' | 'COMMAND' | 'TRUCK' | 'RECON_UAV' | 'APC' | 'CANNON_APC' | 'IFV' | 'CAS_FIGHTER' | 'JET' | 'ATTACK_HELI' | 'FORKLIFT' | 'CARGO_PLANE' | 'UAV_JAMMER' | 'AA_TEAM' | 'TRANSPORT_HELI' | 'HEAVY_LIFT_HELI' | 'TROOP_TRUCK'
 export type Point = { x: number; y: number }
 export type Vec3 = Point & { z: number }
 export type Stance = 'stand' | 'crouch' | 'prone'
@@ -40,12 +43,16 @@ export interface GeometryPacket { sector?: string; evict?: string; features: Geo
 export interface ShotEvent { id: number; time: number; unit: string; soldier?: string; side: Side; weapon: string; start: Vec3; end: Vec3; speed: number; size: number; blast: number; sound: string; spotted: boolean }
 export interface Smoke extends Vec3 { id: number; side: Side; time: number; expires: number; from: Vec3 }
 export const isAir = (r: Role) => ['RECON_UAV', 'CAS_FIGHTER', 'JET', 'ATTACK_HELI', 'CARGO_PLANE', 'TRANSPORT_HELI', 'HEAVY_LIFT_HELI'].includes(r)
-export const isVehicle = (r: Role) => ['TANK', 'APC', 'CANNON_APC', 'IFV', 'TRUCK', 'TROOP_TRUCK', 'FORKLIFT', 'UAV_JAMMER'].includes(r) || isAir(r)
-export const isArmored = (r: Role) => ['TANK', 'APC', 'CANNON_APC', 'IFV'].includes(r)
-export const troopSeats = (r: Role) => r === 'TRANSPORT_HELI' ? 24 : r === 'APC' ? 8 : ['TROOP_TRUCK', 'CANNON_APC', 'IFV'].includes(r) ? 6 : 0
+export const isNaval = (r: Role) => ['PATROL_BOAT','FRIGATE','LANDING_CRAFT','AMPHIBIOUS_APC'].includes(r)
+export const isVehicle = (r: Role) => ['TANK', 'APC', 'CANNON_APC', 'IFV', 'TRUCK', 'TROOP_TRUCK', 'FORKLIFT', 'UAV_JAMMER'].includes(r) || isAir(r) || isNaval(r)
+export const isArmored = (r: Role) => ['TANK', 'APC', 'CANNON_APC', 'IFV','FRIGATE','AMPHIBIOUS_APC'].includes(r)
+export const troopSeats = (r: Role) => r === 'TRANSPORT_HELI' ? 24 : r === 'APC' ? 8 : r === 'TROOP_TRUCK' ? 7 : ['CANNON_APC', 'IFV'].includes(r) ? 6 : 0
 export const missionAsset = (r: Role) => ['FORKLIFT','CARGO_PLANE','UAV_JAMMER','TRANSPORT_HELI','HEAVY_LIFT_HELI','TROOP_TRUCK','TRUCK'].includes(r)
 export interface Unit extends Point {
-  crewBailed?: boolean; external?: boolean; engine?: boolean; servicing?: boolean; serviceStatus?: string; emergency?: boolean;
+  navalDirective?: import('./maritime-navigation').NavalDirective
+  maritime?: { order?: import('./ai/model').Mission; occupants?: CarrierOccupant[]; revision: number; phase: string; waypoint: number; since: number; passengers: string[]; transition?: { squad: string; due: number }; destination?: Point }
+  deceptionCharges?: number
+  surrendered?: boolean; crewBailed?: boolean; external?: boolean; engine?: boolean; servicing?: boolean; serviceStatus?: string; emergency?: boolean;
   serviceObjective?: string; travelStatus?: string; routeRetry?: number; transport?: MissionState; carrier?: string; transportIntent?: { destination: Point; mission: string; target: string }; transportWaitSince?: number; walkFallbackUntil?: number; attachedSquad?: string; attachedVehicles?: string[]; deployment?: 'garage'; destroyedAt?: number; lossProcessed?: boolean; lock?: { target: string; since: number }; construction?: { builder: string; due: number }; fuelCommitment?: { target: string; required: number; reservedAt: number };
   soldiers?: Soldier[]; aim?: number; altitude?: number; cooldown?: number; suppression?: number; smoke?: number; airPhase?: 'attack' | 'return' | 'rearm';
   strategicOrder?: StrategicOrder; tacticalIntent?: TacticalIntent; movementIntent?: MovementIntent; orderRefusal?: OrderRefusal;
@@ -59,7 +66,7 @@ export interface ObjectiveRestock { truckId: string; side: Side }
 export interface Objective extends Point { id: string; name: string; owner: Side | null; contested: boolean; progress: number; capturing: Side | null; stock: Stock; facilities: Partial<Record<ObjectiveFacilityKind, ObjectiveFacility>>; restock?: ObjectiveRestock }
 export interface RadioEvent { id: number; time: number; side: Side | 'SYS'; text: string; type: 'command' | 'combat' | 'logistics' | 'system' }
 export interface Force { sp: number; tempo: number; action: string; target: string; cycles: number; casualties: number; fuel: number; ammo: number; manpower: number; queue: number; purchase: string; hold: number; delivered: number }
-export interface BattleState { facilityDamageCursor?: number; mobs?: Record<Side, MobState>; subcommanders?: Record<Side, CommandCouncil>; airfields: Record<Side, AirfieldState>; nextSupply: Record<Side, number>; depots: Record<Side, Depot>; contacts?: Record<Side, ContactMemory[]>; missiles: Missile[]; casualties: Casualty[]; shipmentSerial: number; shots: ShotEvent[]; smokes: Smoke[]; geometryReady: boolean; workerMs: number; time: number; tick: number; seed: number; paused: boolean; speed: number; units: Unit[]; objectives: Objective[]; forces: Record<Side, Force>; events: RadioEvent[]; winner: Side | 'DRAW' | null; navCells: number; buildings: number }
+export interface BattleState { maritime?: import('./maritime-navigation').MaritimeTheater; deceptions?: Deception[]; scenario?: { id: string; name: string; date?: string; sources: { id: string; title: string; reference: string }[]; unitSources: Record<string, string[]>; automaticReinforcements: boolean }; behavior?: HierarchyState; facilityDamageCursor?: number; mobs?: Record<Side, MobState>; subcommanders?: Record<Side, CommandCouncil>; airfields: Record<Side, AirfieldState>; nextSupply: Record<Side, number>; depots: Record<Side, Depot>; contacts?: Record<Side, ContactMemory[]>; missiles: Missile[]; casualties: Casualty[]; shipmentSerial: number; shots: ShotEvent[]; smokes: Smoke[]; geometryReady: boolean; workerMs: number; time: number; tick: number; seed: number; paused: boolean; speed: number; units: Unit[]; objectives: Objective[]; forces: Record<Side, Force>; events: RadioEvent[]; winner: Side | 'DRAW' | null; navCells: number; buildings: number }
 export interface Graphics { performanceMode?: boolean; quality: 'performance' | 'balanced' | 'high'; terrain: boolean; buildings: boolean; shadows: boolean; labels: boolean; routes: boolean; grid: boolean; models: boolean }
 export const DEFAULT_GRAPHICS: Graphics = { performanceMode: false, quality: 'balanced', terrain: false, buildings: false, shadows: true, labels: true, routes: true, grid: true, models: true }
 export const CENTER = ORIGIN
@@ -67,6 +74,10 @@ export const SIDE_COLOR = { BLU: '#54b7ff', RED: '#ee777b' }
 export const BASES = CITY_BASES
 export const AIRBASES = CITY_AIRBASES
 export const CATALOG: Record<Role, { members: number; speed: number; range: number; power: number; cost: number }> = {
+  PATROL_BOAT: { members: 4, speed: 14, range: 1200, power: 12, cost: 1800 },
+  FRIGATE: { members: 32, speed: 12, range: 2400, power: 40, cost: 14000 },
+  LANDING_CRAFT: { members: 3, speed: 8, range: 0, power: 0, cost: 2000 },
+  AMPHIBIOUS_APC: { members: 3, speed: 7, range: 1200, power: 12, cost: 5500 },
   FORKLIFT: { members: 1, speed: 3, range: 0, power: 0, cost: 150 },
   CARGO_PLANE: { members: 3, speed: 85, range: 0, power: 0, cost: 7000 },
   UAV_JAMMER: { members: 0, speed: 0, range: 600, power: 0, cost: 200 },
@@ -102,10 +113,9 @@ export function createUnit(side: Side, role: Role, id: string, point: Point = is
   return u
 }
 export function initialState(seed = 3701): BattleState {
-  const force = (): Force => ({ sp: 2000, tempo: 58, action: 'ASSEMBLE', target: 'C', cycles: 0, casualties: 0, fuel: 0, ammo: 0, manpower: 120, queue: 0, purchase: 'Commander only · awaiting first requisition', hold: 0, delivered: 0 })
+  const force = (): Force => ({ sp: 2000, tempo: 58, action: 'ASSEMBLE', target: 'C', cycles: 0, casualties: 0, fuel: 0, ammo: 0, manpower: 120, queue: 0, purchase: 'Commander only Â· awaiting first requisition', hold: 0, delivered: 0 })
   const depot = (): Depot => ({ airfield: emptyStock(), pending: emptyStock(), mob: emptyStock() })
   const objectives: Objective[] = CITY_OBJECTIVES.map(o => ({ ...o, owner: null, contested: false, progress: 0, capturing: null, stock: emptyStock(), facilities: {} }))
   const units = (['BLU', 'RED'] as Side[]).map(side => createUnit(side, 'COMMAND', `${side}-command`))
   return { mobs: { BLU: { tier: 1 }, RED: { tier: 1 } }, airfields: { BLU: { tier: 1 }, RED: { tier: 1 } }, nextSupply: { BLU: 30, RED: 30 }, depots: { BLU: depot(), RED: depot() }, contacts: { BLU: [], RED: [] }, missiles: [], casualties: [], shipmentSerial: 0, shots: [], smokes: [], geometryReady: false, workerMs: 0, time: 0, tick: 0, seed, paused: false, speed: 1, units, objectives, forces: { BLU: force(), RED: force() }, events: [{ id: 1, time: 0, side: 'SYS', type: 'system', text: 'Commanders online. Depots empty. Scheduled airfield supplies inbound; all force assets must be purchased.' }], winner: null, navCells: 0, buildings: 0 }
 }
-

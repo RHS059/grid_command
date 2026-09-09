@@ -1,6 +1,7 @@
 import * as T from './scene-data'
 import { mergeGeometries } from './scene-data'
-import { SIDE_COLOR, isAir, type Role, type Side, type Soldier } from './types'
+import { maritimeGeometry } from './maritime-models'
+import { SIDE_COLOR, isNaval, isAir, type Role, type Side, type Soldier } from './types'
 import { createSupportModel, isSupportModel } from './support-models'
 import { createAircraft, disposeModel } from './aircraft-models'
 import { shell, profile, rod } from './model-geometry'
@@ -170,7 +171,7 @@ export class SoldierBatch {
   end(visible:boolean){for(const rig of this.rigs.values())rig.root.visible=visible&&this.used.has(rig.id);for(const [key,mesh]of this.parts){mesh.count=visible?this.counts.get(key)||0:0;mesh.visible=mesh.count>0;if(mesh.count)mesh.instanceMatrix.needsUpdate=true}}
   dispose(){this.disposed=true;for(const rig of this.rigs.values())rig.mixer.stopAllAction();this.rigs.clear()}
 }
-export function vehicleGeometry(role:Role,side:Side,attachment=false){const parts:T.BufferGeometry[]=[]
+export function vehicleGeometry(role:Role,side:Side,attachment=false){if(isNaval(role))return maritimeGeometry(role,side);const parts:T.BufferGeometry[]=[]
   if(hasBlenderVehicle(role))return blenderVehicleGeometry(role,side,attachment)
   if(isAir(role)||isSupportModel(role)){const model=isAir(role)?createAircraft(role,side):createSupportModel(role,side);model.updateMatrixWorld(true);const source=attachment&&role==='ATTACK_HELI'?model.getObjectByName('main-rotor')!:model;source.traverse(o=>{if(o instanceof T.Mesh){const g=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();g.applyMatrix4(o.matrixWorld);parts.push(colored(g,`#${(o.material as T.MeshStandardMaterial).color.getHexString()}`))}});disposeModel(model);return combine(parts)}
   return armoredGeometry(role,side,attachment)
