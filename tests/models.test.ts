@@ -4,7 +4,7 @@ import * as T from '../lib/game/scene-data'
 import { CATALOG, isAir, isVehicle, type Role, type Side } from '../lib/game/types'
 import { MODEL_CATALOG, MODEL_NAMES } from '../lib/game/model-catalog'
 import { createAircraft, animateAircraft, disposeModel } from '../lib/game/aircraft-models'
-import { createBase, conformBase } from '../lib/game/base-models'
+import { BASE_GRADE_CLEARANCE, baseSurfaceElevation, createBase, conformBase } from '../lib/game/base-models'
 import { soldierParts, vehicleGeometry } from '../lib/game/unit-models'
 
 function finite(root: T.Object3D) {
@@ -36,6 +36,16 @@ test('compound foundations remain level and terrain updates do not accumulate', 
   conformBase(base, (x,y) => x * .02 + y * .01); assert.deepEqual(positions(), first)
   conformBase(base, () => 0); finite(base); assert.notDeepEqual(positions(), first)
   disposeModel(base)
+})
+test('compound deck datum clears the locked terrain and stays stable',()=>{
+  for(const kind of ['MOB','AIRFIELD'] as const){
+    const base=createBase(kind,'BLU'),lock={high:37,low:12};conformBase(base,undefined,lock)
+    assert.equal(base.userData.platformHeight,lock.high+BASE_GRADE_CLEARANCE)
+    assert.equal(baseSurfaceElevation(kind,lock),lock.high+BASE_GRADE_CLEARANCE+(kind==='AIRFIELD'?.08:0))
+    const positions:number[]=[];base.traverse(o=>{if(o instanceof T.Mesh)positions.push(...o.geometry.getAttribute('position').array)})
+    conformBase(base,undefined,lock);const repeated:number[]=[];base.traverse(o=>{if(o instanceof T.Mesh)repeated.push(...o.geometry.getAttribute('position').array)})
+    assert.deepEqual(repeated,positions);disposeModel(base)
+  }
 })
 test('aircraft have distinct silhouettes and independently animated parts', () => {
   const heli = createAircraft('ATTACK_HELI', 'BLU'), jet = createAircraft('JET', 'BLU'), uav = createAircraft('RECON_UAV', 'BLU')

@@ -1,6 +1,5 @@
 import { Vector3, Matrix } from '@babylonjs/core/Maths/math.vector'
 import { Viewport } from '@babylonjs/core/Maths/math.viewport'
-import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight'
 import type { FeatureCollection, Position } from 'geojson'
 import { BabylonRuntime } from './babylon-runtime'
 import { GeographicTiles } from './geo-tiles'
@@ -9,11 +8,13 @@ import { ORIGIN, toPoint, fromPoint } from './theater'
 import { DEFAULT_GRAPHICS, type Graphics } from './types'
 import type { Scene } from './scene-data'
 import type { StyleSpecification, LayerSpecification } from './geo-map-types'
+import { orbitViewFromDrag } from './camera-input'
 export { LngLat } from './geography'
 export type { StyleSpecification } from './geo-map-types'
 interface CameraOptions { center?: LngLatLike; zoom?: number; pitch?: number; bearing?: number; elevation?: number; duration?: number; essential?: boolean }
 interface MapOptions extends CameraOptions { container: HTMLElement; style: StyleSpecification; minZoom?: number; maxZoom?: number; maxPitch?: number; pixelRatio?: number; interactive?: boolean; attributionControl?: false | { compact?: boolean }; [key: string]: unknown }
 interface MapEvent { originalEvent?: MouseEvent | TouchEvent; sourceId?: string; isSourceLoaded?: boolean; error?: Error }
+export const cameraClipPlanes=(distance:number)=>({near:Math.max(.1,distance/100),far:Math.max(20000,distance*8)})
 export class GeoJSONSource {
   constructor(public data: FeatureCollection, private changed: () => void) {}
   setData(data: FeatureCollection) { this.data = data; this.changed(); return this }
@@ -61,7 +62,6 @@ export class GeoMap {
     this.ready = BabylonRuntime.create(this.canvas).then(runtime => {
       if (this.disposed) { runtime.dispose(); return }
       this.runtime = runtime; this.canvas = runtime.canvas; runtime.resize(this.width, this.height, this.ratio)
-      const ambient = new HemisphericLight('map-ambient', new Vector3(0, 0, 1), runtime.scene); ambient.intensity = .8
       runtime.configure({ ...DEFAULT_GRAPHICS, performanceMode: options.interactive === false })
       this.tiles = new GeographicTiles(runtime.scene, event => {
         this.triggerRepaint()
@@ -86,7 +86,7 @@ export class GeoMap {
     this.canvas.onpointermove = event => {
       const pointer = this.pointer; if (!pointer || pointer.id !== event.pointerId) return
       const dx = event.clientX - pointer.x, dy = event.clientY - pointer.y; if (Math.abs(dx) + Math.abs(dy) > 1) pointer.moved = true
-      if (pointer.rotate) { this.bearing += dx * .35; this.pitch = this.clampPitch(this.pitch + dy * .25); this.emit('rotate', { originalEvent: event }) }
+      if (pointer.rotate) { const view = orbitViewFromDrag({ bearing: this.bearing, pitch: this.pitch }, dx, dy, this.options.maxPitch); this.bearing = view.bearing; this.pitch = view.pitch; this.emit('rotate', { originalEvent: event }) }
       else { const before = this.unproject([pointer.x - this.canvas.getBoundingClientRect().left, pointer.y - this.canvas.getBoundingClientRect().top]), after = this.unproject([event.clientX - this.canvas.getBoundingClientRect().left, event.clientY - this.canvas.getBoundingClientRect().top]); this.center = new LngLat(this.center.lng + before.lng - after.lng, this.center.lat + before.lat - after.lat) }
       pointer.x = event.clientX; pointer.y = event.clientY; this.triggerRepaint()
     }
@@ -102,7 +102,8 @@ export class GeoMap {
     if (!this.runtime) return
     const override = this.transformCameraUpdate?.(); if (override) this.apply(override)
     const point = toPoint(this.center.lng, this.center.lat), target = { ...point, z: this._elevationFreeze ? this.elevation : (this.terrain ? this.tiles?.elevation(this.center) || 0 : 0) }, pitch = this.pitch * Math.PI / 180, bearing = this.bearing * Math.PI / 180, fov = 2 * Math.atan(1 / 3), distance = this.height * this.metersPerPixel() * 1.5
-    this.runtime.setCamera({ x: target.x + Math.sin(bearing) * Math.sin(pitch) * distance, y: target.y - Math.cos(bearing) * Math.sin(pitch) * distance, z: target.z + Math.cos(pitch) * distance }, target, { x: -Math.sin(bearing) * Math.cos(pitch), y: Math.cos(bearing) * Math.cos(pitch), z: Math.sin(pitch) }, fov, Math.max(.1, distance / 10000), Math.max(20000, distance * 8))
+    const clip=cameraClipPlanes(distance)
+    this.runtime.setCamera({ x: target.x + Math.sin(bearing) * Math.sin(pitch) * distance, y: target.y - Math.cos(bearing) * Math.sin(pitch) * distance, z: target.z + Math.cos(pitch) * distance }, target, { x: -Math.sin(bearing) * Math.cos(pitch), y: Math.cos(bearing) * Math.cos(pitch), z: Math.sin(pitch) }, fov, clip.near, clip.far)
   }
   private loop = () => {
     if (this.disposed) return
@@ -147,6 +148,7 @@ export class GeoMap {
   getCenter() { return this.center } getZoom() { return this.zoom } getPitch() { return this.pitch } getBearing() { return this.bearing } getCanvas() { return this.canvas } getContainer() { return this.options.container } getTerrain() { return this.terrain }
   setTerrain(terrain: { source: string; exaggeration?: number } | null) { this.terrain = terrain; this.elevation = 0; this.triggerRepaint(); return this }
   queryTerrainElevation(point: LngLatLike) { return this.tiles?.elevation(point) ?? (this.terrain ? null : 0) }
+  queryTerrainRange(bounds:{minX:number;maxX:number;minY:number;maxY:number}) { return this.tiles?.elevationRange(bounds) }
   getLayer(id: string) { return this.layers.find(layer => layer.id === id) }
   setLayoutProperty(id: string, name: string, value: unknown) { const layer = this.getLayer(id); if (layer) (layer.layout ??= {})[name] = value; this.triggerRepaint(); return this }
   getSource(id: string) { return this.sources.get(id) }
