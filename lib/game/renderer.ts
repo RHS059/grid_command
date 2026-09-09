@@ -13,7 +13,7 @@ import { airfieldPlatform, baseSurfaceElevation, createBase, conformBase, type B
 import { createObjectiveFacilities, objectiveFacilitySignature } from './objective-models'
 import { ModularBuildingRenderer } from './modular-building-renderer'
 import type { GeometryPacket } from './types'
-import { addWestSun } from './scene-lighting'
+import { addBattlefieldLighting } from './scene-lighting'
 
 export class BattlefieldRenderer {
   private frustum = new T.Frustum()
@@ -35,7 +35,7 @@ export class BattlefieldRenderer {
   ready:Promise<void>;scene=new T.Scene();camera=new T.Camera();transform=new T.Matrix4();dummy=new T.Object3D();groups=new Map<string,T.InstancedMesh>();soldiers:Record<Side,SoldierBatch>;effects=new Map<string,T.InstancedMesh>();combatLights:T.PointLight[]=[];disposed=false;previous=0;report=0;frames:number[]=[];ground=new Map<string,{x:number;y:number;z:number;time:number}>();snapshotTime=-1;arrival=0
   constructor(public map:GeographicMap,_canvas:HTMLCanvasElement|null,public getState:()=>BattleState,public getSettings:()=>{graphics:Graphics;perspective:Perspective;selected:string|null;active?:boolean},public onFPS:(n:number)=>void){
     const material=new T.MeshStandardMaterial({vertexColors:true,roughness:.85,metalness:.08,flatShading:false});this.soldiers={BLU:new SoldierBatch(this.scene,'BLU',material),RED:new SoldierBatch(this.scene,'RED',material)}
-    addWestSun(this.scene,1600)
+    addBattlefieldLighting(this.scene,1600)
     this.buildings=new ModularBuildingRenderer(this.scene)
     for(const side of ['BLU','RED'] as Side[])for(const role of Object.keys(CATALOG) as Role[]){if(!isVehicle(role)||isAir(role))continue;const mesh=new T.InstancedMesh(vehicleGeometry(role,side),material,64);mesh.count=0;mesh.frustumCulled=false;mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);this.groups.set(`${side}-${role}`,mesh);this.scene.add(mesh);if(['TANK','APC','IFV','CANNON_APC','ATTACK_HELI'].includes(role)){const turret=new T.InstancedMesh(vehicleGeometry(role,side,true),material,64);turret.count=0;turret.frustumCulled=false;this.groups.set(`${side}-${role}-attachment`,turret);this.scene.add(turret)}}
     for(const side of ['BLU','RED'] as Side[])for(const kind of ['MOB','AIRFIELD'] as const){const model=createBase(kind,side),point={...(kind==='MOB'?BASES[side]:AIRBASES[side]),id:`${side}-${kind}`};model.position.set(point.x,point.y,0);this.scene.add(model);this.bases.push({model,point})}

@@ -157,7 +157,8 @@ export class Object3D{
   clone(recursive=true):Object3D{const target=this instanceof Mesh?new Mesh(this.geometry,this.material):new Object3D();target.name=this.name;target.position.copy(this.position);target.rotation.copy(this.rotation);target.quaternion.copy(this.quaternion);target.scale.copy(this.scale);target.visible=this.visible;target.userData={...this.userData};if(recursive)for(const child of this.children)target.add(child.clone(true));return target}
 }
 export class Group extends Object3D{}
-export class Scene extends Group{background:Color|null=null}
+export type SceneProfile='battlefield'|'studio'|'legacy'
+export class Scene extends Group{background:Color|null=null;profile:SceneProfile='legacy'}
 export class Mesh extends Object3D{constructor(public geometry=new BufferGeometry(),public material:Material|Material[]=new Material()){super()}}
 export class LineSegments extends Mesh{}
 export class InstancedMesh extends Mesh{count:number;instanceMatrix:InstancedBufferAttribute;instanceColor:InstancedBufferAttribute|null=null;disposed=false;constructor(g:BufferGeometry,m:Material|Material[],capacity:number){super(g,m);this.count=capacity;this.instanceMatrix=new InstancedBufferAttribute(new Float32Array(capacity*16),16)}setMatrixAt(i:number,m:Matrix4){this.instanceMatrix.array.set(m.elements,i*16)}getMatrixAt(i:number,m:Matrix4){return m.fromArray(this.instanceMatrix.array,i*16)}setColorAt(i:number,c:Color){this.instanceColor??=new InstancedBufferAttribute(new Float32Array(this.instanceMatrix.count*3).fill(1),3);this.instanceColor.setXYZ(i,c.r,c.g,c.b)}dispose(){this.disposed=true}}
