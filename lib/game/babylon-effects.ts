@@ -38,6 +38,8 @@ fn agx(c0:vec3f)->vec3f{
 ShaderStore.ShadersStore.gridAgXFragmentShader = glsl
 ShaderStore.ShadersStoreWGSL.gridAgXFragmentShader = wgsl
 
+export const usesCinematicEffects=(quality:'performance'|'balanced'|'high')=>quality==='high'
+
 export class BattlefieldEffects {
   private taa:TAARenderingPipeline|null=null
   private contact:SSAO2RenderingPipeline|null=null
@@ -46,12 +48,17 @@ export class BattlefieldEffects {
   private tone:PostProcess|null=null
   private mode=''
   constructor(private scene:Scene,private camera:Camera){}
-  configure(performanceMode:boolean){
-    const mode=performanceMode?'performance':'cinematic';if(mode===this.mode)return
-    this.dispose();this.mode=mode
+  configure(quality:'performance'|'balanced'|'high'){
+    if(quality===this.mode)return
+    const cinematic=usesCinematicEffects(quality)
+    this.dispose();this.mode=quality
     this.scene.imageProcessingConfiguration.applyByPostProcess=true
     this.scene.imageProcessingConfiguration.toneMappingEnabled=false
-    if(!performanceMode){
+    // Balanced already renders at 1.5x device pixels. Running the complete
+    // full-resolution post stack as well made it substantially more expensive
+    // than the UI's default quality implied, even in an otherwise empty scene.
+    // Keep temporal accumulation and bloom as explicit high-quality effects.
+    if(cinematic){
       // Babylon requires TAA to be the first camera postprocess.
       this.taa=new TAARenderingPipeline('grid-temporal-aa',this.scene,[this.camera],Constants.TEXTURETYPE_HALF_FLOAT)
       this.taa.samples=8;this.taa.reprojectHistory=false;this.taa.clampHistory=true;this.taa.disableOnCameraMove=false

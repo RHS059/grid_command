@@ -27,9 +27,21 @@ import * as D from './scene-data'
 import { BattlefieldEffects } from './babylon-effects'
 import { InteriorRoomPlugin } from './babylon-interior'
 import type { Graphics } from './types'
+import { StartupDeadlineError, withStartupDeadline } from './startup-deadline'
 
 type DrawRecord={mesh:Mesh;geometry:D.BufferGeometry;version:string;instanceVersion:string;sectors?:Map<string,number[]>;sectorVersion?:string;instanceCount?:number}
-const color=(c:D.Color)=>new Color3(c.r,c.g,c.b)
+const WEBGPU_STARTUP_TIMEOUT_MS=10000
+const disposeWebGPUCandidate=(candidate:WebGPUEngine)=>{
+  try{candidate.dispose()}
+  catch{
+    // Babylon disposal assumes initAsync finished constructing its resources.
+    try{(candidate as WebGPUEngine&{_device?:{destroy:()=>void}})._device?.destroy()}catch{}
+  }
+}
+/** scene-data colors are authored as CSS/sRGB values, while Babylon PBR inputs are linear. */
+export const srgbChannelToLinear=(value:number)=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4
+const color=(c:D.Color)=>new Color3(srgbChannelToLinear(c.r),srgbChannelToLinear(c.g),srgbChannelToLinear(c.b))
+const linearTint=(target:Float32Array,offset:number,r:number,g:number,b:number)=>target.set([srgbChannelToLinear(r),srgbChannelToLinear(g),srgbChannelToLinear(b),1],offset)
 /** Babylon 9.25 injects a Chromium-only rule and an unused fragment builtin. */
 export function sanitizeFirefoxWGSL(code:string){
   let result=code.replace(/diagnostic\s*\(\s*off\s*,\s*chromium\.unreachable_code\s*\)\s*;[ \t]*\r?\n?/g,'')
@@ -72,9 +84,10 @@ export class BabylonRuntime {
       try{
         prepareFirefoxWGSL()
         candidate=new WebGPUEngine(canvas,{antialias:false,powerPreference:'high-performance'})
-        await candidate.initAsync()
+        const initialization=candidate.initAsync()
+        await withStartupDeadline(initialization,WEBGPU_STARTUP_TIMEOUT_MS,'WebGPU startup',()=>disposeWebGPUCandidate(candidate!))
         engine=candidate
-      }catch(error){console.warn('WebGPU startup failed; switching to Babylon compatibility rendering.',error);candidate?.dispose();const replacement=canvas.cloneNode(false)as HTMLCanvasElement;canvas.replaceWith(replacement);canvas=replacement}
+      }catch(error){console.warn('WebGPU startup failed; switching to Babylon compatibility rendering.',error);if(candidate&&!(error instanceof StartupDeadlineError))disposeWebGPUCandidate(candidate);const replacement=canvas.cloneNode(false)as HTMLCanvasElement;canvas.replaceWith(replacement);canvas=replacement}
     }
     engine??=new Engine(canvas,true,{preserveDrawingBuffer:false,stencil:true,doNotHandleContextLost:false})
     return new BabylonRuntime(canvas,engine)
@@ -88,7 +101,7 @@ export class BabylonRuntime {
     this.clustered.horizontalTiles=16;this.clustered.verticalTiles=9;this.clustered.depthSlices=24;this.clustered.maxRange=250
     this.effects=new BattlefieldEffects(this.scene,this.camera)
   }
-  configure(graphics:Graphics){this.settings=graphics;const low=!!graphics.performanceMode||graphics.quality==='performance'||!this.engine.getCaps().drawBuffersExtension||!this.engine.getCaps().textureHalfFloatRender;this.effects.configure(low);if(this.shadows)this.shadows.getShadowMap()!.refreshRate=graphics.shadows&&!low?1:0;this.scene.shadowsEnabled=graphics.shadows&&!low}
+  configure(graphics:Graphics){this.settings=graphics;const low=!!graphics.performanceMode||graphics.quality==='performance'||!this.engine.getCaps().drawBuffersExtension||!this.engine.getCaps().textureHalfFloatRender;this.effects.configure(low?'performance':graphics.quality);if(this.shadows)this.shadows.getShadowMap()!.refreshRate=graphics.shadows&&!low?1:0;this.scene.shadowsEnabled=graphics.shadows&&!low}
   resize(width:number,height:number,ratio:number){const scale=1/ratio;if(this.engine.getHardwareScalingLevel()!==scale)this.engine.setHardwareScalingLevel(scale);this.engine.setSize(Math.max(2,Math.round(width*ratio)),Math.max(2,Math.round(height*ratio)))}
   setCamera(position:{x:number;y:number;z:number},target:{x:number;y:number;z:number},up:{x:number;y:number;z:number},fov:number,near:number,far:number){
     this.camera.position.copyFromFloats(position.x,position.y,position.z);this.camera.upVector.copyFromFloats(up.x,up.y,up.z);this.camera.fov=fov;this.camera.minZ=near;this.camera.maxZ=far;this.camera.setTarget(new Vector3(target.x,target.y,target.z));this.camera.getViewMatrix(true);this.camera.getProjectionMatrix(true);this.shadows?.splitFrustum()
@@ -106,7 +119,7 @@ export class BabylonRuntime {
     record.geometry=geometry;record.version=version
     for(const [name,kind]of [['position',VertexBuffer.PositionKind],['normal',VertexBuffer.NormalKind],['uv',VertexBuffer.UVKind]]as const){const a=geometry.attributes[name];if(a)record.mesh.setVerticesData(kind,new Float32Array(a.array),true,a.itemSize)}
     const colors=geometry.attributes.color
-    if(colors){const data=new Float32Array(colors.count*4);for(let i=0;i<colors.count;i++){data.set([colors.getX(i),colors.getY(i),colors.getZ(i),1],i*4)}record.mesh.setVerticesData(VertexBuffer.ColorKind,data,true,4)}
+    if(colors){const data=new Float32Array(colors.count*4);for(let i=0;i<colors.count;i++)linearTint(data,i*4,colors.getX(i),colors.getY(i),colors.getZ(i));record.mesh.setVerticesData(VertexBuffer.ColorKind,data,true,4)}
     const sourceMaterial=Array.isArray(source.material)?source.material[0]:source.material
     if(sourceMaterial.name==='interior-window'&&!(source instanceof D.InstancedMesh)){const room=sourceMaterial.uniforms.roomDataUniform.value as D.Vector4,rooms=new Float32Array(geometry.attributes.position.count*4);for(let i=0;i<geometry.attributes.position.count;i++)rooms.set([room.x,room.y,room.z,room.w],i*4);record.mesh.setVerticesData('roomData',rooms,false,4)}
     const position=geometry.attributes.position
@@ -130,7 +143,7 @@ export class BabylonRuntime {
     const count=selected?.length??source.count;record.instanceCount=count
     if(count===0){record.mesh.thinInstanceCount=0;record.mesh.setEnabled(false);return}
     const matrices=new Float32Array(count*16),tints=colors?new Float32Array(count*4):undefined
-    for(let i=0;i<count;i++){const index=selected?.[i]??i;matrices.set(source.instanceMatrix.array.subarray(index*16,index*16+16),i*16);if(tints&&colors)tints.set([colors.getX(index),colors.getY(index),colors.getZ(index),1],i*4)}
+    for(let i=0;i<count;i++){const index=selected?.[i]??i;matrices.set(source.instanceMatrix.array.subarray(index*16,index*16+16),i*16);if(tints&&colors)linearTint(tints,i*4,colors.getX(index),colors.getY(index),colors.getZ(index))}
     record.mesh.thinInstanceSetBuffer('matrix',matrices,16,false)
     if(tints)record.mesh.thinInstanceSetBuffer('color',tints,4,false)
     if(metadata.roomData){const rooms=new Float32Array(count*4);for(let i=0;i<count;i++){const index=selected?.[i]??i;rooms.set(metadata.roomData.array.subarray(index*4,index*4+4),i*4)}record.mesh.thinInstanceSetBuffer('roomData',rooms,4,false)}
@@ -143,7 +156,7 @@ export class BabylonRuntime {
         if(source.userData.nativeNodeName){const selected=entries.rootNodes.flatMap(root=>[root,...root.getDescendants(false)]).find(node=>node.name===source.userData.nativeNodeName);if(selected instanceof TransformNode){selected.position.set(0,0,0);selected.rotationQuaternion=Quaternion.Identity();selected.scaling.set(1,1,1)}}
         const nodes=entries.rootNodes.flatMap(root=>[root,...root.getDescendants(false)])
         source.traverse(node=>{const native=nodes.find(value=>value.name===node.name);if(native instanceof TransformNode)this.nativeNodes.set(node.id,native)})
-        for(const node of nodes)if(node instanceof Mesh){node.receiveShadows=true;this.shadows?.addShadowCaster(node);if(node.material instanceof PBRMaterial){node.material.maxSimultaneousLights=4;if(!node.material.getActiveTextures().length){for(const kind of [VertexBuffer.UVKind,VertexBuffer.UV2Kind,VertexBuffer.UV3Kind,VertexBuffer.UV4Kind,VertexBuffer.UV5Kind,VertexBuffer.UV6Kind])node.removeVerticesData(kind);if(/\/(tank|troop_transport|apc|vtol_cargo|vtol_attack|cas|fighter)\.glb(?:[?#]|$)/.test(url)){node.material.backFaceCulling=true;node.material.twoSidedLighting=false}}}if(source.userData.teamColor&&node.material instanceof PBRMaterial&&node.material.name.includes('Team marking'))node.material.albedoColor=Color3.FromHexString(source.userData.teamColor)}
+        for(const node of nodes)if(node instanceof Mesh){node.receiveShadows=true;this.shadows?.addShadowCaster(node);if(node.material instanceof PBRMaterial){node.material.maxSimultaneousLights=4;if(!node.material.getActiveTextures().length){for(const kind of [VertexBuffer.UVKind,VertexBuffer.UV2Kind,VertexBuffer.UV3Kind,VertexBuffer.UV4Kind,VertexBuffer.UV5Kind,VertexBuffer.UV6Kind])node.removeVerticesData(kind);if(/\/(tank|troop_transport|apc|vtol_cargo|vtol_attack|cas|fighter)\.glb(?:[?#]|$)/.test(url)){node.material.backFaceCulling=true;node.material.twoSidedLighting=false}}}if(source.userData.teamColor&&node.material instanceof PBRMaterial&&node.material.name.includes('Team marking'))node.material.albedoColor=Color3.FromHexString(source.userData.teamColor).toLinearSpace()}
       }).catch(error=>console.warn('Model asset failed to load',url,error))
     }
     const parent=source.parent?this.nativeNodes.get(source.parent.id):undefined
@@ -182,7 +195,7 @@ export class BabylonRuntime {
     for(const[id,record]of this.draws)if(!live.has(id)){record.mesh.dispose();this.draws.delete(id)}
     for(const[id,record]of this.native)if(!nativeLive.has(id)){record.source.traverse(node=>this.nativeNodes.delete(node.id));record.entries?.dispose();record.pivot.dispose();this.native.delete(id)}
     for(const[source,material]of this.materials)if(source.disposed){material.dispose();this.materials.delete(source)}
-    if(root.background)this.scene.clearColor=new Color4(root.background.r,root.background.g,root.background.b,1)
+    if(root.background){const background=color(root.background);this.scene.clearColor=new Color4(background.r,background.g,background.b,1)}
   }
   render(){if(this.disposed)return;this.engine.beginFrame();try{this.scene.render()}finally{this.engine.endFrame()}}
   dispose(){if(this.disposed)return;this.disposed=true;this.effects.dispose();this.scene.dispose();this.engine.dispose();this.draws.clear();this.materials.clear();this.native.clear();this.nativeNodes.clear()}

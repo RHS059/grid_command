@@ -30,3 +30,12 @@
   - Updated model-design.md and the model catalog. No tests, builds or visual renders run; submitted for manual review.
 
 - Use geometry normals for battlefield vehicle and infantry lighting instead of derivative-based flat shading at large map coordinates, addressing the speckled/grainy surfaces absent from the centered model preview. Apply the same setting to aircraft, support vehicles and seated occupants when their models are created. No tests, builds or renders run; submitted for manual confirmation.
+
+
+- v0.9.33
+  - Repaired the Babylon geographic tile upload so the existing OpenFreeMap San Diego map reaches the GPU. Ground cartography uses an unlit material and tile errors reach the map status UI.
+  - Converted authored sRGB model colors to linear Babylon inputs to restore material colors and lighting contrast in previews and the battlefield.
+  - Reserved cinematic post processing for High quality. Balanced retains color processing without full screen temporal AA, bloom, ambient occlusion, and reflections.
+  - Replaced the misleading disabled buildings startup message with graphics initialization and navigation progress.
+  - Added a 10 second WebGPU startup deadline, safe cleanup after partial initialization, and compatibility fallback that also disposes late GPU initialization.
+  - Verification: GitHub Pages production export and TypeScript passed. Final suite: 163/173 passing, with the same ten failures present on the unchanged baseline. Local browser preview was inaccessible; no hardware FPS result is claimed.
