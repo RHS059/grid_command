@@ -203,7 +203,11 @@ export class BabylonRuntime {
         // The shadow owner is chosen explicitly by castShadow, never by traversal order,
         // so fill/rim (or any other non-shadow-owning directional) never displaces the key/sun.
         if(!this.sun&&object.castShadow&&CascadedShadowGenerator.IsSupported){this.sun=light;const studio=root.profile==='studio'
-          this.shadows=new CascadedShadowGenerator(studio?512:1024,light,true,this.camera);this.shadows.numCascades=studio?1:3;this.shadows.stabilizeCascades=!studio;this.shadows.lambda=.7;this.shadows.usePercentageCloserFiltering=true;this.shadows.bias=.0002
+          this.shadows=new CascadedShadowGenerator(1024,light,true,this.camera);this.shadows.numCascades=studio?1:3;this.shadows.stabilizeCascades=!studio;this.shadows.lambda=.7;this.shadows.usePercentageCloserFiltering=true;this.shadows.bias=studio?.0005:.0002
+          // One depth bias cannot cover grazing light: the depth slope across a single
+          // shadow texel exceeds it, so a lit surface stripes itself. normalBias offsets
+          // along the normal in proportion to the light angle, which is what removes it.
+          if(studio)this.shadows.normalBias=.02
           // A single small preview subject has no fixed size to hardcode a shadow-frustum
           // distance for; let Babylon fit near/far to what's actually on screen instead of
           // reusing battlefield's 8000-unit CSM distance at studio scale.
