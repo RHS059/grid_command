@@ -15,7 +15,7 @@ const CATEGORIES = ['All', 'Personnel', 'Vehicles', 'Aircraft', 'Structures'] as
 export function UnitLab({ embedded = false, active = true, soundEngine }: { embedded?: boolean; active?: boolean; simulationPaused?: boolean; soundEngine?: BattlefieldAudio }) {
   const [localSoundEngine] = useState(() => new BattlefieldAudio())
   const engine = soundEngine || localSoundEngine
-  const [model, setModel] = useState<ModelId>('ATTACK_HELI')
+  const [model, setModel] = useState<ModelId>('IFV')
   const [category, setCategory] = useState<(typeof CATEGORIES)[number]>('All')
   const [side, setSide] = useState<Side>('BLU')
   const [action, setAction] = useState<SoldierAction>('idle')
