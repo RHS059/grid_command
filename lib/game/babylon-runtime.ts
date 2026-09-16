@@ -10,6 +10,7 @@ import { Mesh } from '@babylonjs/core/Meshes/mesh'
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode'
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
 import { Material } from '@babylonjs/core/Materials/material'
+import { Texture } from '@babylonjs/core/Materials/Textures/texture'
 import { VertexBuffer } from '@babylonjs/core/Buffers/buffer'
 import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight'
 import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight'
@@ -67,6 +68,7 @@ export class BabylonRuntime {
   readonly effects:BattlefieldEffects
   private readonly draws=new Map<number,DrawRecord>()
   private readonly materials=new Map<D.Material,PBRMaterial>()
+  private readonly textures=new Map<string,Texture>()
   private readonly lights=new Map<number,DirectionalLight|HemisphericLight|PointLight>()
   private readonly native=new Map<number,{pivot:TransformNode;entries?:InstantiatedEntries;source:D.Object3D}>()
   private readonly casters=new Set<number>()
@@ -111,6 +113,7 @@ export class BabylonRuntime {
   getViewProjection(){return this.camera.getViewMatrix().multiply(this.camera.getProjectionMatrix())}
   private getMaterial(source:D.Material){
     let material=this.materials.get(source);if(!material){material=new PBRMaterial(source.name||`material-${source.id}`,this.scene);this.materials.set(source,material);if(source.name==='interior-window')new InteriorRoomPlugin(material);material.maxSimultaneousLights=4;material.backFaceCulling=source.side!==D.DoubleSide;material.twoSidedLighting=source.side===D.DoubleSide;material.unlit=source instanceof D.MeshBasicMaterial;material.wireframe=source.wireframe;material.disableDepthWrite=!source.depthWrite;material.depthFunction=source.depthTest?Engine.LEQUAL:Engine.ALWAYS;material.alphaMode=source.blending===D.AdditiveBlending?Engine.ALPHA_ADD:Engine.ALPHA_COMBINE;material.transparencyMode=source.transparent?PBRMaterial.PBRMATERIAL_ALPHABLEND:PBRMaterial.PBRMATERIAL_OPAQUE}
+    if(source.map){let texture=this.textures.get(source.map);if(!texture){texture=new Texture(source.map,this.scene,false,false);texture.gammaSpace=true;this.textures.set(source.map,texture)}material.albedoTexture=texture}else material.albedoTexture=null
     material.disableDepthWrite=!source.depthWrite||!source.depthTest;material.depthFunction=source.depthTest?Engine.LEQUAL:Engine.ALWAYS
     material.albedoColor=color(source.color);material.emissiveColor=color(source.emissive).scale(source.emissiveIntensity);material.roughness=source.roughness;material.metallic=source.metalness;material.alpha=source.opacity;if(source.uniforms.wireColor)material.albedoColor=color(source.uniforms.wireColor.value)
     if(source.name==='interior-window'){material.albedoColor=color(source.uniforms.windowTint?.value||new D.Color('#35596b'));material.roughness=.2;material.metallic=.45;material.emissiveColor=new Color3(.025,.03,.035)}
@@ -231,6 +234,6 @@ export class BabylonRuntime {
     if(root.background){const background=color(root.background);this.scene.clearColor=new Color4(background.r,background.g,background.b,1)}
   }
   render(){if(this.disposed)return;this.engine.beginFrame();try{this.scene.render()}finally{this.engine.endFrame()}}
-  dispose(){if(this.disposed)return;this.disposed=true;this.effects.dispose();this.scene.dispose();this.engine.dispose();this.draws.clear();this.materials.clear();this.native.clear();this.nativeNodes.clear();this.casters.clear()}
+  dispose(){if(this.disposed)return;this.disposed=true;this.effects.dispose();this.scene.dispose();this.engine.dispose();this.draws.clear();this.materials.clear();this.textures.clear();this.native.clear();this.nativeNodes.clear();this.casters.clear()}
 }
 

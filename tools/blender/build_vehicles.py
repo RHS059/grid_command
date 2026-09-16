@@ -550,6 +550,11 @@ def studio(name,objs):
 names={'tank':tank,'troop_transport':buggy,'apc':apc,'vtol_cargo':vtol,'vtol_attack':vtol,'cas':cas,'fighter':fighter}
 args=sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else list(names)
 for name in args:
+ if name=='fighter':
+  # The Fury has its own atlas and indexed export. Keep other vehicle builds unchanged.
+  import runpy
+  runpy.run_path(os.path.join(REPO,'assets/blender/vehicles/build_fq44.py'),run_name='__main__')
+  continue
  scene_setup()
  if name=='tank':M['paint'].diffuse_color=(.52,.45,.31,1);M['paint'].node_tree.nodes.get('Principled BSDF').inputs['Base Color'].default_value=(.52,.45,.31,1)
  if name in ['vtol_cargo','vtol_attack','cas','fighter']:

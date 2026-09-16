@@ -1,0 +1,876 @@
+{
+  "uv_zero_area_triangles": 0,
+  "uv_occupied_fraction": 0.6719551086425781,
+  "uv_triangle_area_sum": 0.6714871652869889,
+  "texture_dimensions": [
+    1024,
+    1024
+  ],
+  "texture_count": 1,
+  "material_count": 1,
+  "export_stored_vertices": 9375,
+  "runtime_indexed_vertices": 9375,
+  "triangles": 10732,
+  "blender_mesh_vertices": 5588,
+  "mesh_objects": 88,
+  "gltf_material_count": 1,
+  "gltf_image_count": 1,
+  "gltf_texture_count": 1,
+  "animations": [
+    "fly",
+    "gear",
+    "gear_down",
+    "shoot"
+  ],
+  "axis": "+Y forward, +Z up",
+  "reference_inference": "Dimensions and hidden intake structure are inferred from five perspective photographs.",
+  "source": "build_fq44.py",
+  "budget_pass": true,
+  "representation": "Separate manufactured shells. Sensor window, recessed intake back face and annular exhaust are intentional open surfaces. One base-color image with scalar roughness and metallic values.",
+  "parts": [
+    "control_L",
+    "control_R",
+    "gear_L",
+    "gear_N",
+    "gear_R",
+    "hull",
+    "store_L_inner",
+    "store_R_inner"
+  ],
+  "source_geometry": {
+    "vertices": 5588,
+    "zero_area_faces": 0,
+    "nonmanifold_edges": 104,
+    "open_components": [
+      {
+        "name": "sensor_dark_window_astra_r_2",
+        "vertices": 4,
+        "nonmanifold_edges": 4,
+        "zero_area_faces": 0
+      },
+      {
+        "name": "single_exhaust_nozzle_astra_r_2",
+        "vertices": 240,
+        "nonmanifold_edges": 96,
+        "zero_area_faces": 0
+      },
+      {
+        "name": "ventral_intake_depth_astra_r_2",
+        "vertices": 4,
+        "nonmanifold_edges": 4,
+        "zero_area_faces": 0
+      }
+    ]
+  },
+  "round_trip": {
+    "mesh_objects": 88,
+    "vertices": 9375,
+    "materials": 1,
+    "image_sizes": [
+      [
+        1024,
+        1024
+      ]
+    ],
+    "bounds_min": [
+      -4.400000095367432,
+      -5.680000305175781,
+      -4.76837158203125e-07
+    ],
+    "bounds_max": [
+      4.400000095367432,
+      6.27000093460083,
+      4.100001335144043
+    ],
+    "axis_note": "Undo standard glTF Y-up import conversion for the documented game Z-up export.",
+    "zero_area_faces": 0,
+    "closed_negative_volume": [],
+    "intentional_open_surfaces": [
+      "sensor_dark_window_astra_r_2",
+      "single_exhaust_nozzle_astra_r_2",
+      "ventral_intake_depth_astra_r_2"
+    ],
+    "components": [
+      {
+        "name": "aileron_L_astra_r_2",
+        "vertices_after_diagnostic_weld": 80,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.00550168458256255
+      },
+      {
+        "name": "elevator_L_astra_r_2",
+        "vertices_after_diagnostic_weld": 144,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.059693736387267125
+      },
+      {
+        "name": "aileron_R_astra_r_2",
+        "vertices_after_diagnostic_weld": 80,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.005501684582562551
+      },
+      {
+        "name": "elevator_R_astra_r_2",
+        "vertices_after_diagnostic_weld": 144,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.059693736387267125
+      },
+      {
+        "name": "gear_brace_gear_L_astra_r_2",
+        "vertices_after_diagnostic_weld": 24,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.0006655589640473923
+      },
+      {
+        "name": "gear_brace_gear_L_astra_r_2.001",
+        "vertices_after_diagnostic_weld": 24,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.0006794123592368494
+      },
+      {
+        "name": "gear_door_bracket_gear_L_astra_r_2",
+        "vertices_after_diagnostic_weld": 16,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.0002298105262784408
+      },
+      {
+        "name": "gear_door_gear_L_astra_r_1",
+        "vertices_after_diagnostic_weld": 56,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.010341069693092448
+      },
+      {
+        "name": "gear_oleo_gear_L_astra_r_2",
+        "vertices_after_diagnostic_weld": 40,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.009160814069681803
+      },
+      {
+        "name": "gear_sleeve_gear_L_astra_r_2",
+        "vertices_after_diagnostic_weld": 48,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.010336199018934322
+      },
+      {
+        "name": "tire_gear_L_astra_r_2",
+        "vertices_after_diagnostic_weld": 256,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.07597652019101551
+      },
+      {
+        "name": "wheel_axle_gear_L_astra_r_2",
+        "vertices_after_diagnostic_weld": 32,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.00019298627359369422
+      },
+      {
+        "name": "wheel_axle_gear_L_astra_r_2.001",
+        "vertices_after_diagnostic_weld": 32,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.00019298752325256003
+      },
+      {
+        "name": "wheel_hub_gear_L_astra_r_2",
+        "vertices_after_diagnostic_weld": 48,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.002393675432028326
+      },
+      {
+        "name": "wheel_hub_gear_L_astra_r_2.001",
+        "vertices_after_diagnostic_weld": 48,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.002393664299793935
+      },
+      {
+        "name": "gear_brace_gear_N_astra_r_2",
+        "vertices_after_diagnostic_weld": 24,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.0006655588057495442
+      },
+      {
+        "name": "gear_brace_gear_N_astra_r_2.001",
+        "vertices_after_diagnostic_weld": 24,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.0006794124816456959
+      },
+      {
+        "name": "gear_door_bracket_gear_N_astra_r_2",
+        "vertices_after_diagnostic_weld": 16,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.0002298107238426887
+      },
+      {
+        "name": "gear_door_gear_N_astra_r_1",
+        "vertices_after_diagnostic_weld": 56,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.010341042926042559
+      },
+      {
+        "name": "gear_oleo_gear_N_astra_r_2",
+        "vertices_after_diagnostic_weld": 40,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.00813255306008371
+      },
+      {
+        "name": "gear_sleeve_gear_N_astra_r_2",
+        "vertices_after_diagnostic_weld": 48,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.007354602713475523
+      },
+      {
+        "name": "tire_gear_N_astra_r_2",
+        "vertices_after_diagnostic_weld": 256,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.05816951681130621
+      },
+      {
+        "name": "wheel_axle_gear_N_astra_r_2",
+        "vertices_after_diagnostic_weld": 32,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.00014775583993352205
+      },
+      {
+        "name": "wheel_axle_gear_N_astra_r_2.001",
+        "vertices_after_diagnostic_weld": 32,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.0001477558399335223
+      },
+      {
+        "name": "wheel_hub_gear_N_astra_r_2",
+        "vertices_after_diagnostic_weld": 48,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.001832654902875781
+      },
+      {
+        "name": "wheel_hub_gear_N_astra_r_2.001",
+        "vertices_after_diagnostic_weld": 48,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.0018326549028761523
+      },
+      {
+        "name": "gear_brace_gear_R_astra_r_2",
+        "vertices_after_diagnostic_weld": 24,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.0006655589640473923
+      },
+      {
+        "name": "gear_brace_gear_R_astra_r_2.001",
+        "vertices_after_diagnostic_weld": 24,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.0006794123592368494
+      },
+      {
+        "name": "gear_door_bracket_gear_R_astra_r_2",
+        "vertices_after_diagnostic_weld": 16,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.00022981052627844085
+      },
+      {
+        "name": "gear_door_gear_R_astra_r_1",
+        "vertices_after_diagnostic_weld": 56,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.01034107123420853
+      },
+      {
+        "name": "gear_oleo_gear_R_astra_r_2",
+        "vertices_after_diagnostic_weld": 40,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.009160814069681803
+      },
+      {
+        "name": "gear_sleeve_gear_R_astra_r_2",
+        "vertices_after_diagnostic_weld": 48,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.010336199018934322
+      },
+      {
+        "name": "tire_gear_R_astra_r_2",
+        "vertices_after_diagnostic_weld": 256,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.07597652019101554
+      },
+      {
+        "name": "wheel_axle_gear_R_astra_r_2",
+        "vertices_after_diagnostic_weld": 32,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.00019298752325256003
+      },
+      {
+        "name": "wheel_axle_gear_R_astra_r_2.001",
+        "vertices_after_diagnostic_weld": 32,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.00019298627359369414
+      },
+      {
+        "name": "wheel_hub_gear_R_astra_r_2",
+        "vertices_after_diagnostic_weld": 48,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.002393664299793935
+      },
+      {
+        "name": "wheel_hub_gear_R_astra_r_2.001",
+        "vertices_after_diagnostic_weld": 48,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.0023936732218609227
+      },
+      {
+        "name": "dorsal_antenna_astra_r_2",
+        "vertices_after_diagnostic_weld": 36,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.0006573826131068999
+      },
+      {
+        "name": "dorsal_antenna_astra_r_2.001",
+        "vertices_after_diagnostic_weld": 36,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.000657382738085423
+      },
+      {
+        "name": "dorsal_sensor_fairing_astra_r_2",
+        "vertices_after_diagnostic_weld": 96,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.03670519169087898
+      },
+      {
+        "name": "exhaust_recess_astra_r_2",
+        "vertices_after_diagnostic_weld": 96,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.12767601225020297
+      },
+      {
+        "name": "fury_chined_fuselage_astra_r_2",
+        "vertices_after_diagnostic_weld": 616,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 25.72543786565862
+      },
+      {
+        "name": "main_wing_L_astra_r_2",
+        "vertices_after_diagnostic_weld": 256,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.6127348296503611
+      },
+      {
+        "name": "main_wing_R_astra_r_2",
+        "vertices_after_diagnostic_weld": 256,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.612734829650362
+      },
+      {
+        "name": "nose_probe_astra_r_2",
+        "vertices_after_diagnostic_weld": 24,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.00029791902458017004
+      },
+      {
+        "name": "nozzle_petal_astra_r_2",
+        "vertices_after_diagnostic_weld": 12,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 7.95423169786574e-05
+      },
+      {
+        "name": "nozzle_petal_astra_r_2.001",
+        "vertices_after_diagnostic_weld": 12,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 7.953775392756737e-05
+      },
+      {
+        "name": "nozzle_petal_astra_r_2.002",
+        "vertices_after_diagnostic_weld": 12,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 7.952647010689022e-05
+      },
+      {
+        "name": "nozzle_petal_astra_r_2.003",
+        "vertices_after_diagnostic_weld": 12,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 7.951121369500732e-05
+      },
+      {
+        "name": "nozzle_petal_astra_r_2.004",
+        "vertices_after_diagnostic_weld": 12,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 7.949901661444289e-05
+      },
+      {
+        "name": "nozzle_petal_astra_r_2.005",
+        "vertices_after_diagnostic_weld": 12,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 7.949461952071673e-05
+      },
+      {
+        "name": "nozzle_petal_astra_r_2.006",
+        "vertices_after_diagnostic_weld": 12,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 7.949901661444942e-05
+      },
+      {
+        "name": "nozzle_petal_astra_r_2.007",
+        "vertices_after_diagnostic_weld": 12,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 7.951114821929246e-05
+      },
+      {
+        "name": "nozzle_petal_astra_r_2.008",
+        "vertices_after_diagnostic_weld": 12,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 7.952640478497096e-05
+      },
+      {
+        "name": "nozzle_petal_astra_r_2.009",
+        "vertices_after_diagnostic_weld": 12,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 7.953780777497985e-05
+      },
+      {
+        "name": "nozzle_petal_astra_r_2.010",
+        "vertices_after_diagnostic_weld": 12,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 7.954231697865577e-05
+      },
+      {
+        "name": "nozzle_petal_astra_r_2.011",
+        "vertices_after_diagnostic_weld": 12,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 7.953808679492637e-05
+      },
+      {
+        "name": "nozzle_petal_astra_r_2.012",
+        "vertices_after_diagnostic_weld": 12,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 7.952541571605492e-05
+      },
+      {
+        "name": "nozzle_petal_astra_r_2.013",
+        "vertices_after_diagnostic_weld": 12,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 7.951114821931217e-05
+      },
+      {
+        "name": "nozzle_petal_astra_r_2.014",
+        "vertices_after_diagnostic_weld": 12,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 7.949899904302957e-05
+      },
+      {
+        "name": "nozzle_petal_astra_r_2.015",
+        "vertices_after_diagnostic_weld": 12,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 7.949461576655585e-05
+      },
+      {
+        "name": "nozzle_petal_astra_r_2.016",
+        "vertices_after_diagnostic_weld": 12,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 7.949899894378514e-05
+      },
+      {
+        "name": "nozzle_petal_astra_r_2.017",
+        "vertices_after_diagnostic_weld": 12,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 7.951121369502385e-05
+      },
+      {
+        "name": "nozzle_petal_astra_r_2.018",
+        "vertices_after_diagnostic_weld": 12,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 7.952548103715788e-05
+      },
+      {
+        "name": "nozzle_petal_astra_r_2.019",
+        "vertices_after_diagnostic_weld": 12,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 7.953807509398828e-05
+      },
+      {
+        "name": "paired_store_rack_L_astra_r_2",
+        "vertices_after_diagnostic_weld": 24,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.005615994982538036
+      },
+      {
+        "name": "paired_store_rack_R_astra_r_2",
+        "vertices_after_diagnostic_weld": 24,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.005615994982538053
+      },
+      {
+        "name": "probe_tip_astra_r_2",
+        "vertices_after_diagnostic_weld": 16,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 1.2661871632839337e-05
+      },
+      {
+        "name": "probe_vane_astra_r_2",
+        "vertices_after_diagnostic_weld": 16,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 1.8327878114887637e-05
+      },
+      {
+        "name": "sensor_dark_window_astra_r_2",
+        "vertices_after_diagnostic_weld": 4,
+        "boundary_edges": 4,
+        "nonmanifold_edges": 4,
+        "zero_area_faces": 0,
+        "signed_volume": null
+      },
+      {
+        "name": "single_exhaust_nozzle_astra_r_2",
+        "vertices_after_diagnostic_weld": 240,
+        "boundary_edges": 96,
+        "nonmanifold_edges": 96,
+        "zero_area_faces": 0,
+        "signed_volume": null
+      },
+      {
+        "name": "single_vertical_tail_astra_r_2",
+        "vertices_after_diagnostic_weld": 256,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.09592360549616226
+      },
+      {
+        "name": "ventral_intake_depth_astra_r_2",
+        "vertices_after_diagnostic_weld": 4,
+        "boundary_edges": 4,
+        "nonmanifold_edges": 4,
+        "zero_area_faces": 0,
+        "signed_volume": null
+      },
+      {
+        "name": "ventral_rectangular_intake_lip_astra_r_2",
+        "vertices_after_diagnostic_weld": 12,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.05887494245172345
+      },
+      {
+        "name": "weapon_pylon_L_astra_r_1",
+        "vertices_after_diagnostic_weld": 56,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.0845115240346272
+      },
+      {
+        "name": "weapon_pylon_R_astra_r_1",
+        "vertices_after_diagnostic_weld": 56,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.08451152403462711
+      },
+      {
+        "name": "wingtip_navigation_L_astra_r_2",
+        "vertices_after_diagnostic_weld": 24,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.00025725005998174656
+      },
+      {
+        "name": "wingtip_navigation_R_astra_r_2",
+        "vertices_after_diagnostic_weld": 24,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.0002572500599817483
+      },
+      {
+        "name": "missile_L0_astra_r_2",
+        "vertices_after_diagnostic_weld": 192,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.14353211990538753
+      },
+      {
+        "name": "missile_L1_astra_r_2",
+        "vertices_after_diagnostic_weld": 192,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.14353212848409527
+      },
+      {
+        "name": "store_horizontal_L0_astra_r_2",
+        "vertices_after_diagnostic_weld": 36,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.000929901395439915
+      },
+      {
+        "name": "store_horizontal_L0_astra_r_2.001",
+        "vertices_after_diagnostic_weld": 36,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.0009299021033651129
+      },
+      {
+        "name": "store_horizontal_L1_astra_r_2",
+        "vertices_after_diagnostic_weld": 36,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.0009299021033651121
+      },
+      {
+        "name": "store_horizontal_L1_astra_r_2.001",
+        "vertices_after_diagnostic_weld": 36,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.0009299021500072198
+      },
+      {
+        "name": "store_vertical_L0_astra_r_2",
+        "vertices_after_diagnostic_weld": 36,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.0011233233026620333
+      },
+      {
+        "name": "store_vertical_L1_astra_r_2",
+        "vertices_after_diagnostic_weld": 36,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.0011233242597897448
+      },
+      {
+        "name": "rocket_0_astra_r_2",
+        "vertices_after_diagnostic_weld": 128,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.2300960515950734
+      },
+      {
+        "name": "rocket_1_astra_r_2",
+        "vertices_after_diagnostic_weld": 128,
+        "boundary_edges": 0,
+        "nonmanifold_edges": 0,
+        "zero_area_faces": 0,
+        "signed_volume": 0.23009607529232462
+      }
+    ]
+  },
+  "exact_uv_audit": {
+    "uv_triangles": 10732,
+    "tested_pairs": 245460,
+    "overlap_pairs": 0,
+    "overlap_area": 0,
+    "examples": []
+  },
+  "revision": 2,
+  "reference_aid": "fq44-reference-orthos.png; generated labels are not measurements. Original five photographs take priority.",
+  "reference_inventory": [
+    {
+      "feature": "chined fuselage and wedge radome",
+      "expected": 1,
+      "observed": 1,
+      "evidence": "fighter_front.png; fighter_side.png"
+    },
+    {
+      "feature": "main wings",
+      "expected": 2,
+      "observed": 2,
+      "evidence": "fighter_top.png"
+    },
+    {
+      "feature": "vertical tail",
+      "expected": 1,
+      "observed": 1,
+      "evidence": "fighter_side.png"
+    },
+    {
+      "feature": "rear stabilizers",
+      "expected": 2,
+      "observed": 2,
+      "evidence": "fighter_top.png"
+    },
+    {
+      "feature": "central exhaust",
+      "expected": 1,
+      "observed": 1,
+      "evidence": "fighter_rear.png"
+    },
+    {
+      "feature": "front-image-left rocket pods",
+      "expected": 2,
+      "observed": 2,
+      "evidence": "fighter_front.png; bore detail uses texture"
+    },
+    {
+      "feature": "front-image-right green stores",
+      "expected": 2,
+      "observed": 2,
+      "evidence": "fighter_front.png"
+    },
+    {
+      "feature": "landing wheels",
+      "expected": 3,
+      "observed": 3,
+      "evidence": "fighter_front.png; fighter_flight.png"
+    },
+    {
+      "feature": "canopy",
+      "expected": 0,
+      "observed": 0,
+      "evidence": "fighter_reference_2.png"
+    }
+  ],
+  "sha256": {
+    "fighter.glb": "f4fa0cf87fba341e484887363c3bdd4076f4e04d868c43bb285fce36c55d5391",
+    "fighter_albedo.png": "9f4e961cb52e0d0299a16fee64684b9f0a46905c97127d6d01a47a1d80d64639",
+    "fighter.blend": "ade4b80d271e0f0526cda0275cef216d727d0bae434c3ed009f3d3ede99a696c"
+  },
+  "gear_retraction": {
+    "nose_lift": 0.5,
+    "main_lift": 0.25,
+    "evidence": "fighter_flight.png",
+    "GLB_and_runtime_metadata": true
+  }
+}
