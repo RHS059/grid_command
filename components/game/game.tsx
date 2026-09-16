@@ -62,7 +62,7 @@ export function Game() {
   const [view, setView] = useState<GameView>('battlefield')
   const [state, setState] = useState<BattleState>(() => initialState()), stateRef = useRef(state)
   const worker = useRef<Worker | null>(null), mapAPI = useRef<MapAPI | null>(null), lastUI = useRef(0)
-  const [perspective] = useState<Perspective>('OBS'), [selected, setSelected] = useState<string | null>(null)
+  const [perspective] = useState<Perspective>('OBS'), [selected, setSelected] = useState<string | null>(() => state.units.find(unit => unit.side === 'BLU' && unit.role === 'COMMAND')?.id ?? null)
   const [graphics, setGraphics] = useState<Graphics>(DEFAULT_GRAPHICS), [fps, setFps] = useState<number | null>(null)
   const [modal, setModal] = useState<string | null>(null), [audio, setAudio] = useState(false), [radioFilter, setRadioFilter] = useState('all')
   const setStatus = useCallback((_message: string) => {}, []), [mobileOpen, setMobileOpen] = useState(false), [workspaceOpen, setWorkspaceOpen] = useState(false), [activeSide, setActiveSide] = useState<'BLU' | 'RED'>('BLU')
