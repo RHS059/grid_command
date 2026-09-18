@@ -12,7 +12,7 @@ import { vehicleClips, poseVehicleClip, advanceVehiclePlayback } from '@/lib/gam
 import { MODEL_NAMES, type ModelId } from '@/lib/game/model-catalog'
 import { addStudioLighting } from '@/lib/game/scene-lighting'
 
-interface Props { model: ModelId; side: Side; active: boolean; animate: boolean; rotate: boolean; action: SoldierAction; stance: Stance; condition: Soldier['status']; reset: number; clip?:string; loop?:boolean; seek?:{serial:number;time:number}; onTime?:(time:number)=>void }
+interface Props { model: ModelId; side: Side; active: boolean; animate: boolean; rotate: boolean; action: SoldierAction; stance: Stance; condition: Soldier['status']; damagePreview?: boolean; destruction?: number; reset: number; clip?:string; loop?:boolean; seek?:{serial:number;time:number}; onTime?:(time:number)=>void }
 export function ModelViewport(props: Props) {
   const host = useRef<HTMLDivElement>(null), rendererRef=useRef<GraphicsRenderer|null>(null), current = useRef(props); current.current = props
   const [error, setError] = useState('')
@@ -54,6 +54,10 @@ export function ModelViewport(props: Props) {
     let frame = 0, time = 0, previous = performance.now(), lastReset = current.current.reset, clipTime=0, lastClip="", lastSeek=-1, lastReport=0
     const render = (now: number) => {
       frame = requestAnimationFrame(render); const c = current.current, dt = Math.min(.05, (now - previous) / 1000); previous = now; if (c.animate) time += dt
+      if (object) {
+        object.userData.destroyed = !!c.damagePreview
+        object.userData.vehicleDamage = c.damagePreview ? { damage: 1, destruction: Math.max(0, Math.min(1, c.destruction ?? 0)), heat: 0.72 } : undefined
+      }
       if (lastReset !== c.reset) { lastReset = c.reset; frameModel() }
       if(object?.userData.blenderVehicle){const clip=vehicleClips(id).find(v=>v.id===c.clip)||vehicleClips(id)[0];if(lastClip!==clip.id){lastClip=clip.id;clipTime=0}if(c.seek&&lastSeek!==c.seek.serial){lastSeek=c.seek.serial;clipTime=c.seek.time}else clipTime=advanceVehiclePlayback(clipTime,dt,c.animate,clip.duration,c.loop??clip.loop);poseVehicleClip(object,clip.id,clipTime);if(now-lastReport>80){c.onTime?.(clipTime);lastReport=now}}else if(object){animateAircraft(object,time);animateSupport(object,time)}
       if (batch && id !== 'MOB' && id !== 'AIRFIELD') {

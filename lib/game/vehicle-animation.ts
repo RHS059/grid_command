@@ -1,3 +1,4 @@
+import { poseAircraftWeapons } from './aircraft-weapons'
 import * as T from './scene-data'
 import type { Role } from './types'
 import tank from './generated/tank_rig.json'
@@ -7,9 +8,10 @@ import cargo from './generated/vtol_cargo_rig.json'
 import attack from './generated/vtol_attack_rig.json'
 import cas from './generated/cas_rig.json'
 import fighter from './generated/fighter_rig.json'
+import { updateVehicleEffects } from './vehicle-effects'
 
 export interface VehicleClip { id:string; label:string; duration:number; loop:boolean }
-export interface RigNode { pivot:number[]; kind:string; parent?:string; closed?:number; phase?:number }
+export interface RigNode { pivot:number[]; kind:string; parent?:string; closed?:number; phase?:number; retractLift?:number }
 export interface VehicleSeat { name:string; id:string; position:number[]; yaw:number; anchor:string; forward_axis:string; canonical_soldier_yaw:number }
 export interface VehicleRig { nodes:Record<string,RigNode>; clips:VehicleClip[]; variant:string; seats?:VehicleSeat[] }
 const rigs:Partial<Record<Role,VehicleRig>>={TANK:tank,TROOP_TRUCK:troop,APC:apc,HEAVY_LIFT_HELI:cargo,ATTACK_HELI:attack,CAS_FIGHTER:cas,JET:fighter}
@@ -41,7 +43,7 @@ export function sampleVehicleNode(node:RigNode,clip:string,time:number,duration:
   if((clip==='rotors'||clip==='fly')&&node.kind==='rotor')rotation[1]=time*Math.PI*8
   if(clip==='fly'&&node.kind==='control')rotation[0]=Math.sin(q*Math.PI*2)*.2
   if(clip==='tilt'&&node.kind==='nacelle')rotation[0]=q*Math.PI/2
-  if((clip==='gear'||clip==='gear_down')&&node.kind==='gear'){const a=(clip==='gear'?q:1-q)*Math.PI/2;if(Math.abs(node.pivot[0])<.5)rotation[0]=-a;else rotation[1]=a*(node.pivot[0]>0?1:-1)}
+  if((clip==='gear'||clip==='gear_down')&&node.kind==='gear'){const amount=clip==='gear'?q:1-q,a=amount*Math.PI/2;offset[2]=(node.retractLift||0)*amount;if(Math.abs(node.pivot[0])<.5)rotation[0]=-a;else rotation[1]=a*(node.pivot[0]>0?1:-1)}
   const phase=Math.round((time-.05)*1e6)%180000
   const scale=node.kind==='muzzle_flash'?(clip==='shoot'&&time>=.05&&time<1.05&&phase<100000?1:0):1
   return{rotation,offset,scale}
@@ -51,12 +53,17 @@ export function poseVehicleClip(root:T.Object3D,clipId:string,time:number){
   const clip=rig.clips.find(c=>c.id===clipId)||rig.clips[0],t=Math.max(0,Math.min(clip.duration,time))
   for(const [name,node] of Object.entries(rig.nodes)){
     const object=root.getObjectByName(name);if(!object)continue
-    const base=node.pivot.map((v,i)=>v-(node.parent?rig.nodes[node.parent].pivot[i]:0)),sample=sampleVehicleNode(node,clip.id,t,clip.duration)
+    const base=node.pivot.map((v,i)=>v-(node.parent?rig.nodes[node.parent].pivot[i]:0))
+    const sample=root.name==='JET'&&clip.id==='fly'&&node.kind==='gear'
+      ? sampleVehicleNode(node,'gear',1,1)
+      : sampleVehicleNode(node,clip.id,t,clip.duration)
     object.position.set(base[0]+sample.offset[0],base[1]+sample.offset[1],base[2]+sample.offset[2]);object.rotation.set(...sample.rotation)
     object.scale.setScalar(sample.scale)
   }
+  poseAircraftWeapons(root,clip.id,t)
   root.userData.activeVehicleClip=clip.id;root.userData.vehicleClipTime=t
   root.userData.poseCrewClip?.(clip.id,t)
+  updateVehicleEffects(root,clip.id,t)
 }
 export function animateVehicleGameplay(root:T.Object3D,time:number,motion?:{heading:number;aim?:number;active:boolean;x?:number;y?:number;time?:number}){
   const rig=vehicleRig(root.name);if(!rig)return
@@ -65,5 +72,6 @@ export function animateVehicleGameplay(root:T.Object3D,time:number,motion?:{head
   if(motion?.x!==undefined)root.userData.vehicleMotion={x:motion.x,y:motion.y??0}
   const air=['CAS_FIGHTER','JET','ATTACK_HELI','HEAVY_LIFT_HELI'].includes(root.name),id=motion?.active===false?'idle':air?'fly':moving?'drive':'idle',clip=rig.clips.find(c=>c.id===id)||rig.clips[0]
   poseVehicleClip(root,clip.id,time%clip.duration)
+  updateVehicleEffects(root,clip.id,time,motion?.active)
   const turret=root.getObjectByName('turret');if(turret&&motion)turret.rotation.z=motion.heading-(motion.aim??motion.heading)
 }

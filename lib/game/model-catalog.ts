@@ -4,7 +4,7 @@ export type ModelId = Role | BaseKind
 export const MODEL_NAMES: Record<ModelId, string> = {
   PATROL_BOAT: 'Patrol boat', FRIGATE: 'Frigate', LANDING_CRAFT: 'Landing craft', AMPHIBIOUS_APC: 'Amphibious APC',
   FORKLIFT: 'Supply forklift', CARGO_PLANE: 'Tactical cargo plane', UAV_JAMMER: 'UAV jammer', AA_TEAM: 'Anti-air launcher team', TRANSPORT_HELI: 'Troop transport helicopter', HEAVY_LIFT_HELI: 'Heavy-lift helicopter', TROOP_TRUCK: 'Light troop carrier',
-  RIFLE: 'Rifle squad', SCOUT: 'Scout team', MG: 'Machine gun team', AT: 'Anti-tank team', MORTAR: 'Mortar team', ENGINEER: 'Combat engineer', MEDIC: 'Combat medic', LOGISTICS: 'Logistics team', TANK: 'Main battle tank', PILOT: 'Pilot', COMMAND: 'Command officer', TRUCK: 'Supply truck', RECON_UAV: 'Reconnaissance UAV', APC: 'Armored personnel carrier', CANNON_APC: 'Cannon APC', IFV: 'Infantry fighting vehicle', CAS_FIGHTER: 'CAS fighter', JET: 'Strike fighter', ATTACK_HELI: 'Attack helicopter', MOB: 'Main operating base', AIRFIELD: 'Airfield compound',
+  RIFLE: 'Rifle squad', SCOUT: 'Scout team', MG: 'Machine gun team', AT: 'Anti-tank team', MORTAR: 'Mortar team', ENGINEER: 'Combat engineer', MEDIC: 'Combat medic', LOGISTICS: 'Logistics team', TANK: 'Main battle tank', PILOT: 'Pilot', COMMAND: 'Command officer', TRUCK: 'Supply truck', RECON_UAV: 'Reconnaissance UAV', APC: 'Armored personnel carrier', CANNON_APC: 'Cannon APC', IFV: 'Infantry fighting vehicle', CAS_FIGHTER: 'CAS fighter', JET: 'FQ-44 Fury strike fighter', ATTACK_HELI: 'Attack helicopter', MOB: 'Main operating base', AIRFIELD: 'Airfield compound',
 }
 export const MODEL_CATALOG = [...Object.keys(CATALOG) as Role[], 'MOB', 'AIRFIELD'] as ModelId[]
 export const modelCategory = (id: ModelId) => id === 'MOB' || id === 'AIRFIELD' ? 'Structures' : isAir(id) ? 'Aircraft' : isVehicle(id) ? 'Vehicles' : 'Personnel'
@@ -21,7 +21,7 @@ export const MODEL_NOTES: Partial<Record<ModelId, string>> = {
   IFV: 'Tracked fighting vehicle with sloped glacis, autocannon turret and twin missile fittings.',
   ATTACK_HELI: 'Shared heavy-lift wingtip-rotor airframe with an independently aimed gun turret under the cockpit. Existing attack-helicopter combat loadout retained.',
   CAS_FIGHTER: 'Tandem canopy, five-blade nose propeller, straight tapered wings, wing guns and fuel tanks. Guns engage all ground unit types, deal 10% damage to tanks, and carry no anti-tank missiles. 8,000 SP; 85 m/s; 1,200 m gun range.',
-  JET: 'Swept wings, tapered nose, glazed canopy, twin exhausts, canted tail surfaces and underwing stores.',
+  JET: 'FQ-44 Fury with a pointed nose, swept wings, one tail fin, one exhaust and gray camouflage.',
   RECON_UAV: 'Long-span reconnaissance airframe with a V-tail, rear pusher propeller and stabilized sensor turret.',
   MOB: 'Headquarters, communications mast, service shelter, supply containers and a perimeter with open vehicle access. Visual scenery; existing gameplay is unchanged.',
   AIRFIELD: 'Runway and threshold markings, taxiway, apron, hangars, glazed control tower, helipads and fuel tanks. 1,200 m runway used by physical cargo deliveries; supplies are handled by forklifts before onward transport.',

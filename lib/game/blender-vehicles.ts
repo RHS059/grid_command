@@ -1,4 +1,6 @@
+import { attachAircraftWeapons } from './aircraft-weapons'
 import * as T from './scene-data'
+import { assetPath } from '../asset-path'
 import { computeAngleNormals } from './geometry-normals'
 import { SIDE_COLOR, type Role, type Side } from './types'
 import { createInteriorWindowMaterial } from './interior-window-material'
@@ -10,8 +12,9 @@ import attack from './generated/vtol_attack.json'
 import { vehicleRig, poseVehicleClip } from './vehicle-animation'
 import cas from './generated/cas.json'
 import fighter from './generated/fighter.json'
+import { attachVehicleEffects } from './vehicle-effects'
 
-type Part = { q: string; n: number; s: number; i: string; palette: number[][] }
+type Part = { q: string; n: number; s: number; i: string; palette: number[][]; indices?: number[]; uv?: number[]; normals?: number[]; texture?: string }
 type Asset = Record<string, Part>
 const assets: Partial<Record<Role, Asset>> = {
   TANK: tank, TROOP_TRUCK: troop, APC: apc, HEAVY_LIFT_HELI: cargo,
@@ -27,7 +30,8 @@ function bytes(value: string) {
 
 function geometry(parts: Part[]) {
   const g = new T.BufferGeometry()
-  const positions: number[] = [], colors: number[] = [], normals: number[] = []
+  const positions: number[] = [], colors: number[] = [], normals: number[] = [], uvs: number[] = [], triangles: number[] = []
+  const indexed = parts.some(part => !!part.indices), textured = parts.some(part => !!part.uv)
   for (const part of parts) {
     const packed = bytes(part.q); let buffer = 0, bits = 0, cursor = 0
     const partPositions: number[] = []
@@ -39,17 +43,26 @@ function geometry(parts: Part[]) {
     }
     // Each packed part is smoothed on its own and only then concatenated: hull, turret and
     // coincident markings are separate surfaces and must not weld into each other. Note the
-    // packed JSON carries no normal channel at all — 'n' is a position component count.
+    // legacy packed JSON has no normal channel; 'n' is a position component count.
     const source = new T.BufferGeometry().setAttribute('position', new T.Float32BufferAttribute(partPositions, 3))
-    const partNormals = computeAngleNormals(source).getAttribute('normal')
+    if (part.indices) source.setIndex(part.indices)
+    if (part.normals) source.setAttribute('normal', new T.Float32BufferAttribute(part.normals, 3))
+    else if (part.indices) source.computeVertexNormals()
+    else computeAngleNormals(source)
+    const partNormals = source.getAttribute('normal'), offset = positions.length / 3
+    if (indexed) for (const index of part.indices || Array.from({length: part.n / 3}, (_, i) => i)) triangles.push(offset + index)
+    if (textured) uvs.push(...(part.uv || new Array(part.n / 3 * 2).fill(0)))
     positions.push(...partPositions)
     for (let i = 0; i < partNormals.count; i++) normals.push(partNormals.getX(i), partNormals.getY(i), partNormals.getZ(i))
     const indices = bytes(part.i), vertices = part.n / 3
     for (let vertex = 0; vertex < vertices; vertex++) colors.push(...part.palette[(indices[vertex >> 1] >> ((vertex & 1) * 4)) & 15])
+    source.dispose()
   }
   g.setAttribute('position', new T.Float32BufferAttribute(positions, 3))
   g.setAttribute('color', new T.Float32BufferAttribute(colors, 3))
   g.setAttribute('normal', new T.Float32BufferAttribute(normals, 3))
+  if (indexed) g.setIndex(triangles)
+  if (textured) g.setAttribute('uv', new T.Float32BufferAttribute(uvs, 2))
   return g
 }
 
@@ -60,7 +73,7 @@ export function blenderVehicleGeometry(role: Role, side: Side, attachment = fals
   const turretPart=(name:string)=>name==='turret'||rig.nodes[name]?.parent==='turret'
   const parts = Object.entries(asset).filter(([name]) => rig.nodes[name]?.kind!=='muzzle_flash'&&(attachment ? turretPart(name) : !turretPart(name))).map(([, part]) => part)
   const g = geometry(parts)
-  if (!attachment && g.getAttribute('position').count) {
+  if (!attachment && role !== 'JET' && g.getAttribute('position').count) {
     const mark = new T.BoxGeometry(role === 'TROOP_TRUCK' ? .45 : .7, .035, .1).toNonIndexed()
     mark.translate(0, role === 'TROOP_TRUCK' ? 2.09 : role === 'APC' ? 3.37 : 3.57, role === 'TROOP_TRUCK' ? .88 : 1.15)
     const c = new T.Color(SIDE_COLOR[side]), values = new Float32Array(mark.getAttribute('position').count * 3)
@@ -74,7 +87,8 @@ export function blenderVehicleGeometry(role: Role, side: Side, attachment = fals
 /** Keep each animated propeller around its actual hub, independent of fuselage origin. */
 export function createBlenderVehicle(role: Role, side: Side) {
   const root = new T.Group(); root.name = role
-  const material = new T.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, flatShading: true, roughness: .85 })
+  const texture = Object.values(assets[role]!).find(part => part.texture)?.texture
+  const material = new T.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, flatShading: !texture, roughness: .85, map: texture ? assetPath(texture) : undefined })
   root.userData.materials = [material]
   const flashMaterial = role==='CAS_FIGHTER'?new T.MeshStandardMaterial({color:'#ffffff',vertexColors:true,emissive:'#ffb526',emissiveIntensity:4,flatShading:true,roughness:1,toneMapped:false}):material
   if(flashMaterial!==material)root.userData.materials.push(flashMaterial)
@@ -94,7 +108,7 @@ export function createBlenderVehicle(role: Role, side: Side) {
     else {panel.position.set(1.08,-.115,1.395);panel.rotation.z=Math.PI/2}
     root.add(panel);root.userData.materials.push(interior)
   }
-  if (['CAS_FIGHTER','JET','ATTACK_HELI','HEAVY_LIFT_HELI'].includes(role)) {
+  if (['CAS_FIGHTER','ATTACK_HELI','HEAVY_LIFT_HELI'].includes(role)) {
     const paint = new T.MeshStandardMaterial({ color: SIDE_COLOR[side], roughness: .85 })
     root.userData.materials.push(paint)
     for (const sign of [-1,1]) {
@@ -108,6 +122,8 @@ export function createBlenderVehicle(role: Role, side: Side) {
     const mark=new T.Mesh(new T.BoxGeometry(role==='TROOP_TRUCK'?.45:.7,.035,.1),paint)
     mark.name='faction-band';mark.position.set(0,role==='TROOP_TRUCK'?2.09:role==='APC'?3.37:3.57,role==='TROOP_TRUCK'?.88:1.15);root.add(mark)
   }
+  attachVehicleEffects(root, role, side)
+  attachAircraftWeapons(root, role, geometry)
   return root
 }
 

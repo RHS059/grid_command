@@ -1,0 +1,61 @@
+{
+  "photo": "User reference 4",
+  "contours_pixels": {
+    "main_wing_visible_upper": [
+      [
+        522,
+        305
+      ],
+      [
+        624,
+        30
+      ],
+      [
+        665,
+        28
+      ],
+      [
+        752,
+        305
+      ]
+    ],
+    "main_wing_visible_lower": [
+      [
+        513,
+        441
+      ],
+      [
+        419,
+        694
+      ],
+      [
+        461,
+        691
+      ],
+      [
+        695,
+        448
+      ]
+    ],
+    "tailplane_visible_lower": [
+      [
+        230,
+        426
+      ],
+      [
+        188,
+        543
+      ],
+      [
+        228,
+        547
+      ],
+      [
+        335,
+        432
+      ]
+    ]
+  },
+  "root_alignment": "Side-traced wing roots lock Y to +0.1662 and -3.2752. Front-traced width locks span. Photo contours constrain sweep, taper and tip shape.",
+  "limits": "Perspective and occlusion prevent exact plan dimensions. Original photos 2 and 3 check the parked assembly. Generated hidden mechanisms are not construction evidence."
+}

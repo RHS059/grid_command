@@ -10,6 +10,7 @@ import { Mesh } from '@babylonjs/core/Meshes/mesh'
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode'
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
 import { Material } from '@babylonjs/core/Materials/material'
+import { Texture } from '@babylonjs/core/Materials/Textures/texture'
 import { VertexBuffer } from '@babylonjs/core/Buffers/buffer'
 import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight'
 import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight'
@@ -26,6 +27,7 @@ import '@babylonjs/loaders/glTF'
 import * as D from './scene-data'
 import { BattlefieldEffects } from './babylon-effects'
 import { InteriorRoomPlugin } from './babylon-interior'
+import { applyVehiclePbrMaps, createDestroyedMaterial, FURY_PBR_MAPS, hasDestroyedAppearance, type VehicleDamageState } from './babylon-destroyed'
 import type { Graphics } from './types'
 import { StartupDeadlineError, withStartupDeadline } from './startup-deadline'
 
@@ -42,6 +44,7 @@ const disposeWebGPUCandidate=(candidate:WebGPUEngine)=>{
 export const srgbChannelToLinear=(value:number)=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4
 const color=(c:D.Color)=>new Color3(srgbChannelToLinear(c.r),srgbChannelToLinear(c.g),srgbChannelToLinear(c.b))
 const linearTint=(target:Float32Array,offset:number,r:number,g:number,b:number)=>target.set([srgbChannelToLinear(r),srgbChannelToLinear(g),srgbChannelToLinear(b),1],offset)
+const damageState=(object:D.Object3D):Partial<VehicleDamageState>|undefined=>{for(let node:D.Object3D|null=object;node;node=node.parent){if(node.userData.vehicleDamage)return node.userData.vehicleDamage as Partial<VehicleDamageState>;if(node.userData.destroyed===true)return{damage:1,destruction:.42,heat:.32}}}
 /** Babylon 9.25 injects a Chromium-only rule and an unused fragment builtin. */
 export function sanitizeFirefoxWGSL(code:string){
   let result=code.replace(/diagnostic\s*\(\s*off\s*,\s*chromium\.unreachable_code\s*\)\s*;[ \t]*\r?\n?/g,'')
@@ -67,8 +70,11 @@ export class BabylonRuntime {
   readonly effects:BattlefieldEffects
   private readonly draws=new Map<number,DrawRecord>()
   private readonly materials=new Map<D.Material,PBRMaterial>()
+  private readonly textures=new Map<string,Texture>()
+  private readonly destroyedMaterials=new Map<PBRMaterial,PBRMaterial>()
+  private readonly nativeOriginalMaterials=new Map<Mesh,PBRMaterial>()
   private readonly lights=new Map<number,DirectionalLight|HemisphericLight|PointLight>()
-  private readonly native=new Map<number,{pivot:TransformNode;entries?:InstantiatedEntries;source:D.Object3D}>()
+  private readonly native=new Map<number,{pivot:TransformNode;entries?:InstantiatedEntries;source:D.Object3D;destroyed?:boolean}>()
   private readonly casters=new Set<number>()
   private readonly nativeNodes=new Map<number,TransformNode>()
   private readonly assets=new Map<string,Promise<AssetContainer>>()
@@ -111,9 +117,17 @@ export class BabylonRuntime {
   getViewProjection(){return this.camera.getViewMatrix().multiply(this.camera.getProjectionMatrix())}
   private getMaterial(source:D.Material){
     let material=this.materials.get(source);if(!material){material=new PBRMaterial(source.name||`material-${source.id}`,this.scene);this.materials.set(source,material);if(source.name==='interior-window')new InteriorRoomPlugin(material);material.maxSimultaneousLights=4;material.backFaceCulling=source.side!==D.DoubleSide;material.twoSidedLighting=source.side===D.DoubleSide;material.unlit=source instanceof D.MeshBasicMaterial;material.wireframe=source.wireframe;material.disableDepthWrite=!source.depthWrite;material.depthFunction=source.depthTest?Engine.LEQUAL:Engine.ALWAYS;material.alphaMode=source.blending===D.AdditiveBlending?Engine.ALPHA_ADD:Engine.ALPHA_COMBINE;material.transparencyMode=source.transparent?PBRMaterial.PBRMATERIAL_ALPHABLEND:PBRMaterial.PBRMATERIAL_OPAQUE}
+    if(source.map){let texture=this.textures.get(source.map);if(!texture){texture=new Texture(source.map,this.scene,false,false);texture.gammaSpace=true;this.textures.set(source.map,texture)}material.albedoTexture=texture}else material.albedoTexture=null
     material.disableDepthWrite=!source.depthWrite||!source.depthTest;material.depthFunction=source.depthTest?Engine.LEQUAL:Engine.ALWAYS
     material.albedoColor=color(source.color);material.emissiveColor=color(source.emissive).scale(source.emissiveIntensity);material.roughness=source.roughness;material.metallic=source.metalness;material.alpha=source.opacity;if(source.uniforms.wireColor)material.albedoColor=color(source.uniforms.wireColor.value)
+    if(source.map?.endsWith('/models/fighter_albedo.png'))applyVehiclePbrMaps(material,FURY_PBR_MAPS)
     if(source.name==='interior-window'){material.albedoColor=color(source.uniforms.windowTint?.value||new D.Color('#35596b'));material.roughness=.2;material.metallic=.45;material.emissiveColor=new Color3(.025,.03,.035)}
+    return material
+  }
+  private damagedMaterial(source:PBRMaterial,destroyed:boolean){
+    if(!destroyed)return source
+    let material=this.destroyedMaterials.get(source)
+    if(!material){material=createDestroyedMaterial(source);this.destroyedMaterials.set(source,material)}
     return material
   }
   private updateGeometry(record:DrawRecord,source:D.Mesh){
@@ -168,6 +182,17 @@ export class BabylonRuntime {
     if(parent){record.pivot.parent=parent;record.pivot.position.copyFromFloats(source.position.x,source.position.y,source.position.z);record.pivot.rotationQuaternion=new Quaternion(source.quaternion.x,source.quaternion.y,source.quaternion.z,source.quaternion.w);record.pivot.scaling.copyFromFloats(source.scale.x,source.scale.y,source.scale.z)}else record.pivot.freezeWorldMatrix(Matrix.FromArray(source.matrixWorld.elements))
     record.pivot.setEnabled(source.visible)
     if(record.entries){
+      const destroyed=hasDestroyedAppearance(source)
+      if(record.destroyed!==destroyed){
+      for(const root of record.entries.rootNodes)for(const node of [root,...root.getDescendants(false)])if(node instanceof Mesh&&node.material instanceof PBRMaterial){
+        let original=this.nativeOriginalMaterials.get(node)
+        if(!original){original=node.material;this.nativeOriginalMaterials.set(node,original)}
+        node.material=this.damagedMaterial(original,destroyed)
+      }
+      record.destroyed=destroyed
+      }
+      const state=damageState(source)
+      for(const root of record.entries.rootNodes)for(const node of [root,...root.getDescendants(false)])if(node instanceof Mesh)node.metadata={...node.metadata,gridVehicleDamage:state}
       const filter=source.userData.nativeNodeName as string|undefined
       if(filter)for(const root of record.entries.rootNodes)for(const node of root.getDescendants(false)){if(node instanceof TransformNode&&node.name.startsWith('Weapon_'))node.setEnabled(node.name===filter)}
       source.traverse(node=>{if(node.name.startsWith('Gear_')||node.name.startsWith('Weapon_'))this.nativeNodes.get(node.id)?.setEnabled(node.visible)})
@@ -193,12 +218,12 @@ export class BabylonRuntime {
     const visit=(object:D.Object3D,parentVisible:boolean)=>{
       const visible=parentVisible&&object.visible
       if(object.userData.nativeAssetURL){nativeLive.add(object.id);this.syncNative(object);this.native.get(object.id)!.pivot.setEnabled(visible)}
-      if(object instanceof D.Mesh&&object.geometry.attributes.position?.count){live.add(object.id);let record=this.draws.get(object.id);if(!record){const mesh=new Mesh(object.name||`model-${object.id}`,this.scene);mesh.sideOrientation=Material.CounterClockWiseSideOrientation;mesh.alwaysSelectAsActiveMesh=!object.frustumCulled;record={mesh,geometry:object.geometry,version:'',instanceVersion:'',castShadow:false};this.draws.set(object.id,record)}record.mesh.setEnabled(visible&&(!(object instanceof D.InstancedMesh)||object.count>0));if(visible){this.updateGeometry(record,object);const source=Array.isArray(object.material)?object.material[0]:object.material;record.mesh.material=this.getMaterial(source);
+      if(object instanceof D.Mesh&&object.geometry.attributes.position?.count){live.add(object.id);let record=this.draws.get(object.id);if(!record){const mesh=new Mesh(object.name||`model-${object.id}`,this.scene);mesh.sideOrientation=Material.CounterClockWiseSideOrientation;mesh.alwaysSelectAsActiveMesh=!object.frustumCulled;record={mesh,geometry:object.geometry,version:'',instanceVersion:'',castShadow:false};this.draws.set(object.id,record)}const vehicleDamage=damageState(object);record.mesh.setEnabled(visible&&(!(object instanceof D.InstancedMesh)||object.count>0)&&(vehicleDamage?.destruction??0)<1);if(visible){this.updateGeometry(record,object);const source=Array.isArray(object.material)?object.material[0]:object.material;record.mesh.material=this.damagedMaterial(this.getMaterial(source),hasDestroyedAppearance(object));record.mesh.metadata={...record.mesh.metadata,gridVehicleDamage:vehicleDamage};
         // Legacy/battlefield scenes keep every mesh casting+receiving, as before. Only a
         // 'studio' profile honors the mesh's own explicit castShadow/receiveShadow flags.
-        record.mesh.receiveShadows=root.profile==='studio'?object.receiveShadow:true
+        record.mesh.receiveShadows=!object.userData.vehicleEffect&&(root.profile==='studio'?object.receiveShadow:true)
         record.mesh.freezeWorldMatrix(Matrix.FromArray(object.matrixWorld.elements));if(object instanceof D.InstancedMesh)this.updateInstances(record,object)
-        const wantsCaster=root.profile==='studio'?object.castShadow:true
+        const wantsCaster=!object.userData.vehicleEffect&&(root.profile==='studio'?object.castShadow:true)
         if(wantsCaster!==record.castShadow){record.castShadow=wantsCaster;if(this.shadows){if(wantsCaster&&!this.casters.has(object.id)){this.shadows.addShadowCaster(record.mesh);this.casters.add(object.id)}else if(!wantsCaster&&this.casters.has(object.id)){this.shadows.removeShadowCaster(record.mesh);this.casters.delete(object.id)}}}
       }}
       if(object instanceof D.HemisphereLight||object instanceof D.DirectionalLight||object instanceof D.PointLight){let light=this.lights.get(object.id);if(!light){if(object instanceof D.HemisphereLight)light=new HemisphericLight(object.name,new Vector3(0,0,1),this.scene);else if(object instanceof D.PointLight){light=new PointLight(object.name,Vector3.Zero(),this.scene);if(this.clustered.isSupported)this.clustered.addLight(light)}else{light=new DirectionalLight(object.name,new Vector3(.5,-.3,-1),this.scene)
@@ -226,11 +251,11 @@ export class BabylonRuntime {
     }
     visit(root,true)
     for(const[id,record]of this.draws)if(!live.has(id)){record.mesh.dispose();this.draws.delete(id);this.casters.delete(id)}
-    for(const[id,record]of this.native)if(!nativeLive.has(id)){record.source.traverse(node=>this.nativeNodes.delete(node.id));record.entries?.dispose();record.pivot.dispose();this.native.delete(id)}
-    for(const[source,material]of this.materials)if(source.disposed){material.dispose();this.materials.delete(source)}
+    for(const[id,record]of this.native)if(!nativeLive.has(id)){record.source.traverse(node=>this.nativeNodes.delete(node.id));if(record.entries)for(const root of record.entries.rootNodes)for(const node of [root,...root.getDescendants(false)])if(node instanceof Mesh){const original=this.nativeOriginalMaterials.get(node);if(original){this.destroyedMaterials.get(original)?.dispose();this.destroyedMaterials.delete(original);this.nativeOriginalMaterials.delete(node)}}record.entries?.dispose();record.pivot.dispose();this.native.delete(id)}
+    for(const[source,material]of this.materials)if(source.disposed){this.destroyedMaterials.get(material)?.dispose();this.destroyedMaterials.delete(material);material.dispose();this.materials.delete(source)}
     if(root.background){const background=color(root.background);this.scene.clearColor=new Color4(background.r,background.g,background.b,1)}
   }
   render(){if(this.disposed)return;this.engine.beginFrame();try{this.scene.render()}finally{this.engine.endFrame()}}
-  dispose(){if(this.disposed)return;this.disposed=true;this.effects.dispose();this.scene.dispose();this.engine.dispose();this.draws.clear();this.materials.clear();this.native.clear();this.nativeNodes.clear();this.casters.clear()}
+  dispose(){if(this.disposed)return;this.disposed=true;this.effects.dispose();this.scene.dispose();this.engine.dispose();this.draws.clear();this.materials.clear();this.textures.clear();this.destroyedMaterials.clear();this.nativeOriginalMaterials.clear();this.native.clear();this.nativeNodes.clear();this.casters.clear()}
 }
 

@@ -32,7 +32,7 @@ export function recordCasualties(state:BattleState,nav:Navigation,v:Visibility,r
       squad.x=carrier.x;squad.y=carrier.y;squad.members=squad.soldiers?.filter(s=>s.status==='active').length||0;squad.hp=squad.members/squad.maxMembers*100;state.forces[squad.side].casualties+=before-squad.members
     }
     if(carrier.transport){carrier.transport.cargo=0;carrier.transport.manifest=undefined;carrier.transport.passengers=[];carrier.transport.phase='destroyed'}
-    if(isVehicle(carrier.role))state.casualties.push({id:carrier.id,side:carrier.side,role:carrier.role,x:carrier.x,y:carrier.y,heading:carrier.heading,time:state.time,observed:carrier.spotted?['BLU','RED']:[carrier.side],altitude:carrier.altitude||0})
+    if(isVehicle(carrier.role))state.casualties.push({aircraftLoadout:carrier.aircraftLoadout?{remaining:{...carrier.aircraftLoadout.remaining},cursor:carrier.aircraftLoadout.cursor}:undefined,id:carrier.id,side:carrier.side,role:carrier.role,x:carrier.x,y:carrier.y,heading:carrier.heading,time:state.time,observed:carrier.spotted?['BLU','RED']:[carrier.side],altitude:carrier.altitude||0})
   }
   for(const u of state.units){for(const s of u.soldiers||[])if(s.status==='dead'&&!state.casualties.some(c=>c.id===s.id))state.casualties.push({id:s.id,side:u.side,role:u.role,soldier:{...s,action:'idle'},x:s.x,y:s.y,heading:s.heading,time:s.since,observed:u.spotted?['BLU','RED']:[u.side],altitude:0})
     if(u.soldiers)u.soldiers=u.soldiers.filter(s=>s.status!=='dead')

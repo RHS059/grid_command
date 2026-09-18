@@ -1,3 +1,4 @@
+import { aircraftAmmoPercent, aircraftRounds, createAircraftLoadout, releaseAircraftWeapon, type AircraftRelease } from './aircraft-loadout'
 import { isAir, isVehicle, type BattleState, type Unit, type Soldier, type Vec3 } from './types'
 import { jammed } from './electronic-warfare'
 import { Visibility, lerp3, sphereHit } from './visibility'
@@ -9,7 +10,11 @@ export function resolveCombat(state:BattleState,v:Visibility,random:()=>number,n
   const living=state.units.filter(u=>u.hp>0&&!u.carrier&&(u.members>0||isVehicle(u.role))),hits=new Map<string,{amount:number;soldier?:string}>()
   for(const missile of state.missiles)if(missile.due<=state.time){const target=living.find(u=>u.id===missile.target);if(target)hits.set(target.id,{amount:(hits.get(target.id)?.amount||0)+missile.damage})}
   state.missiles=state.missiles.filter(m=>m.due>state.time)
-  for(const u of living){u.firing=false;const w=u.role==='FRIGATE'&&u.navalDirective?.mode==='AIR_DEFENSE'?WEAPONS.aa:weaponFor(u.role);if(!w||u.surrendered||u.crewBailed||u.external||u.servicing||u.emergency||u.ammo<(w.id==='aa'?25:w.armor?2:.3)||u.airPhase==='return'||u.airPhase==='rearm')continue
+  for(const u of living){u.firing=false;
+    if(u.role==='JET')u.aircraftLoadout ||= createAircraftLoadout(u.role)
+    const jetKind=u.role==='JET'?(u.aircraftWeapon||(aircraftRounds(u.role,u.aircraftLoadout!,'rocket')?'rocket':'bomb')):undefined
+    const w=jetKind?WEAPONS[jetKind]:u.role==='FRIGATE'&&u.navalDirective?.mode==='AIR_DEFENSE'?WEAPONS.aa:weaponFor(u.role);if(!w||u.surrendered||u.crewBailed||u.external||u.servicing||u.emergency||u.ammo<(w.id==='aa'?25:w.armor?2:.3)||u.airPhase==='return'||u.airPhase==='rearm')continue
+    if(jetKind&&!aircraftRounds(u.role,u.aircraftLoadout!,jetKind))continue
     if((u.cooldown||0)>state.time&&u.role!=='ATTACK_HELI')continue
     const targets=(candidates?candidates(u,w.range):living).filter(e=>e.side!==u.side&&!e.surrendered&&e.hp>0&&!e.carrier&&eligible(w,e)&&Math.hypot(e.x-u.x,e.y-u.y)<=w.range&&canSee(u,e,v,state)).sort((a,b)=>Math.hypot(a.x-u.x,a.y-u.y)-Math.hypot(b.x-u.x,b.y-u.y)||a.id.localeCompare(b.id));const target=targets[0];if(!target){u.lock=undefined;continue}
     u.aim=Math.atan2(target.x-u.x,target.y-u.y)
@@ -33,7 +38,9 @@ export function resolveCombat(state:BattleState,v:Visibility,random:()=>number,n
     // Mortar paths are sampled as an arc; acquisition still requires direct sight.
     if(w.id==='mortar'){let previous=start;for(let i=1;i<=24;i++){const p=lerp3(start,hit.point,i/24);p.z+=Math.sin(i/24*Math.PI)*d*.22;const block=v.ray(previous,p);if(block.kind!=='clear'){hit={t:hit.t,point:block.point,kind:block.kind};victim=undefined;break}previous=p}}
     u.firing=true;u.aim=Math.atan2(aim.x-start.x,aim.y-start.y);u.cooldown=state.time+w.cooldown;u.ammo=Math.max(0,u.ammo-(w.armor?2:.3));if(soldier){soldier.aim=u.aim;soldier.shotAt=state.time;soldier.action=soldier.cover?'peek':'fire'}
-    state.shots.push({id:nextId(),time:state.time,unit:u.id,soldier:soldier?.id,side:u.side,weapon:w.id,start,end:hit.point,speed:w.speed,size:w.size,blast:w.blast,sound:w.sound,spotted:u.spotted})
+    let release:AircraftRelease|undefined
+    if(jetKind){release=releaseAircraftWeapon(u.role,u.aircraftLoadout!,jetKind);if(!release)continue;u.ammo=aircraftAmmoPercent(u.role,u.aircraftLoadout!);const [x,y,z]=release.position;start.x=u.x+x*Math.cos(u.heading)+y*Math.sin(u.heading);start.y=u.y-x*Math.sin(u.heading)+y*Math.cos(u.heading);start.z=v.height(u)+(u.altitude||0)+.1+z}
+    state.shots.push({hardpoint:release?.hardpoint,round:release?.round,id:nextId(),time:state.time,unit:u.id,soldier:soldier?.id,side:u.side,weapon:w.id,start,end:hit.point,speed:w.speed,size:w.size,blast:w.blast,sound:w.sound,spotted:u.spotted})
     const damage=(e:Unit,amount:number,s?:Soldier)=>{const old=hits.get(e.id);hits.set(e.id,{amount:(old?.amount||0)+amount,soldier:s?.id||old?.soldier});e.suppression=Math.min(1,(e.suppression||0)+.22)}
     if(victim&&victim.side!==u.side)damage(victim,damageFor(w,victim,d),hitSoldier)
     if(w.blast)for(const e of living){if(e.side===u.side||e.id===victim?.id)continue;const c=eye(e,v),dist=Math.hypot(c.x-hit.point.x,c.y-hit.point.y,c.z-hit.point.z);if(dist<w.blast&&v.ray({...hit.point,z:hit.point.z+.15},c).kind==='clear')damage(e,damageFor(w,e,d)*(1-dist/w.blast)*.5)}
