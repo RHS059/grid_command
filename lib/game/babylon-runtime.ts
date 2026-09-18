@@ -27,7 +27,7 @@ import '@babylonjs/loaders/glTF'
 import * as D from './scene-data'
 import { BattlefieldEffects } from './babylon-effects'
 import { InteriorRoomPlugin } from './babylon-interior'
-import { createDestroyedMaterial, hasDestroyedAppearance } from './babylon-destroyed'
+import { applyVehiclePbrMaps, createDestroyedMaterial, FURY_PBR_MAPS, hasDestroyedAppearance, type VehicleDamageState } from './babylon-destroyed'
 import type { Graphics } from './types'
 import { StartupDeadlineError, withStartupDeadline } from './startup-deadline'
 
@@ -44,6 +44,7 @@ const disposeWebGPUCandidate=(candidate:WebGPUEngine)=>{
 export const srgbChannelToLinear=(value:number)=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4
 const color=(c:D.Color)=>new Color3(srgbChannelToLinear(c.r),srgbChannelToLinear(c.g),srgbChannelToLinear(c.b))
 const linearTint=(target:Float32Array,offset:number,r:number,g:number,b:number)=>target.set([srgbChannelToLinear(r),srgbChannelToLinear(g),srgbChannelToLinear(b),1],offset)
+const damageState=(object:D.Object3D):Partial<VehicleDamageState>|undefined=>{for(let node:D.Object3D|null=object;node;node=node.parent){if(node.userData.vehicleDamage)return node.userData.vehicleDamage as Partial<VehicleDamageState>;if(node.userData.destroyed===true)return{damage:1,destruction:.42,heat:.32}}}
 /** Babylon 9.25 injects a Chromium-only rule and an unused fragment builtin. */
 export function sanitizeFirefoxWGSL(code:string){
   let result=code.replace(/diagnostic\s*\(\s*off\s*,\s*chromium\.unreachable_code\s*\)\s*;[ \t]*\r?\n?/g,'')
@@ -119,6 +120,7 @@ export class BabylonRuntime {
     if(source.map){let texture=this.textures.get(source.map);if(!texture){texture=new Texture(source.map,this.scene,false,false);texture.gammaSpace=true;this.textures.set(source.map,texture)}material.albedoTexture=texture}else material.albedoTexture=null
     material.disableDepthWrite=!source.depthWrite||!source.depthTest;material.depthFunction=source.depthTest?Engine.LEQUAL:Engine.ALWAYS
     material.albedoColor=color(source.color);material.emissiveColor=color(source.emissive).scale(source.emissiveIntensity);material.roughness=source.roughness;material.metallic=source.metalness;material.alpha=source.opacity;if(source.uniforms.wireColor)material.albedoColor=color(source.uniforms.wireColor.value)
+    if(source.map?.endsWith('/models/fighter_albedo.png'))applyVehiclePbrMaps(material,FURY_PBR_MAPS)
     if(source.name==='interior-window'){material.albedoColor=color(source.uniforms.windowTint?.value||new D.Color('#35596b'));material.roughness=.2;material.metallic=.45;material.emissiveColor=new Color3(.025,.03,.035)}
     return material
   }
@@ -189,6 +191,8 @@ export class BabylonRuntime {
       }
       record.destroyed=destroyed
       }
+      const state=damageState(source)
+      for(const root of record.entries.rootNodes)for(const node of [root,...root.getDescendants(false)])if(node instanceof Mesh)node.metadata={...node.metadata,gridVehicleDamage:state}
       const filter=source.userData.nativeNodeName as string|undefined
       if(filter)for(const root of record.entries.rootNodes)for(const node of root.getDescendants(false)){if(node instanceof TransformNode&&node.name.startsWith('Weapon_'))node.setEnabled(node.name===filter)}
       source.traverse(node=>{if(node.name.startsWith('Gear_')||node.name.startsWith('Weapon_'))this.nativeNodes.get(node.id)?.setEnabled(node.visible)})
@@ -214,7 +218,7 @@ export class BabylonRuntime {
     const visit=(object:D.Object3D,parentVisible:boolean)=>{
       const visible=parentVisible&&object.visible
       if(object.userData.nativeAssetURL){nativeLive.add(object.id);this.syncNative(object);this.native.get(object.id)!.pivot.setEnabled(visible)}
-      if(object instanceof D.Mesh&&object.geometry.attributes.position?.count){live.add(object.id);let record=this.draws.get(object.id);if(!record){const mesh=new Mesh(object.name||`model-${object.id}`,this.scene);mesh.sideOrientation=Material.CounterClockWiseSideOrientation;mesh.alwaysSelectAsActiveMesh=!object.frustumCulled;record={mesh,geometry:object.geometry,version:'',instanceVersion:'',castShadow:false};this.draws.set(object.id,record)}record.mesh.setEnabled(visible&&(!(object instanceof D.InstancedMesh)||object.count>0));if(visible){this.updateGeometry(record,object);const source=Array.isArray(object.material)?object.material[0]:object.material;record.mesh.material=this.damagedMaterial(this.getMaterial(source),hasDestroyedAppearance(object));
+      if(object instanceof D.Mesh&&object.geometry.attributes.position?.count){live.add(object.id);let record=this.draws.get(object.id);if(!record){const mesh=new Mesh(object.name||`model-${object.id}`,this.scene);mesh.sideOrientation=Material.CounterClockWiseSideOrientation;mesh.alwaysSelectAsActiveMesh=!object.frustumCulled;record={mesh,geometry:object.geometry,version:'',instanceVersion:'',castShadow:false};this.draws.set(object.id,record)}const vehicleDamage=damageState(object);record.mesh.setEnabled(visible&&(!(object instanceof D.InstancedMesh)||object.count>0)&&(vehicleDamage?.destruction??0)<1);if(visible){this.updateGeometry(record,object);const source=Array.isArray(object.material)?object.material[0]:object.material;record.mesh.material=this.damagedMaterial(this.getMaterial(source),hasDestroyedAppearance(object));record.mesh.metadata={...record.mesh.metadata,gridVehicleDamage:vehicleDamage};
         // Legacy/battlefield scenes keep every mesh casting+receiving, as before. Only a
         // 'studio' profile honors the mesh's own explicit castShadow/receiveShadow flags.
         record.mesh.receiveShadows=!object.userData.vehicleEffect&&(root.profile==='studio'?object.receiveShadow:true)

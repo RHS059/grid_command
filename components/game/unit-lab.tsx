@@ -26,7 +26,8 @@ export function UnitLab({ embedded = false, active = true, soundEngine }: { embe
   const clips=vehicleClips(model), clip=clips.find(c=>c.id===clipId)||clips[0]
   const scrub=(time:number)=>{setClipTime(time);setSeek(s=>({serial:s.serial+1,time}))}
   const [rotate, setRotate] = useState(false)
-  const [destroyed, setDestroyed] = useState(false)
+  const [damagePreview, setDamagePreview] = useState(false)
+  const [destruction, setDestruction] = useState(0)
   const [reset, setReset] = useState(0)
   const [soundPlaying, setSoundPlaying] = useState(false)
   const [soundSpeed, setSoundSpeed] = useState(.35)
@@ -50,7 +51,7 @@ export function UnitLab({ embedded = false, active = true, soundEngine }: { embe
 
   return <section className={`${styles.root}${embedded ? '' : ` ${styles.standalone}`}`} aria-label="Model Preview" hidden={!active}>
     {!embedded && <Link href="/" className={styles.returnLink}>GRID COMMAND <span>Return to battlefield</span></Link>}
-    <div className={styles.viewport}><ModelViewport model={model} side={side} active={active} animate={animate} rotate={rotate} action={action} stance={stance} condition={condition} destroyed={!!vehicleRole && destroyed} reset={reset} clip={clip?.id} loop={clipLoop} seek={seek} onTime={setClipTime} /></div>
+    <div className={styles.viewport}><ModelViewport model={model} side={side} active={active} animate={animate} rotate={rotate} action={action} stance={stance} condition={condition} damagePreview={!!vehicleRole && damagePreview} destruction={destruction} reset={reset} clip={clip?.id} loop={clipLoop} seek={seek} onTime={setClipTime} /></div>
 
     <aside className={`${styles.card} ${styles.catalog}`} aria-label="Model catalog">
       <div className={styles.catalogHeader}><span>CATALOG</span><span>{MODEL_CATALOG.length} MODELS</span></div>
@@ -71,7 +72,7 @@ export function UnitLab({ embedded = false, active = true, soundEngine }: { embe
       <div className={styles.controlButtons}>
         <label className={styles.toggle}><input type="checkbox" checked={animate} onChange={event => setAnimate(event.target.checked)} /><span>Animate parts</span></label>
         <label className={styles.toggle}><input type="checkbox" checked={rotate} onChange={event => setRotate(event.target.checked)} /><span>Auto-rotate</span></label>
-        {vehicleRole && <label className={styles.toggle}><input type="checkbox" checked={destroyed} onChange={event => setDestroyed(event.target.checked)} /><span>Destroyed vehicle</span></label>}
+        {vehicleRole && <label className={styles.toggle}><input type="checkbox" checked={damagePreview} onChange={event => setDamagePreview(event.target.checked)} /><span>Damage material</span></label>}
         <button type="button" onClick={() => setReset(value => value + 1)}><RotateCcw size={13} /> Reset view</button>
       </div>
       {clip && <div className={styles.controlGroup} aria-label="Vehicle animations">
@@ -82,6 +83,7 @@ export function UnitLab({ embedded = false, active = true, soundEngine }: { embe
         <RangeControl label="Animation progress" value={`${clipTime.toFixed(2)} / ${clip.duration.toFixed(2)} s`} min={0} max={clip.duration} step={.01} current={Math.min(clipTime,clip.duration)} onChange={v=>{setAnimate(false);scrub(v)}} />
       </div>}
       {vehicleRole && <div className={styles.controlGroup}>
+        <RangeControl label="Structural breakup" value={`${Math.round(destruction * 100)}%`} min={0} max={1} step={.01} current={destruction} onChange={value => { setDestruction(value); setDamagePreview(true) }} />
         <button type="button" className={styles.soundButton} aria-pressed={soundPlaying} onClick={toggleSound}>{soundPlaying ? <VolumeX size={14} /> : <Volume2 size={14} />}{soundPlaying ? 'Stop sound' : 'Play engine'}</button>
         <RangeControl label="Vehicle speed" value={`${Math.round(soundSpeed * 100)}%`} min={0} max={1} step={.01} current={soundSpeed} onChange={setSoundSpeed} />
         <RangeControl label="Listener distance" value={`${soundDistance} m`} min={0} max={300} step={5} current={soundDistance} onChange={setSoundDistance} />

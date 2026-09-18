@@ -1,0 +1,37 @@
+{
+  "asset": "FQ-44 Fury",
+  "source": "public/models/fighter_albedo.png",
+  "resolution": [
+    1024,
+    1024
+  ],
+  "maps": {
+    "normal": {
+      "path": "public/models/fighter_normal.png",
+      "sha256": "fe79235d760e3b6e1f5f17199d2eba89112ae57108086d6902bf9b08821615f8",
+      "color_space": "non-color"
+    },
+    "roughness": {
+      "path": "public/models/fighter_roughness.png",
+      "sha256": "760498f4a102a742078fa05a4823f24f318cff294ba4b27d22b977432eec51c6",
+      "color_space": "non-color"
+    },
+    "metalness": {
+      "path": "public/models/fighter_metalness.png",
+      "sha256": "301d77d7e63d9d2bff4a695194c476c886ce47f486bb985e00de0632dd6ff38e",
+      "color_space": "non-color"
+    },
+    "orm": {
+      "path": "public/models/fighter_orm.png",
+      "sha256": "b3a842a0f82b4c031528120ccf9ea62cba90218a01c76540269eed64b19caaea",
+      "color_space": "non-color"
+    }
+  },
+  "orm_channels": {
+    "r": "ambient_occlusion",
+    "g": "roughness",
+    "b": "metalness"
+  },
+  "normal_convention": "OpenGL +Y",
+  "method": "Deterministic local-frequency derivation from the locked FQ-44 color atlas."
+}
