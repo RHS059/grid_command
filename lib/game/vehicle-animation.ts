@@ -1,3 +1,4 @@
+import { poseAircraftWeapons } from './aircraft-weapons'
 import * as T from './scene-data'
 import type { Role } from './types'
 import tank from './generated/tank_rig.json'
@@ -7,6 +8,7 @@ import cargo from './generated/vtol_cargo_rig.json'
 import attack from './generated/vtol_attack_rig.json'
 import cas from './generated/cas_rig.json'
 import fighter from './generated/fighter_rig.json'
+import { updateVehicleEffects } from './vehicle-effects'
 
 export interface VehicleClip { id:string; label:string; duration:number; loop:boolean }
 export interface RigNode { pivot:number[]; kind:string; parent?:string; closed?:number; phase?:number; retractLift?:number }
@@ -58,8 +60,10 @@ export function poseVehicleClip(root:T.Object3D,clipId:string,time:number){
     object.position.set(base[0]+sample.offset[0],base[1]+sample.offset[1],base[2]+sample.offset[2]);object.rotation.set(...sample.rotation)
     object.scale.setScalar(sample.scale)
   }
+  poseAircraftWeapons(root,clip.id,t)
   root.userData.activeVehicleClip=clip.id;root.userData.vehicleClipTime=t
   root.userData.poseCrewClip?.(clip.id,t)
+  updateVehicleEffects(root,clip.id,t)
 }
 export function animateVehicleGameplay(root:T.Object3D,time:number,motion?:{heading:number;aim?:number;active:boolean;x?:number;y?:number;time?:number}){
   const rig=vehicleRig(root.name);if(!rig)return
@@ -68,5 +72,6 @@ export function animateVehicleGameplay(root:T.Object3D,time:number,motion?:{head
   if(motion?.x!==undefined)root.userData.vehicleMotion={x:motion.x,y:motion.y??0}
   const air=['CAS_FIGHTER','JET','ATTACK_HELI','HEAVY_LIFT_HELI'].includes(root.name),id=motion?.active===false?'idle':air?'fly':moving?'drive':'idle',clip=rig.clips.find(c=>c.id===id)||rig.clips[0]
   poseVehicleClip(root,clip.id,time%clip.duration)
+  updateVehicleEffects(root,clip.id,time,motion?.active)
   const turret=root.getObjectByName('turret');if(turret&&motion)turret.rotation.z=motion.heading-(motion.aim??motion.heading)
 }

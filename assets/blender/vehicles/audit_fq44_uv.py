@@ -1,4 +1,4 @@
-import bpy,math,json,os
+import bpy,math,json,os,sys
 def cross(a,b,c):return (b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0])
 def clip(poly,a,b):
     out=[]
@@ -15,7 +15,7 @@ for o in bpy.context.scene.objects:
     for t in o.data.loop_triangles:
         pts=[tuple(uv[i].uv) for i in t.loops]
         if cross(*pts)<0:pts.reverse()
-        j=len(tri);tri.append((o.name,pts))
+        j=len(tri);tri.append((o.name,pts,t.index,t.polygon_index))
         lo=[max(0,int(min(p[a] for p in pts)*40)) for a in [0,1]];hi=[min(39,int(max(p[a] for p in pts)*40)) for a in [0,1]]
         for x in range(lo[0],hi[0]+1):
             for y in range(lo[1],hi[1]+1):bins.setdefault((x,y),[]).append(j)
@@ -32,6 +32,9 @@ for ids in bins.values():
                 poly=clip(poly,pb[k],pb[(k+1)%3])
                 if len(poly)<3:break
             area=abs(sum(poly[k][0]*poly[(k+1)%len(poly)][1]-poly[(k+1)%len(poly)][0]*poly[k][1] for k in range(len(poly))))/2 if len(poly)>=3 else 0
-            if area>1e-10:bad.append({'objects':[tri[a][0],tri[b][0]],'area':area})
+            if area>1e-10:bad.append({'objects':[tri[a][0],tri[b][0]],'triangles':[tri[a][2],tri[b][2]],'polygons':[tri[a][3],tri[b][3]],'area':area})
 result={'uv_triangles':len(tri),'tested_pairs':len(seen),'overlap_pairs':len(bad),'overlap_area':sum(x['area'] for x in bad),'examples':bad[:30]}
 print('UV_AUDIT',json.dumps(result))
+if '--report-path' in sys.argv:
+    report_path=sys.argv[sys.argv.index('--report-path')+1]
+    with open(report_path,'w') as handle:json.dump(result,handle,indent=2)

@@ -13,7 +13,7 @@ test('Fury uses one 1024 atlas and keeps indexed vertices in budget', () => {
   let count = 0
   const maps = new Set<string>()
   model.traverse(object => {
-    if (!(object instanceof D.Mesh) || object.name === 'faction-band') return
+    if (!(object instanceof D.Mesh) || object.name === 'faction-band' || object.userData.vehicleEffect || object.userData.weaponAttachment) return
     const geometry = object.geometry, positions = geometry.getAttribute('position')
     count += positions.count
     assert.ok(geometry.index, object.name)
@@ -54,10 +54,10 @@ test('Babylon shares the atlas between fighter instances', () => {
     const scene = new D.Scene()
     scene.add(createBlenderVehicle('JET', 'BLU'), createBlenderVehicle('JET', 'RED'))
     runtime.sync(scene)
-    const materials = runtime.scene.materials.filter(m => m instanceof PBRMaterial && m.albedoTexture) as PBRMaterial[]
+    const materials = runtime.scene.materials.filter(m => m instanceof PBRMaterial && m.albedoTexture?.name.includes('fighter_albedo')) as PBRMaterial[]
     assert.equal(materials.length, 2)
     assert.equal(materials[0].albedoTexture, materials[1].albedoTexture)
     assert.equal(materials[0].albedoTexture!.gammaSpace, true)
-    assert.ok(runtime.scene.meshes.filter(m => m.name !== 'faction-band').every(m => m.isVerticesDataPresent('uv')))
+    assert.ok(runtime.scene.meshes.filter(m => m.name !== 'faction-band' && !m.name.startsWith('vehicle-fx-')).every(m => m.isVerticesDataPresent('uv')))
   } finally { runtime.dispose() }
 })

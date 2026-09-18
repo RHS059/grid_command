@@ -1,3 +1,4 @@
+import { createAircraftLoadout } from './aircraft-loadout'
 import { AIRBASES, BASES, CATALOG, isNaval, isAir, isArmored, isVehicle, troopSeats, type BattleState, type Point, type Role, type Side, type Stock, type Unit } from './types'
 import { distance, travel } from './movement'
 import type { Navigation } from './navigation'
@@ -94,6 +95,7 @@ export function serviceVehicle(state: BattleState, u: Unit, dt = DT) {
     u[gauge] = Math.min(100, u[gauge] + percent)
     if (u[gauge] < 99.99 && stock[resource] < .001) missing.push(resource)
   }
+  if (!objective && u.role === 'JET' && u.ammo >= 99.99) u.aircraftLoadout = createAircraftLoadout(u.role)
   const label = objective ? `OBJECTIVE ${objective.id}` : isAir(u.role) ? 'AIRFIELD' : 'MOB'
   u.serviceStatus = missing.length ? `WAITING FOR ${missing.join(' / ').toUpperCase()} AT ${label}` : objective ? `FORWARD REPAIR / REFUEL · ${label}` : 'REPAIR / REFUEL / RESTOCK'
   syncDepotTotals(state)

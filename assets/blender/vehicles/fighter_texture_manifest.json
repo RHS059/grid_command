@@ -1,0 +1,6 @@
+{
+  "uv_layout_sha256": "993eb220060a6be6781eb7c8768256651a6d441319581e71b2c4055c2c3d674f",
+  "geometry_json_sha256": "f8549b5f4b8692a278fbcb1b773cb4aa371370756e18f2cedcad462647b2ec6d",
+  "rig_sha256": "a939cb6804c548ff1e7fae088cf724fe65598d76ed7a8d0631b962cc8770344b",
+  "note": "The final texture is authored for this exact UV layout. Geometry and rig hashes are the pre-texture baseline."
+}

@@ -17,7 +17,7 @@ export const emptyStock = (): Stock => ({ fuel: 0, ammo: 0, repair: 0 })
 export const stockTotal = (s: Stock) => s.fuel + s.ammo + s.repair
 export interface Depot { airfield: Stock; pending: Stock; mob: Stock }
 export interface Missile { id: number; source: string; target: string; due: number; damage: number }
-export interface Casualty { id: string; side: Side; role: Role; soldier?: Soldier; x: number; y: number; heading: number; time: number; observed: Side[]; altitude: number }
+export interface Casualty { id: string; side: Side; role: Role; soldier?: Soldier; aircraftLoadout?: import('./aircraft-loadout').AircraftLoadoutState; x: number; y: number; heading: number; time: number; observed: Side[]; altitude: number }
 export type Perspective = Side | 'OBS'
 export type Role = 'PATROL_BOAT' | 'FRIGATE' | 'LANDING_CRAFT' | 'AMPHIBIOUS_APC' | 'RIFLE' | 'SCOUT' | 'MG' | 'AT' | 'MORTAR' | 'ENGINEER' | 'MEDIC' | 'LOGISTICS' | 'TANK' | 'PILOT' | 'COMMAND' | 'TRUCK' | 'RECON_UAV' | 'APC' | 'CANNON_APC' | 'IFV' | 'CAS_FIGHTER' | 'JET' | 'ATTACK_HELI' | 'FORKLIFT' | 'CARGO_PLANE' | 'UAV_JAMMER' | 'AA_TEAM' | 'TRANSPORT_HELI' | 'HEAVY_LIFT_HELI' | 'TROOP_TRUCK'
 export type Point = { x: number; y: number }
@@ -40,7 +40,7 @@ export interface Soldier extends Point { disembarked?: boolean; id: string; stat
 export interface GeometryFeature { key: string; water: boolean; rings: number[][][]; base?: number; roof?: number; elevation?: number }
 export interface TerrainGrid { x: number; y: number; step: number; width: number; height: number; values: number[] }
 export interface GeometryPacket { sector?: string; evict?: string; features: GeometryFeature[]; terrain: TerrainGrid; version: number; complete: boolean }
-export interface ShotEvent { id: number; time: number; unit: string; soldier?: string; side: Side; weapon: string; start: Vec3; end: Vec3; speed: number; size: number; blast: number; sound: string; spotted: boolean }
+export interface ShotEvent { hardpoint?: string; round?: number; id: number; time: number; unit: string; soldier?: string; side: Side; weapon: string; start: Vec3; end: Vec3; speed: number; size: number; blast: number; sound: string; spotted: boolean }
 export interface Smoke extends Vec3 { id: number; side: Side; time: number; expires: number; from: Vec3 }
 export const isAir = (r: Role) => ['RECON_UAV', 'CAS_FIGHTER', 'JET', 'ATTACK_HELI', 'CARGO_PLANE', 'TRANSPORT_HELI', 'HEAVY_LIFT_HELI'].includes(r)
 export const isNaval = (r: Role) => ['PATROL_BOAT','FRIGATE','LANDING_CRAFT','AMPHIBIOUS_APC'].includes(r)
@@ -49,6 +49,8 @@ export const isArmored = (r: Role) => ['TANK', 'APC', 'CANNON_APC', 'IFV','FRIGA
 export const troopSeats = (r: Role) => r === 'TRANSPORT_HELI' ? 24 : r === 'APC' ? 8 : r === 'TROOP_TRUCK' ? 7 : ['CANNON_APC', 'IFV'].includes(r) ? 6 : 0
 export const missionAsset = (r: Role) => ['FORKLIFT','CARGO_PLANE','UAV_JAMMER','TRANSPORT_HELI','HEAVY_LIFT_HELI','TROOP_TRUCK','TRUCK'].includes(r)
 export interface Unit extends Point {
+  aircraftLoadout?: import('./aircraft-loadout').AircraftLoadoutState
+  aircraftWeapon?: import('./aircraft-loadout').AircraftWeaponKind
   navalDirective?: import('./maritime-navigation').NavalDirective
   maritime?: { order?: import('./ai/model').Mission; occupants?: CarrierOccupant[]; revision: number; phase: string; waypoint: number; since: number; passengers: string[]; transition?: { squad: string; due: number }; destination?: Point }
   deceptionCharges?: number

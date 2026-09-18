@@ -1,0 +1,674 @@
+[
+  {
+    "name": "aileron_L_astra_r_4",
+    "part": "control_L",
+    "exported_vertices": 64,
+    "triangles": 60,
+    "source_vertices": 32
+  },
+  {
+    "name": "aileron_R_astra_r_4",
+    "part": "control_R",
+    "exported_vertices": 64,
+    "triangles": 60,
+    "source_vertices": 32
+  },
+  {
+    "name": "door_hinge_L_astra_r_4",
+    "part": "gear_L",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "door_link_L_astra_r_4",
+    "part": "gear_L",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "drag_brace_lower_L_astra_r_4",
+    "part": "gear_L",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "drag_brace_upper_L_astra_r_4",
+    "part": "gear_L",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "drag_link_pin_L_astra_r_4",
+    "part": "gear_L",
+    "exported_vertices": 60,
+    "triangles": 36,
+    "source_vertices": 20
+  },
+  {
+    "name": "fork_bridge_L_astra_r_4",
+    "part": "gear_L",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "fork_L-1_astra_r_4",
+    "part": "gear_L",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "fork_L1_astra_r_4",
+    "part": "gear_L",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "gear_door_L_astra_r_4",
+    "part": "gear_L",
+    "exported_vertices": 24,
+    "triangles": 12,
+    "source_vertices": 8
+  },
+  {
+    "name": "landing_oleo_L_astra_r_4",
+    "part": "gear_L",
+    "exported_vertices": 58,
+    "triangles": 52,
+    "source_vertices": 28
+  },
+  {
+    "name": "side_brace_L_astra_r_4",
+    "part": "gear_L",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "strut_collar_L_astra_r_4",
+    "part": "gear_L",
+    "exported_vertices": 58,
+    "triangles": 52,
+    "source_vertices": 28
+  },
+  {
+    "name": "tire_L_astra_r_4",
+    "part": "gear_L",
+    "exported_vertices": 292,
+    "triangles": 316,
+    "source_vertices": 160
+  },
+  {
+    "name": "wheel_axle_L-1_astra_r_4",
+    "part": "gear_L",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "wheel_axle_L1_astra_r_4",
+    "part": "gear_L",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "wheel_rim_L-1_astra_r_4",
+    "part": "gear_L",
+    "exported_vertices": 118,
+    "triangles": 108,
+    "source_vertices": 56
+  },
+  {
+    "name": "wheel_rim_L1_astra_r_4",
+    "part": "gear_L",
+    "exported_vertices": 118,
+    "triangles": 108,
+    "source_vertices": 56
+  },
+  {
+    "name": "door_hinge_N-1_astra_r_4",
+    "part": "gear_N",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "door_hinge_N1_astra_r_4",
+    "part": "gear_N",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "drag_brace_lower_N_astra_r_4",
+    "part": "gear_N",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "drag_brace_upper_N_astra_r_4",
+    "part": "gear_N",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "drag_link_pin_N_astra_r_4",
+    "part": "gear_N",
+    "exported_vertices": 60,
+    "triangles": 36,
+    "source_vertices": 20
+  },
+  {
+    "name": "fork_bridge_N_astra_r_4",
+    "part": "gear_N",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "fork_N-1_astra_r_4",
+    "part": "gear_N",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "fork_N1_astra_r_4",
+    "part": "gear_N",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "gear_door_N-1_astra_r_4",
+    "part": "gear_N",
+    "exported_vertices": 24,
+    "triangles": 12,
+    "source_vertices": 8
+  },
+  {
+    "name": "gear_door_N1_astra_r_4",
+    "part": "gear_N",
+    "exported_vertices": 24,
+    "triangles": 12,
+    "source_vertices": 8
+  },
+  {
+    "name": "landing_oleo_N_astra_r_4",
+    "part": "gear_N",
+    "exported_vertices": 58,
+    "triangles": 52,
+    "source_vertices": 28
+  },
+  {
+    "name": "strut_collar_N_astra_r_4",
+    "part": "gear_N",
+    "exported_vertices": 58,
+    "triangles": 52,
+    "source_vertices": 28
+  },
+  {
+    "name": "tire_N_astra_r_4",
+    "part": "gear_N",
+    "exported_vertices": 292,
+    "triangles": 316,
+    "source_vertices": 160
+  },
+  {
+    "name": "wheel_axle_N-1_astra_r_4",
+    "part": "gear_N",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "wheel_axle_N1_astra_r_4",
+    "part": "gear_N",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "wheel_rim_N-1_astra_r_4",
+    "part": "gear_N",
+    "exported_vertices": 118,
+    "triangles": 108,
+    "source_vertices": 56
+  },
+  {
+    "name": "wheel_rim_N1_astra_r_4",
+    "part": "gear_N",
+    "exported_vertices": 118,
+    "triangles": 108,
+    "source_vertices": 56
+  },
+  {
+    "name": "door_hinge_R_astra_r_4",
+    "part": "gear_R",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "door_link_R_astra_r_4",
+    "part": "gear_R",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "drag_brace_lower_R_astra_r_4",
+    "part": "gear_R",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "drag_brace_upper_R_astra_r_4",
+    "part": "gear_R",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "drag_link_pin_R_astra_r_4",
+    "part": "gear_R",
+    "exported_vertices": 60,
+    "triangles": 36,
+    "source_vertices": 20
+  },
+  {
+    "name": "fork_bridge_R_astra_r_4",
+    "part": "gear_R",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "fork_R-1_astra_r_4",
+    "part": "gear_R",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "fork_R1_astra_r_4",
+    "part": "gear_R",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "gear_door_R_astra_r_4",
+    "part": "gear_R",
+    "exported_vertices": 24,
+    "triangles": 12,
+    "source_vertices": 8
+  },
+  {
+    "name": "landing_oleo_R_astra_r_4",
+    "part": "gear_R",
+    "exported_vertices": 58,
+    "triangles": 52,
+    "source_vertices": 28
+  },
+  {
+    "name": "side_brace_R_astra_r_4",
+    "part": "gear_R",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "strut_collar_R_astra_r_4",
+    "part": "gear_R",
+    "exported_vertices": 58,
+    "triangles": 52,
+    "source_vertices": 28
+  },
+  {
+    "name": "tire_R_astra_r_4",
+    "part": "gear_R",
+    "exported_vertices": 292,
+    "triangles": 316,
+    "source_vertices": 160
+  },
+  {
+    "name": "wheel_axle_R-1_astra_r_4",
+    "part": "gear_R",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "wheel_axle_R1_astra_r_4",
+    "part": "gear_R",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "wheel_rim_R-1_astra_r_4",
+    "part": "gear_R",
+    "exported_vertices": 118,
+    "triangles": 108,
+    "source_vertices": 56
+  },
+  {
+    "name": "wheel_rim_R1_astra_r_4",
+    "part": "gear_R",
+    "exported_vertices": 118,
+    "triangles": 108,
+    "source_vertices": 56
+  },
+  {
+    "name": "dorsal_antenna_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 24,
+    "triangles": 12,
+    "source_vertices": 8
+  },
+  {
+    "name": "dorsal_antenna_astra_r_4.001",
+    "part": "hull",
+    "exported_vertices": 24,
+    "triangles": 12,
+    "source_vertices": 8
+  },
+  {
+    "name": "exhaust_recess_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 98,
+    "triangles": 92,
+    "source_vertices": 48
+  },
+  {
+    "name": "fixed_trunnion_L_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 56,
+    "triangles": 44,
+    "source_vertices": 24
+  },
+  {
+    "name": "fixed_trunnion_N_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 56,
+    "triangles": 44,
+    "source_vertices": 24
+  },
+  {
+    "name": "fixed_trunnion_R_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 56,
+    "triangles": 44,
+    "source_vertices": 24
+  },
+  {
+    "name": "fury_chined_fuselage_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 2604,
+    "triangles": 2232,
+    "source_vertices": 1118
+  },
+  {
+    "name": "main_wing_flap_L_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 64,
+    "triangles": 60,
+    "source_vertices": 32
+  },
+  {
+    "name": "main_wing_flap_R_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 64,
+    "triangles": 60,
+    "source_vertices": 32
+  },
+  {
+    "name": "main_wing_L_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 232,
+    "triangles": 316,
+    "source_vertices": 160
+  },
+  {
+    "name": "main_wing_R_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 232,
+    "triangles": 316,
+    "source_vertices": 160
+  },
+  {
+    "name": "main_wing_root_trailing_L_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 64,
+    "triangles": 60,
+    "source_vertices": 32
+  },
+  {
+    "name": "main_wing_root_trailing_R_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 64,
+    "triangles": 60,
+    "source_vertices": 32
+  },
+  {
+    "name": "main_wing_tip_trailing_L_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 52,
+    "triangles": 44,
+    "source_vertices": 24
+  },
+  {
+    "name": "main_wing_tip_trailing_R_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 52,
+    "triangles": 44,
+    "source_vertices": 24
+  },
+  {
+    "name": "nose_probe_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "paired_store_rack_L_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 96,
+    "triangles": 44,
+    "source_vertices": 24
+  },
+  {
+    "name": "paired_store_rack_R_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 96,
+    "triangles": 44,
+    "source_vertices": 24
+  },
+  {
+    "name": "probe_vane_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "rack_clamp_L0-1.44_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "rack_clamp_L0-1.9_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "rack_clamp_L1-1.44_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "rack_clamp_L1-1.9_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "rack_clamp_R0-1.44_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "rack_clamp_R0-1.9_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "rack_clamp_R1-1.44_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "rack_clamp_R1-1.9_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "sensor_dark_window_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 4,
+    "triangles": 2,
+    "source_vertices": 4
+  },
+  {
+    "name": "single_exhaust_nozzle_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 175,
+    "triangles": 192,
+    "source_vertices": 120
+  },
+  {
+    "name": "single_vertical_tail_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 168,
+    "triangles": 212,
+    "source_vertices": 108
+  },
+  {
+    "name": "tail_root_fairing_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 114,
+    "triangles": 116,
+    "source_vertices": 60
+  },
+  {
+    "name": "ventral_intake_depth_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 4,
+    "triangles": 2,
+    "source_vertices": 4
+  },
+  {
+    "name": "ventral_intake_lip_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 48,
+    "triangles": 24,
+    "source_vertices": 12
+  },
+  {
+    "name": "weapon_pylon_L_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 24,
+    "triangles": 12,
+    "source_vertices": 8
+  },
+  {
+    "name": "weapon_pylon_R_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 24,
+    "triangles": 12,
+    "source_vertices": 8
+  },
+  {
+    "name": "wing_hinge_fairing_L1.65_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 96,
+    "triangles": 92,
+    "source_vertices": 48
+  },
+  {
+    "name": "wing_hinge_fairing_L2.58_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 96,
+    "triangles": 92,
+    "source_vertices": 48
+  },
+  {
+    "name": "wing_hinge_fairing_R1.65_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 96,
+    "triangles": 92,
+    "source_vertices": 48
+  },
+  {
+    "name": "wing_hinge_fairing_R2.58_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 96,
+    "triangles": 92,
+    "source_vertices": 48
+  },
+  {
+    "name": "wingtip_navigation_L_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "wingtip_navigation_R_astra_r_4",
+    "part": "hull",
+    "exported_vertices": 36,
+    "triangles": 20,
+    "source_vertices": 12
+  },
+  {
+    "name": "elevator_L_astra_r_4",
+    "part": "tail_L",
+    "exported_vertices": 146,
+    "triangles": 176,
+    "source_vertices": 90
+  },
+  {
+    "name": "elevator_R_astra_r_4",
+    "part": "tail_R",
+    "exported_vertices": 146,
+    "triangles": 176,
+    "source_vertices": 90
+  }
+]

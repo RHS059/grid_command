@@ -26,6 +26,7 @@ export function UnitLab({ embedded = false, active = true, soundEngine }: { embe
   const clips=vehicleClips(model), clip=clips.find(c=>c.id===clipId)||clips[0]
   const scrub=(time:number)=>{setClipTime(time);setSeek(s=>({serial:s.serial+1,time}))}
   const [rotate, setRotate] = useState(false)
+  const [destroyed, setDestroyed] = useState(false)
   const [reset, setReset] = useState(0)
   const [soundPlaying, setSoundPlaying] = useState(false)
   const [soundSpeed, setSoundSpeed] = useState(.35)
@@ -49,7 +50,7 @@ export function UnitLab({ embedded = false, active = true, soundEngine }: { embe
 
   return <section className={`${styles.root}${embedded ? '' : ` ${styles.standalone}`}`} aria-label="Model Preview" hidden={!active}>
     {!embedded && <Link href="/" className={styles.returnLink}>GRID COMMAND <span>Return to battlefield</span></Link>}
-    <div className={styles.viewport}><ModelViewport model={model} side={side} active={active} animate={animate} rotate={rotate} action={action} stance={stance} condition={condition} reset={reset} clip={clip?.id} loop={clipLoop} seek={seek} onTime={setClipTime} /></div>
+    <div className={styles.viewport}><ModelViewport model={model} side={side} active={active} animate={animate} rotate={rotate} action={action} stance={stance} condition={condition} destroyed={!!vehicleRole && destroyed} reset={reset} clip={clip?.id} loop={clipLoop} seek={seek} onTime={setClipTime} /></div>
 
     <aside className={`${styles.card} ${styles.catalog}`} aria-label="Model catalog">
       <div className={styles.catalogHeader}><span>CATALOG</span><span>{MODEL_CATALOG.length} MODELS</span></div>
@@ -70,6 +71,7 @@ export function UnitLab({ embedded = false, active = true, soundEngine }: { embe
       <div className={styles.controlButtons}>
         <label className={styles.toggle}><input type="checkbox" checked={animate} onChange={event => setAnimate(event.target.checked)} /><span>Animate parts</span></label>
         <label className={styles.toggle}><input type="checkbox" checked={rotate} onChange={event => setRotate(event.target.checked)} /><span>Auto-rotate</span></label>
+        {vehicleRole && <label className={styles.toggle}><input type="checkbox" checked={destroyed} onChange={event => setDestroyed(event.target.checked)} /><span>Destroyed vehicle</span></label>}
         <button type="button" onClick={() => setReset(value => value + 1)}><RotateCcw size={13} /> Reset view</button>
       </div>
       {clip && <div className={styles.controlGroup} aria-label="Vehicle animations">

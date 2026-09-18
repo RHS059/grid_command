@@ -1,0 +1,188 @@
+{
+  "revision": "R4 body blockout",
+  "units": "Inferred model units. Body length is set to 10.8. These are not measured aircraft dimensions.",
+  "construction_order": [
+    "Side image plane and one connected vertex contour",
+    "Save side contour",
+    "Front image plane and one connected vertex contour",
+    "Align crown and belly datums; save both contours",
+    "Add plan widths from photos",
+    "Loft the new body"
+  ],
+  "source_vertices": 1040,
+  "source_faces": 1016,
+  "triangles": 2076,
+  "section_count": 40,
+  "vertices_per_section": 26,
+  "body_length": 10.8,
+  "body_max_half_width": 0.9806646617609023,
+  "crown_z": 2.0726614363307183,
+  "belly_z": 0.6778515389257695,
+  "landmarks": [
+    {
+      "landmark": "exhaust_plane",
+      "longitudinal_0_exhaust_1_nose": 0.0,
+      "height_over_body_length": 0.1424,
+      "half_width_over_body_length": 0.0341,
+      "position_Y": -5.4,
+      "position_Z": 1.5382,
+      "half_width_X": 0.3677,
+      "guide_pixel": [
+        111,
+        394
+      ],
+      "note": "rear opening centre"
+    },
+    {
+      "landmark": "tailplane_root",
+      "longitudinal_0_exhaust_1_nose": 0.1955,
+      "height_over_body_length": 0.1358,
+      "half_width_over_body_length": 0.0769,
+      "position_Y": -3.2882,
+      "position_Z": 1.4665,
+      "half_width_X": 0.8301,
+      "guide_pixel": [
+        435,
+        405
+      ],
+      "note": "forward root of the tailplane"
+    },
+    {
+      "landmark": "wing_trailing_root",
+      "longitudinal_0_exhaust_1_nose": 0.1967,
+      "height_over_body_length": 0.0978,
+      "half_width_over_body_length": 0.0771,
+      "position_Y": -3.2752,
+      "position_Z": 1.0559,
+      "half_width_X": 0.8324,
+      "guide_pixel": [
+        437,
+        468
+      ],
+      "note": "trailing wing root"
+    },
+    {
+      "landmark": "main_gear_station",
+      "longitudinal_0_exhaust_1_nose": 0.3259,
+      "height_over_body_length": 0.0646,
+      "half_width_over_body_length": 0.0894,
+      "position_Y": -1.8804,
+      "position_Z": 0.6974,
+      "half_width_X": 0.966,
+      "guide_pixel": [
+        651,
+        523
+      ],
+      "note": "gear support at the lower body"
+    },
+    {
+      "landmark": "intake_end",
+      "longitudinal_0_exhaust_1_nose": 0.3917,
+      "height_over_body_length": 0.0634,
+      "half_width_over_body_length": 0.0908,
+      "position_Y": -1.1699,
+      "position_Z": 0.6844,
+      "half_width_X": 0.9807,
+      "guide_pixel": [
+        760,
+        525
+      ],
+      "note": "aft lower-body intake boundary, inferred"
+    },
+    {
+      "landmark": "wing_leading_root",
+      "longitudinal_0_exhaust_1_nose": 0.5154,
+      "height_over_body_length": 0.1159,
+      "half_width_over_body_length": 0.0879,
+      "position_Y": 0.1662,
+      "position_Z": 1.2514,
+      "half_width_X": 0.9493,
+      "guide_pixel": [
+        965,
+        438
+      ],
+      "note": "leading wing root"
+    },
+    {
+      "landmark": "intake_start",
+      "longitudinal_0_exhaust_1_nose": 0.6874,
+      "height_over_body_length": 0.0815,
+      "half_width_over_body_length": 0.0708,
+      "position_Y": 2.0238,
+      "position_Z": 0.8799,
+      "half_width_X": 0.7649,
+      "guide_pixel": [
+        1250,
+        495
+      ],
+      "note": "forward lower-body intake boundary, inferred"
+    },
+    {
+      "landmark": "nose_gear_station",
+      "longitudinal_0_exhaust_1_nose": 0.6602,
+      "height_over_body_length": 0.0628,
+      "half_width_over_body_length": 0.0754,
+      "position_Y": 1.7305,
+      "position_Z": 0.6779,
+      "half_width_X": 0.814,
+      "guide_pixel": [
+        1205,
+        526
+      ],
+      "note": "nose gear support on the continuous flat belly"
+    },
+    {
+      "landmark": "sensor_canopy_peak",
+      "longitudinal_0_exhaust_1_nose": 0.8147,
+      "height_over_body_length": 0.1774,
+      "half_width_over_body_length": 0.049,
+      "position_Y": 3.399,
+      "position_Z": 1.9162,
+      "half_width_X": 0.5296,
+      "guide_pixel": [
+        1461,
+        336
+      ],
+      "note": "small unmanned sensor fairing"
+    },
+    {
+      "landmark": "nose_tip",
+      "longitudinal_0_exhaust_1_nose": 1.0,
+      "height_over_body_length": 0.1147,
+      "half_width_over_body_length": 0.0004,
+      "position_Y": 5.4,
+      "position_Z": 1.2384,
+      "half_width_X": 0.0039,
+      "guide_pixel": [
+        1768,
+        440
+      ],
+      "note": "body nose and probe attachment"
+    },
+    {
+      "landmark": "probe_root",
+      "longitudinal_0_exhaust_1_nose": 1.0,
+      "height_over_body_length": 0.1177,
+      "half_width_over_body_length": 0.0004,
+      "position_Y": 5.4,
+      "position_Z": 1.271,
+      "half_width_X": 0.0039,
+      "guide_pixel": [
+        1768,
+        435
+      ],
+      "note": "probe axis at the nose"
+    }
+  ],
+  "reference_checks": [
+    "Photo 1: wide lower chines and a broad flat belly. The front guide is aligned to the side crown and belly.",
+    "Photos 2 and 3: long forward wedge and low sensor fairing; nose gear aft of the nose shoulder.",
+    "Photos 4 and 5: shallow forward belly followed by angular lower-body transitions.",
+    "No R2 or R3 body mesh or section values were read by this script."
+  ],
+  "limits": [
+    "The generated front guide includes perspective-like overlap. Width and hidden underside shape remain inferred.",
+    "The guide notch near the nose gear was removed after comparison with the original photos. The lower body has a continuous flat run and an angled rise.",
+    "This file contains only the new body blockout. It is not a final model or export."
+  ]
+}

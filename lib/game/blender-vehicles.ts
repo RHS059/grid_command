@@ -1,3 +1,4 @@
+import { attachAircraftWeapons } from './aircraft-weapons'
 import * as T from './scene-data'
 import { assetPath } from '../asset-path'
 import { computeAngleNormals } from './geometry-normals'
@@ -11,6 +12,7 @@ import attack from './generated/vtol_attack.json'
 import { vehicleRig, poseVehicleClip } from './vehicle-animation'
 import cas from './generated/cas.json'
 import fighter from './generated/fighter.json'
+import { attachVehicleEffects } from './vehicle-effects'
 
 type Part = { q: string; n: number; s: number; i: string; palette: number[][]; indices?: number[]; uv?: number[]; normals?: number[]; texture?: string }
 type Asset = Record<string, Part>
@@ -120,6 +122,8 @@ export function createBlenderVehicle(role: Role, side: Side) {
     const mark=new T.Mesh(new T.BoxGeometry(role==='TROOP_TRUCK'?.45:.7,.035,.1),paint)
     mark.name='faction-band';mark.position.set(0,role==='TROOP_TRUCK'?2.09:role==='APC'?3.37:3.57,role==='TROOP_TRUCK'?.88:1.15);root.add(mark)
   }
+  attachVehicleEffects(root, role, side)
+  attachAircraftWeapons(root, role, geometry)
   return root
 }
 

@@ -1,0 +1,167 @@
+{
+  "uv_zero_area_triangles": 0,
+  "uv_occupied_fraction": 0.7133197784423828,
+  "uv_triangle_area_sum": 0.715912501220185,
+  "texture_dimensions": [
+    1024,
+    1024
+  ],
+  "texture_count": 1,
+  "material_count": 1,
+  "export_stored_vertices": 1338,
+  "runtime_indexed_vertices": 1338,
+  "triangles": 1216,
+  "blender_mesh_vertices": 628,
+  "mesh_objects": 10,
+  "gltf_material_count": 1,
+  "gltf_image_count": 1,
+  "gltf_texture_count": 1,
+  "animations": [],
+  "axis": "+Y forward, +Z up",
+  "reference_inference": "Dimensions and hidden structure are inferred from five perspective photographs.",
+  "source": "separate_fq44_weapons.py",
+  "budget_pass": true,
+  "representation": "Separate manufactured closed shells. Gear bays are cut into the body. One base-color image; scalar roughness and metalness. The nozzle and sensor window are open surfaces.",
+  "parts": [
+    "bomb",
+    "rocket_pod",
+    "rocket"
+  ],
+  "vertex_budget": [
+    {
+      "name": "standard_bomb_0",
+      "part": "bomb",
+      "exported_vertices": 198,
+      "triangles": 284,
+      "source_vertices": 144
+    },
+    {
+      "name": "standard_bomb_1",
+      "part": "bomb",
+      "exported_vertices": 24,
+      "triangles": 12,
+      "source_vertices": 8
+    },
+    {
+      "name": "standard_bomb_2",
+      "part": "bomb",
+      "exported_vertices": 24,
+      "triangles": 12,
+      "source_vertices": 8
+    },
+    {
+      "name": "standard_bomb_3",
+      "part": "bomb",
+      "exported_vertices": 24,
+      "triangles": 12,
+      "source_vertices": 8
+    },
+    {
+      "name": "pod_retaining_band_astra_r_4",
+      "part": "rocket_pod",
+      "exported_vertices": 98,
+      "triangles": 92,
+      "source_vertices": 48
+    },
+    {
+      "name": "pod_retaining_band_astra_r_4.001",
+      "part": "rocket_pod",
+      "exported_vertices": 98,
+      "triangles": 92,
+      "source_vertices": 48
+    },
+    {
+      "name": "standard_8_rocket_pod_astra_r_4",
+      "part": "rocket_pod",
+      "exported_vertices": 748,
+      "triangles": 596,
+      "source_vertices": 300
+    },
+    {
+      "name": "rocket_tail_fin_astra_r_4",
+      "part": "rocket",
+      "exported_vertices": 24,
+      "triangles": 12,
+      "source_vertices": 8
+    },
+    {
+      "name": "rocket_tail_fin_astra_r_4.001",
+      "part": "rocket",
+      "exported_vertices": 24,
+      "triangles": 12,
+      "source_vertices": 8
+    },
+    {
+      "name": "standard_rocket_astra_r_4",
+      "part": "rocket",
+      "exported_vertices": 76,
+      "triangles": 92,
+      "source_vertices": 48
+    }
+  ],
+  "launch_tubes_per_pod": 8,
+  "origin": "attachment centre",
+  "geometry_health": [
+    {
+      "name": "standard_bomb_0",
+      "zero_area_faces": 0,
+      "nonmanifold_edges": 0
+    },
+    {
+      "name": "standard_bomb_1",
+      "zero_area_faces": 0,
+      "nonmanifold_edges": 0
+    },
+    {
+      "name": "standard_bomb_2",
+      "zero_area_faces": 0,
+      "nonmanifold_edges": 0
+    },
+    {
+      "name": "standard_bomb_3",
+      "zero_area_faces": 0,
+      "nonmanifold_edges": 0
+    },
+    {
+      "name": "standard_8_rocket_pod_astra_r_4",
+      "zero_area_faces": 0,
+      "nonmanifold_edges": 0
+    },
+    {
+      "name": "pod_retaining_band_astra_r_4",
+      "zero_area_faces": 0,
+      "nonmanifold_edges": 0
+    },
+    {
+      "name": "pod_retaining_band_astra_r_4.001",
+      "zero_area_faces": 0,
+      "nonmanifold_edges": 0
+    },
+    {
+      "name": "standard_rocket_astra_r_4",
+      "zero_area_faces": 0,
+      "nonmanifold_edges": 0
+    },
+    {
+      "name": "rocket_tail_fin_astra_r_4",
+      "zero_area_faces": 0,
+      "nonmanifold_edges": 0
+    },
+    {
+      "name": "rocket_tail_fin_astra_r_4.001",
+      "zero_area_faces": 0,
+      "nonmanifold_edges": 0
+    }
+  ],
+  "launch_tube_floor_y": [
+    0.75,
+    0.75,
+    0.75,
+    0.75,
+    0.75,
+    0.75,
+    0.75,
+    0.75
+  ],
+  "eight_recesses_verified": true
+}

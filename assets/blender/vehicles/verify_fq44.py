@@ -1,8 +1,11 @@
 """Reimport the exact GLB and audit the delivered geometry in a clean scene."""
-import bpy,bmesh,os,json,math
+import bpy,bmesh,os,json,math,sys
 from mathutils import Vector,Matrix
+sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
+import fq44_normals_audit
 HERE=os.path.dirname(os.path.abspath(__file__))
 bpy.ops.wm.open_mainfile(filepath=os.path.join(HERE,'fighter.blend'))
+source_normals=fq44_normals_audit.snapshot(bpy.context.scene.objects)
 source_health=[]
 for o in bpy.context.scene.objects:
     if o.type!='MESH':continue
@@ -30,6 +33,7 @@ for o in meshes:
     bm.free()
 images={n.image for m in bpy.data.materials if m.use_nodes for n in m.node_tree.nodes if n.type=='TEX_IMAGE' and n.image}
 report=json.load(open(os.path.join(HERE,'fighter_verification.json')))
+report['normal_round_trip']=fq44_normals_audit.compare(source_normals,meshes)
 report['source_geometry']={'vertices':sum(h['vertices'] for h in source_health),'zero_area_faces':sum(h['zero_area_faces'] for h in source_health),'nonmanifold_edges':sum(h['nonmanifold_edges'] for h in source_health),'open_components':[h for h in source_health if h['nonmanifold_edges']>0]}
 report['round_trip']={'mesh_objects':len(meshes),'vertices':sum(len(o.data.vertices) for o in meshes),'materials':len({m for o in meshes for m in o.data.materials}),'image_sizes':[list(im.size) for im in images],'bounds_min':[min(v[i] for v in coords) for i in range(3)],'bounds_max':[max(v[i] for v in coords) for i in range(3)],'axis_note':'Undo standard glTF Y-up import conversion for the documented game Z-up export.','zero_area_faces':sum(h['zero_area_faces'] for h in health),'closed_negative_volume':[h['name'] for h in health if h['signed_volume'] is not None and h['signed_volume']<0],'intentional_open_surfaces':[h['name'] for h in health if h['boundary_edges']>0],'components':health}
 scene.render.engine='CYCLES';scene.cycles.samples=24;scene.render.resolution_x=1200;scene.render.resolution_y=900;scene.render.resolution_percentage=100;scene.render.image_settings.file_format='PNG';scene.view_settings.view_transform='AgX'
@@ -43,3 +47,5 @@ low=Vector((min(v.x for v in cc),min(v.y for v in cc),0));high=Vector((max(v.x f
 scene.render.filepath=os.path.join(HERE,'fighter_roundtrip.png');bpy.ops.render.render(write_still=True)
 with open(os.path.join(HERE,'fighter_verification.json'),'w') as f:json.dump(report,f,indent=2)
 print('ROUNDTRIP',json.dumps({k:v for k,v in report['round_trip'].items() if k!='components'}))
+print('NORMAL_ROUNDTRIP',json.dumps({k:v for k,v in report['normal_round_trip'].items() if k!='components'}))
+if not report['normal_round_trip']['pass']:raise RuntimeError('The GLB did not preserve source corner normals.')
