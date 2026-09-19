@@ -15,6 +15,7 @@ import { createObjectiveFacilities, objectiveFacilitySignature } from './objecti
 import { ModularBuildingRenderer } from './modular-building-renderer'
 import type { GeometryPacket } from './types'
 import { addBattlefieldLighting } from './scene-lighting'
+import { BattlefieldVehicleBreakup } from './vehicle-breakup-renderer'
 
 export class BattlefieldRenderer {
   private aircraftProjectiles = new Map<number,T.Mesh>()
@@ -35,6 +36,7 @@ export class BattlefieldRenderer {
   corpseBatches: Record<Side,SoldierBatch[]> = {BLU:[],RED:[]};
   aircraft=new Map<string,T.Group>();objectiveFacilities=new Map<string,T.Group>();bases:{model:T.Group;point:{x:number;y:number;id:string};elevation?:BaseElevation}[]=[];buildings:ModularBuildingRenderer
   ready:Promise<void>;scene=new T.Scene();camera=new T.Camera();transform=new T.Matrix4();dummy=new T.Object3D();groups=new Map<string,T.InstancedMesh>();soldiers:Record<Side,SoldierBatch>;effects=new Map<string,T.InstancedMesh>();combatLights:T.PointLight[]=[];disposed=false;previous=0;report=0;frames:number[]=[];ground=new Map<string,{x:number;y:number;z:number;time:number}>();snapshotTime=-1;arrival=0
+  readonly vehicleBreakup = new BattlefieldVehicleBreakup(this.scene)
   constructor(public map:GeographicMap,_canvas:HTMLCanvasElement|null,public getState:()=>BattleState,public getSettings:()=>{graphics:Graphics;perspective:Perspective;selected:string|null;active?:boolean},public onFPS:(n:number)=>void){
     const material=new T.MeshStandardMaterial({vertexColors:true,roughness:.85,metalness:.08,flatShading:false});this.soldiers={BLU:new SoldierBatch(this.scene,'BLU',material),RED:new SoldierBatch(this.scene,'RED',material)}
     addBattlefieldLighting(this.scene,1600)
@@ -69,6 +71,7 @@ export class BattlefieldRenderer {
     const nearby = (x: number, y: number, radius = 0) => Math.hypot(x - viewCenter.x, y - viewCenter.y) <= 1000 + radius
     this.frustum.setFromProjectionMatrix(this.camera.projectionMatrix)
     this.visibleUnits.clear()
+    this.vehicleBreakup.update(state,time,p=>this.altitude(p,now),c=>graphics.models&&(perspective==='OBS'||c.observed.includes(perspective))&&nearby(c.x,c.y,100),this.aircraft,graphics)
     for(const base of this.bases){
       const side = base.point.id.startsWith('BLU') ? 'BLU' : 'RED'
       const kind=base.model.name as 'MOB'|'AIRFIELD',tier=kind==='MOB'?mobTier(state,side):state.airfields[side].tier
@@ -92,10 +95,10 @@ export class BattlefieldRenderer {
       model.visible=graphics.models&&zoom>12&&(!terrain||!!base.elevation)&&(!performanceMode||nearby(point.x,point.y,model.name==='AIRFIELD'?650:Math.hypot(MOB_YARD.halfWidth,Math.max(Math.abs(MOB_YARD.minY),Math.abs(MOB_YARD.maxY)))))&&Math.hypot((lngLat(point)[0]-center.lng)*93650,(lngLat(point)[1]-center.lat)*111320)<3000;model.position.z=0;if(model.visible&&model.name==='MOB')animateMob(model,state,side,time)}
     const liveFacilities=new Set<string>()
     for(const objective of state.objectives){if(!Object.keys(objective.facilities||{}).length)continue;liveFacilities.add(objective.id);const signature=objectiveFacilitySignature(objective);let model=this.objectiveFacilities.get(objective.id);if(!model||model.userData.signature!==signature){if(model){this.scene.remove(model);disposeModel(model)}model=createObjectiveFacilities(objective);this.objectiveFacilities.set(objective.id,model);this.scene.add(model)}model.position.set(objective.x,objective.y,this.altitude({...objective,id:`objective-facility-${objective.id}`},now)+.08);model.visible=graphics.models&&zoom>12&&(!performanceMode||nearby(objective.x,objective.y,60))}for(const[id,model]of this.objectiveFacilities)if(!liveFacilities.has(id)){this.scene.remove(model);disposeModel(model);this.objectiveFacilities.delete(id)}
-    const liveAircraft=new Set([...state.units.filter(u=>isAir(u.role)||isSupportModel(u.role)).map(u=>u.id),...state.casualties.map(c=>`wreck-${c.id}`)]);for(const[id,model]of this.aircraft){if(!liveAircraft.has(id)){this.scene.remove(model);disposeModel(model);this.aircraft.delete(id)}else model.visible=false}
+    const liveAircraft=new Set([...state.units.filter(u=>u.hp>0&&(isAir(u.role)||isSupportModel(u.role))).map(u=>u.id),...state.casualties.filter(c=>!this.vehicleBreakup.has(c.id)).map(c=>`wreck-${c.id}`)]);for(const[id,model]of this.aircraft){if(!liveAircraft.has(id)){this.scene.remove(model);disposeModel(model);this.aircraft.delete(id)}else model.visible=false}
     for(const batches of Object.values(this.corpseBatches))for(const batch of batches)batch.begin()
     const corpseCounts={BLU:0,RED:0}
-    const visibleCasualties=!graphics.models?[]:state.casualties.filter(c=>(!performanceMode||zoom>12&&nearby(c.x,c.y))&&(perspective==='OBS'||c.observed.includes(perspective))).map(c=>({...c,id:`wreck-${c.id}`,hp:0,members:0,maxMembers:0,ammo:0,fuel:0,path:[],mission:'DESTROYED',target:'',name:'Wreck',kills:0,subcommand:'',firing:false,spotted:true,soldiers:c.soldier?[c.soldier]:[]} as Unit))
+    const visibleCasualties=!graphics.models?[]:state.casualties.filter(c=>!this.vehicleBreakup.has(c.id)&&(!performanceMode||zoom>12&&nearby(c.x,c.y))&&(perspective==='OBS'||c.observed.includes(perspective))).map(c=>({...c,id:`wreck-${c.id}`,hp:0,members:0,maxMembers:0,ammo:0,fuel:0,path:[],mission:'DESTROYED',target:'',name:'Wreck',kills:0,subcommand:'',firing:false,spotted:true,soldiers:c.soldier?[c.soldier]:[]} as Unit))
     const mountedActors = carrierActorIds(state)
     for(const u of !graphics.models?[]:[...state.units.filter(u=>(!u.carrier||u.soldiers?.some(s=>s.disembarked))&&(u.hp>0||u.soldiers?.some(s=>s.status==='downed'))),...visibleCasualties]){if(perspective!=='OBS'&&u.side!==perspective&&!u.spotted)continue;const ll=lngLat(u),dist=Math.hypot((ll[0]-center.lng)*93650,(ll[1]-center.lat)*111320);if((dist>(performanceMode?1000:1700)||performanceMode&&zoom<=12)&&u.id!==selected)continue;const z=isNaval(u.role)&&u.role!=='AMPHIBIOUS_APC'?0:this.altitude(u,now)
       // Culling affects presentation only; the worker retains every unit and casualty.
@@ -131,5 +134,5 @@ export class BattlefieldRenderer {
     this.soldiers.BLU.end(graphics.models);this.soldiers.RED.end(graphics.models);for(const[key,mesh]of this.groups){mesh.count=graphics.models?counts.get(key)||0:0;mesh.visible=mesh.count>0;if(mesh.count)mesh.instanceMatrix.needsUpdate=true}for(const[key,mesh]of this.effects){mesh.count=ec.get(key)||0;mesh.visible=mesh.count>0;if(mesh.count)mesh.instanceMatrix.needsUpdate=true}
     this.map.configure(graphics);if(!state.paused&&!state.winner&&!document.hidden)this.map.triggerRepaint();if(this.ground.size>1500)this.ground.clear()
   }
-  dispose(){if(this.disposed)return;this.disposed=true;this.map.off('sourcedata',this.terrainChanged);if(process.env.NODE_ENV==='development'){const debug=window as unknown as {gridDebug?:BattlefieldRenderer};if(debug.gridDebug===this)delete debug.gridDebug}this.map.detachBattlefield();this.soldiers.BLU.dispose();this.soldiers.RED.dispose();for(const batches of Object.values(this.corpseBatches))for(const batch of batches)batch.dispose();this.buildings.dispose();disposeModel(this.scene);this.aircraft.clear();this.aircraftProjectiles.clear();this.bases=[];this.ground.clear()}
+  dispose(){if(this.disposed)return;this.disposed=true;this.map.off('sourcedata',this.terrainChanged);if(process.env.NODE_ENV==='development'){const debug=window as unknown as {gridDebug?:BattlefieldRenderer};if(debug.gridDebug===this)delete debug.gridDebug}this.map.detachBattlefield();this.soldiers.BLU.dispose();this.soldiers.RED.dispose();for(const batches of Object.values(this.corpseBatches))for(const batch of batches)batch.dispose();this.buildings.dispose();this.vehicleBreakup.dispose();disposeModel(this.scene);this.aircraft.clear();this.aircraftProjectiles.clear();this.bases=[];this.ground.clear()}
 }

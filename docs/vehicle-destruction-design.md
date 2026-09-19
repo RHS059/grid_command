@@ -47,3 +47,51 @@ When a large section settles, allow physics sleep. Convert it to a static wreck 
 - Detached collision matches the remaining hull.
 - Debris settles and returns to its pool.
 - Several simultaneous large explosions remain within the CPU, GPU, memory, and physics budgets.
+
+## Implemented physical budgets
+
+`VehicleBreakupSystem` uses fixed 1/60-second integration steps and caps catch-up at six steps per update. Its collision is presentation physics with conservative rotating box bounds, terrain contacts, and bounded section contacts. It does not replace the simulation's unit or projectile collision rules.
+
+| Resource or work | Default bound |
+| --- | ---: |
+| Live breakup events | 16 |
+| Authored sections retained per event | 20 |
+| Selected moving sections per event | 4–12; 8 by default |
+| Active colliding sections across all events | 48 |
+| Section releases per render update, including static overload fallback | 2 |
+| Cosmetic shards requested per event | 16–48; 24 by default |
+| Cosmetic shards across all events | 256 |
+| Cosmetic shard lifetime | 2.5 simulated seconds |
+| Quiet speed / quiet duration before sleep | 0.35 units/second / 0.6 seconds |
+| Forced dynamic-to-static deadline | 12 simulated seconds |
+| Wreck expiry | 45 simulated seconds |
+| Retained body / cosmetic record pools | 320 / 256 |
+
+Sections that cannot enter the active-body budget become static wreck sections. Cosmetic shards follow noncolliding analytic trajectories. Once an event starts releasing sections, its intact collider flag is disabled and the remaining section colliders are exposed individually. Reducing destruction cannot restore that intact collider or reattach a section. Zero destruction releases nothing; full destruction eventually leaves no attached section. Physical wreck visibility is separate from the material's zero-to-one removal control.
+
+The two-release budget applies globally, so the worst-case queue of 16 events with 20 sections takes 160 render updates to drain (about 2.67 seconds at 60 updates/second). A frame hitch does not bypass this release limit. Returning records and visual trees to their pools intentionally retains bounded reusable storage rather than requiring heap usage to return to zero.
+
+## Repeatable validation
+
+Run the acceptance suite with:
+
+```text
+npx tsx --test tests/vehicle-breakup.test.ts tests/destroyed-vehicle.test.ts tests/vehicle-animation.test.ts tests/vehicle-effects.test.ts
+```
+
+The breakup tests cover seed-repeatable selection and motion, zero/full destruction, monotonic detachment, velocity inheritance, global body and shard caps, bounded release work, frame partitioning and hitch handling, terrain contacts, early sleep, forced settling, expiry, repeated overflow, and body/shard/visual pool reuse. Tests also play every TANK and JET animation clip after fracture and verify that the independent fracture transforms cannot be reset by live animation. Existing material tests cover exact destruction endpoints, local damage binding, and shared shadow clipping material.
+
+Run the CPU-only profile with:
+
+```text
+node --expose-gc --import tsx tests/vehicle-breakup-profile.ts
+```
+
+Measured on 2026-09-18 using Windows x64, Node v24.19.0, and an Intel Core i9-12900K. Each scenario warms up three times, then measures seven 10-second simulations at 60 updates/second (4,200 measured updates). Every event requests 12 moving sections and 48 cosmetic shards from 20 authored sections. Cleanup is verified after the timed active window. Advisory controller targets are p95 below 1 ms and p99 below 2 ms on this host; timings are reported rather than used as fragile unit-test assertions.
+
+| Simultaneous events | Begin mean | Update mean | Update p95 | Update p99 | Update max | Peak bodies / shards |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 0.1104 ms | 0.0059 ms | 0.0108 ms | 0.0444 ms | 0.9376 ms | 12 / 48 |
+| 16 | 0.4453 ms | 0.3173 ms | 0.6106 ms | 0.8564 ms | 2.8634 ms | 48 / 256 |
+
+Both scenarios expired all live events, colliders, and shards. Their retained pools contained respectively 20/48 and 320/256 body/shard records. These measurements cover the controller only: geometry preparation, scene synchronization, renderer allocations, draw calls, shadows, GPU time, and full-game frame time are excluded. Render performance and visual agreement of holes, shadows, and picking require a browser capture on representative hardware before claiming a whole-frame or GPU budget.
