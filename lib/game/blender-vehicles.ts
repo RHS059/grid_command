@@ -15,6 +15,8 @@ import fighter from './generated/fighter.json'
 import { attachVehicleEffects } from './vehicle-effects'
 
 type Part = { q: string; n: number; s: number; i: string; palette: number[][]; indices?: number[]; uv?: number[]; normals?: number[]; texture?: string }
+export type PackedVehiclePart = Part
+export { geometry as decodeVehicleGeometry }
 type Asset = Record<string, Part>
 const assets: Partial<Record<Role, Asset>> = {
   TANK: tank, TROOP_TRUCK: troop, APC: apc, HEAVY_LIFT_HELI: cargo,

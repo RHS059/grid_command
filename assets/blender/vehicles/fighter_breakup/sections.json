@@ -1,0 +1,1205 @@
+{
+  "version": 1,
+  "asset": "FQ-44 Fury R4",
+  "axis": "+Y forward, +Z up",
+  "sourceGlbSha256": "69293e6d20ff8128352c823832ec892c9bfdfc48d3ede0a1bfd4e76dced3b2fc",
+  "atlasSha256": "1341a9f08619117c4f105d3afd1ea552dc430884f933b77aef69450aaebb77c1",
+  "sections": [
+    {
+      "id": "nose",
+      "node": "BreakSection_nose",
+      "anchorSection": "center",
+      "pivot": [
+        0.0,
+        4.265000057220459,
+        1.4111764472836539
+      ],
+      "massFraction": 0.12,
+      "collider": {
+        "halfExtents": [
+          0.7045385241508484,
+          1.8650001287460327,
+          0.5253586769104004
+        ],
+        "radius": 2.0616987538533413
+      },
+      "detachThreshold": 0.52,
+      "ranges": [
+        {
+          "objectName": "nose__fury_chined_fuselage_astra_r_4",
+          "sourceObject": "fury_chined_fuselage_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 0,
+          "vertexCount": 948,
+          "indexStart": 0,
+          "indexCount": 2514
+        },
+        {
+          "objectName": "nose__nose_probe_astra_r_4",
+          "sourceObject": "nose_probe_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 948,
+          "vertexCount": 36,
+          "indexStart": 2514,
+          "indexCount": 60
+        },
+        {
+          "objectName": "nose__probe_vane_astra_r_4",
+          "sourceObject": "probe_vane_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 984,
+          "vertexCount": 36,
+          "indexStart": 2574,
+          "indexCount": 60
+        },
+        {
+          "objectName": "nose__sensor_dark_window_astra_r_4",
+          "sourceObject": "sensor_dark_window_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 1020,
+          "vertexCount": 4,
+          "indexStart": 2634,
+          "indexCount": 6
+        }
+      ],
+      "sourceObjects": [
+        "fury_chined_fuselage_astra_r_4",
+        "nose_probe_astra_r_4",
+        "probe_vane_astra_r_4",
+        "sensor_dark_window_astra_r_4"
+      ]
+    },
+    {
+      "id": "wing_L",
+      "node": "BreakSection_wing_L",
+      "anchorSection": "center",
+      "pivot": [
+        -2.0250000059604645,
+        -1.554000049829483,
+        1.0239991247653961
+      ],
+      "massFraction": 0.105,
+      "collider": {
+        "halfExtents": [
+          1.2350000739097595,
+          1.721000075340271,
+          0.35399913787841797
+        ],
+        "radius": 2.1476456484944144
+      },
+      "detachThreshold": 0.42,
+      "ranges": [
+        {
+          "objectName": "wing_L__aileron_L_astra_r_4",
+          "sourceObject": "aileron_L_astra_r_4",
+          "sourcePart": "control_L",
+          "vertexStart": 0,
+          "vertexCount": 64,
+          "indexStart": 0,
+          "indexCount": 180
+        },
+        {
+          "objectName": "wing_L__main_wing_flap_L_astra_r_4",
+          "sourceObject": "main_wing_flap_L_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 64,
+          "vertexCount": 64,
+          "indexStart": 180,
+          "indexCount": 180
+        },
+        {
+          "objectName": "wing_L__main_wing_L_astra_r_4",
+          "sourceObject": "main_wing_L_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 128,
+          "vertexCount": 232,
+          "indexStart": 360,
+          "indexCount": 948
+        },
+        {
+          "objectName": "wing_L__main_wing_root_trailing_L_astra_r_4",
+          "sourceObject": "main_wing_root_trailing_L_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 360,
+          "vertexCount": 64,
+          "indexStart": 1308,
+          "indexCount": 180
+        },
+        {
+          "objectName": "wing_L__main_wing_tip_trailing_L_astra_r_4",
+          "sourceObject": "main_wing_tip_trailing_L_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 424,
+          "vertexCount": 52,
+          "indexStart": 1488,
+          "indexCount": 132
+        },
+        {
+          "objectName": "wing_L__paired_store_rack_L_astra_r_4",
+          "sourceObject": "paired_store_rack_L_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 476,
+          "vertexCount": 96,
+          "indexStart": 1620,
+          "indexCount": 132
+        },
+        {
+          "objectName": "wing_L__rack_clamp_L0-1.44_astra_r_4",
+          "sourceObject": "rack_clamp_L0-1.44_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 572,
+          "vertexCount": 36,
+          "indexStart": 1752,
+          "indexCount": 60
+        },
+        {
+          "objectName": "wing_L__rack_clamp_L0-1.9_astra_r_4",
+          "sourceObject": "rack_clamp_L0-1.9_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 608,
+          "vertexCount": 36,
+          "indexStart": 1812,
+          "indexCount": 60
+        },
+        {
+          "objectName": "wing_L__rack_clamp_L1-1.44_astra_r_4",
+          "sourceObject": "rack_clamp_L1-1.44_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 644,
+          "vertexCount": 36,
+          "indexStart": 1872,
+          "indexCount": 60
+        },
+        {
+          "objectName": "wing_L__rack_clamp_L1-1.9_astra_r_4",
+          "sourceObject": "rack_clamp_L1-1.9_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 680,
+          "vertexCount": 36,
+          "indexStart": 1932,
+          "indexCount": 60
+        },
+        {
+          "objectName": "wing_L__weapon_pylon_L_astra_r_4",
+          "sourceObject": "weapon_pylon_L_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 716,
+          "vertexCount": 24,
+          "indexStart": 1992,
+          "indexCount": 36
+        },
+        {
+          "objectName": "wing_L__wing_hinge_fairing_L1.65_astra_r_4",
+          "sourceObject": "wing_hinge_fairing_L1.65_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 740,
+          "vertexCount": 96,
+          "indexStart": 2028,
+          "indexCount": 276
+        },
+        {
+          "objectName": "wing_L__wing_hinge_fairing_L2.58_astra_r_4",
+          "sourceObject": "wing_hinge_fairing_L2.58_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 836,
+          "vertexCount": 96,
+          "indexStart": 2304,
+          "indexCount": 276
+        },
+        {
+          "objectName": "wing_L__wingtip_navigation_L_astra_r_4",
+          "sourceObject": "wingtip_navigation_L_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 932,
+          "vertexCount": 36,
+          "indexStart": 2580,
+          "indexCount": 60
+        }
+      ],
+      "sourceObjects": [
+        "aileron_L_astra_r_4",
+        "main_wing_L_astra_r_4",
+        "main_wing_flap_L_astra_r_4",
+        "main_wing_root_trailing_L_astra_r_4",
+        "main_wing_tip_trailing_L_astra_r_4",
+        "paired_store_rack_L_astra_r_4",
+        "rack_clamp_L0-1.44_astra_r_4",
+        "rack_clamp_L0-1.9_astra_r_4",
+        "rack_clamp_L1-1.44_astra_r_4",
+        "rack_clamp_L1-1.9_astra_r_4",
+        "weapon_pylon_L_astra_r_4",
+        "wing_hinge_fairing_L1.65_astra_r_4",
+        "wing_hinge_fairing_L2.58_astra_r_4",
+        "wingtip_navigation_L_astra_r_4"
+      ]
+    },
+    {
+      "id": "wing_R",
+      "node": "BreakSection_wing_R",
+      "anchorSection": "center",
+      "pivot": [
+        2.0250000059604645,
+        -1.554000049829483,
+        1.0239991247653961
+      ],
+      "massFraction": 0.105,
+      "collider": {
+        "halfExtents": [
+          1.2350000739097595,
+          1.721000075340271,
+          0.35399913787841797
+        ],
+        "radius": 2.1476456484944144
+      },
+      "detachThreshold": 0.42,
+      "ranges": [
+        {
+          "objectName": "wing_R__aileron_R_astra_r_4",
+          "sourceObject": "aileron_R_astra_r_4",
+          "sourcePart": "control_R",
+          "vertexStart": 0,
+          "vertexCount": 64,
+          "indexStart": 0,
+          "indexCount": 180
+        },
+        {
+          "objectName": "wing_R__main_wing_flap_R_astra_r_4",
+          "sourceObject": "main_wing_flap_R_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 64,
+          "vertexCount": 64,
+          "indexStart": 180,
+          "indexCount": 180
+        },
+        {
+          "objectName": "wing_R__main_wing_R_astra_r_4",
+          "sourceObject": "main_wing_R_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 128,
+          "vertexCount": 232,
+          "indexStart": 360,
+          "indexCount": 948
+        },
+        {
+          "objectName": "wing_R__main_wing_root_trailing_R_astra_r_4",
+          "sourceObject": "main_wing_root_trailing_R_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 360,
+          "vertexCount": 64,
+          "indexStart": 1308,
+          "indexCount": 180
+        },
+        {
+          "objectName": "wing_R__main_wing_tip_trailing_R_astra_r_4",
+          "sourceObject": "main_wing_tip_trailing_R_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 424,
+          "vertexCount": 52,
+          "indexStart": 1488,
+          "indexCount": 132
+        },
+        {
+          "objectName": "wing_R__paired_store_rack_R_astra_r_4",
+          "sourceObject": "paired_store_rack_R_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 476,
+          "vertexCount": 96,
+          "indexStart": 1620,
+          "indexCount": 132
+        },
+        {
+          "objectName": "wing_R__rack_clamp_R0-1.44_astra_r_4",
+          "sourceObject": "rack_clamp_R0-1.44_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 572,
+          "vertexCount": 36,
+          "indexStart": 1752,
+          "indexCount": 60
+        },
+        {
+          "objectName": "wing_R__rack_clamp_R0-1.9_astra_r_4",
+          "sourceObject": "rack_clamp_R0-1.9_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 608,
+          "vertexCount": 36,
+          "indexStart": 1812,
+          "indexCount": 60
+        },
+        {
+          "objectName": "wing_R__rack_clamp_R1-1.44_astra_r_4",
+          "sourceObject": "rack_clamp_R1-1.44_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 644,
+          "vertexCount": 36,
+          "indexStart": 1872,
+          "indexCount": 60
+        },
+        {
+          "objectName": "wing_R__rack_clamp_R1-1.9_astra_r_4",
+          "sourceObject": "rack_clamp_R1-1.9_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 680,
+          "vertexCount": 36,
+          "indexStart": 1932,
+          "indexCount": 60
+        },
+        {
+          "objectName": "wing_R__weapon_pylon_R_astra_r_4",
+          "sourceObject": "weapon_pylon_R_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 716,
+          "vertexCount": 24,
+          "indexStart": 1992,
+          "indexCount": 36
+        },
+        {
+          "objectName": "wing_R__wing_hinge_fairing_R1.65_astra_r_4",
+          "sourceObject": "wing_hinge_fairing_R1.65_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 740,
+          "vertexCount": 96,
+          "indexStart": 2028,
+          "indexCount": 276
+        },
+        {
+          "objectName": "wing_R__wing_hinge_fairing_R2.58_astra_r_4",
+          "sourceObject": "wing_hinge_fairing_R2.58_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 836,
+          "vertexCount": 96,
+          "indexStart": 2304,
+          "indexCount": 276
+        },
+        {
+          "objectName": "wing_R__wingtip_navigation_R_astra_r_4",
+          "sourceObject": "wingtip_navigation_R_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 932,
+          "vertexCount": 36,
+          "indexStart": 2580,
+          "indexCount": 60
+        }
+      ],
+      "sourceObjects": [
+        "aileron_R_astra_r_4",
+        "main_wing_R_astra_r_4",
+        "main_wing_flap_R_astra_r_4",
+        "main_wing_root_trailing_R_astra_r_4",
+        "main_wing_tip_trailing_R_astra_r_4",
+        "paired_store_rack_R_astra_r_4",
+        "rack_clamp_R0-1.44_astra_r_4",
+        "rack_clamp_R0-1.9_astra_r_4",
+        "rack_clamp_R1-1.44_astra_r_4",
+        "rack_clamp_R1-1.9_astra_r_4",
+        "weapon_pylon_R_astra_r_4",
+        "wing_hinge_fairing_R1.65_astra_r_4",
+        "wing_hinge_fairing_R2.58_astra_r_4",
+        "wingtip_navigation_R_astra_r_4"
+      ]
+    },
+    {
+      "id": "tail",
+      "node": "BreakSection_tail",
+      "anchorSection": "engine",
+      "pivot": [
+        0.0,
+        -4.049999952316284,
+        2.329162359237671
+      ],
+      "massFraction": 0.08,
+      "collider": {
+        "halfExtents": [
+          1.4299999475479126,
+          1.2399998903274536,
+          0.9058375358581543
+        ],
+        "radius": 2.098342493342949
+      },
+      "detachThreshold": 0.36,
+      "ranges": [
+        {
+          "objectName": "tail__elevator_L_astra_r_4",
+          "sourceObject": "elevator_L_astra_r_4",
+          "sourcePart": "tail_L",
+          "vertexStart": 0,
+          "vertexCount": 146,
+          "indexStart": 0,
+          "indexCount": 528
+        },
+        {
+          "objectName": "tail__elevator_R_astra_r_4",
+          "sourceObject": "elevator_R_astra_r_4",
+          "sourcePart": "tail_R",
+          "vertexStart": 146,
+          "vertexCount": 146,
+          "indexStart": 528,
+          "indexCount": 528
+        },
+        {
+          "objectName": "tail__single_vertical_tail_astra_r_4",
+          "sourceObject": "single_vertical_tail_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 292,
+          "vertexCount": 168,
+          "indexStart": 1056,
+          "indexCount": 636
+        },
+        {
+          "objectName": "tail__tail_root_fairing_astra_r_4",
+          "sourceObject": "tail_root_fairing_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 460,
+          "vertexCount": 114,
+          "indexStart": 1692,
+          "indexCount": 348
+        }
+      ],
+      "sourceObjects": [
+        "elevator_L_astra_r_4",
+        "elevator_R_astra_r_4",
+        "single_vertical_tail_astra_r_4",
+        "tail_root_fairing_astra_r_4"
+      ]
+    },
+    {
+      "id": "engine",
+      "node": "BreakSection_engine",
+      "anchorSection": "center",
+      "pivot": [
+        0.0,
+        -4.384999942779541,
+        1.3693833033618878
+      ],
+      "massFraction": 0.2,
+      "collider": {
+        "halfExtents": [
+          0.8493204712867737,
+          1.2350000143051147,
+          0.6295599639415741
+        ],
+        "radius": 1.625704784540704
+      },
+      "detachThreshold": 0.68,
+      "ranges": [
+        {
+          "objectName": "engine__exhaust_recess_astra_r_4",
+          "sourceObject": "exhaust_recess_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 0,
+          "vertexCount": 98,
+          "indexStart": 0,
+          "indexCount": 276
+        },
+        {
+          "objectName": "engine__fury_chined_fuselage_astra_r_4",
+          "sourceObject": "fury_chined_fuselage_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 98,
+          "vertexCount": 635,
+          "indexStart": 276,
+          "indexCount": 1710
+        },
+        {
+          "objectName": "engine__single_exhaust_nozzle_astra_r_4",
+          "sourceObject": "single_exhaust_nozzle_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 733,
+          "vertexCount": 175,
+          "indexStart": 1986,
+          "indexCount": 576
+        }
+      ],
+      "sourceObjects": [
+        "exhaust_recess_astra_r_4",
+        "fury_chined_fuselage_astra_r_4",
+        "single_exhaust_nozzle_astra_r_4"
+      ]
+    },
+    {
+      "id": "center",
+      "node": "BreakSection_center",
+      "anchorSection": null,
+      "pivot": [
+        0.0,
+        -0.3750000000000002,
+        1.3455768525600433
+      ],
+      "massFraction": 0.3,
+      "collider": {
+        "halfExtents": [
+          0.9806646704673767,
+          2.7750000953674316,
+          0.8955768346786499
+        ],
+        "radius": 3.076424319239005
+      },
+      "detachThreshold": 1.0,
+      "ranges": [
+        {
+          "objectName": "center__dorsal_antenna_astra_r_4",
+          "sourceObject": "dorsal_antenna_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 0,
+          "vertexCount": 24,
+          "indexStart": 0,
+          "indexCount": 36
+        },
+        {
+          "objectName": "center__dorsal_antenna_astra_r_4.001",
+          "sourceObject": "dorsal_antenna_astra_r_4.001",
+          "sourcePart": "hull",
+          "vertexStart": 24,
+          "vertexCount": 24,
+          "indexStart": 36,
+          "indexCount": 36
+        },
+        {
+          "objectName": "center__fury_chined_fuselage_astra_r_4",
+          "sourceObject": "fury_chined_fuselage_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 48,
+          "vertexCount": 1503,
+          "indexStart": 72,
+          "indexCount": 3768
+        },
+        {
+          "objectName": "center__ventral_intake_depth_astra_r_4",
+          "sourceObject": "ventral_intake_depth_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 1551,
+          "vertexCount": 4,
+          "indexStart": 3840,
+          "indexCount": 6
+        },
+        {
+          "objectName": "center__ventral_intake_lip_astra_r_4",
+          "sourceObject": "ventral_intake_lip_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 1555,
+          "vertexCount": 48,
+          "indexStart": 3846,
+          "indexCount": 72
+        }
+      ],
+      "sourceObjects": [
+        "dorsal_antenna_astra_r_4",
+        "dorsal_antenna_astra_r_4.001",
+        "fury_chined_fuselage_astra_r_4",
+        "ventral_intake_depth_astra_r_4",
+        "ventral_intake_lip_astra_r_4"
+      ]
+    },
+    {
+      "id": "gear_N",
+      "node": "BreakSection_gear_N",
+      "anchorSection": "center",
+      "pivot": [
+        0.0,
+        1.720476746559143,
+        0.47450000047683716
+      ],
+      "massFraction": 0.02,
+      "collider": {
+        "halfExtents": [
+          0.27316293120384216,
+          0.38999998569488525,
+          0.47450000047683716
+        ],
+        "radius": 0.6722114446202208
+      },
+      "detachThreshold": 0.26,
+      "ranges": [
+        {
+          "objectName": "gear_N__door_hinge_N-1_astra_r_4",
+          "sourceObject": "door_hinge_N-1_astra_r_4",
+          "sourcePart": "gear_N",
+          "vertexStart": 0,
+          "vertexCount": 36,
+          "indexStart": 0,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_N__door_hinge_N1_astra_r_4",
+          "sourceObject": "door_hinge_N1_astra_r_4",
+          "sourcePart": "gear_N",
+          "vertexStart": 36,
+          "vertexCount": 36,
+          "indexStart": 60,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_N__drag_brace_lower_N_astra_r_4",
+          "sourceObject": "drag_brace_lower_N_astra_r_4",
+          "sourcePart": "gear_N",
+          "vertexStart": 72,
+          "vertexCount": 36,
+          "indexStart": 120,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_N__drag_brace_upper_N_astra_r_4",
+          "sourceObject": "drag_brace_upper_N_astra_r_4",
+          "sourcePart": "gear_N",
+          "vertexStart": 108,
+          "vertexCount": 36,
+          "indexStart": 180,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_N__drag_link_pin_N_astra_r_4",
+          "sourceObject": "drag_link_pin_N_astra_r_4",
+          "sourcePart": "gear_N",
+          "vertexStart": 144,
+          "vertexCount": 60,
+          "indexStart": 240,
+          "indexCount": 108
+        },
+        {
+          "objectName": "gear_N__fixed_trunnion_N_astra_r_4",
+          "sourceObject": "fixed_trunnion_N_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 204,
+          "vertexCount": 56,
+          "indexStart": 348,
+          "indexCount": 132
+        },
+        {
+          "objectName": "gear_N__fork_bridge_N_astra_r_4",
+          "sourceObject": "fork_bridge_N_astra_r_4",
+          "sourcePart": "gear_N",
+          "vertexStart": 260,
+          "vertexCount": 36,
+          "indexStart": 480,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_N__fork_N-1_astra_r_4",
+          "sourceObject": "fork_N-1_astra_r_4",
+          "sourcePart": "gear_N",
+          "vertexStart": 296,
+          "vertexCount": 36,
+          "indexStart": 540,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_N__fork_N1_astra_r_4",
+          "sourceObject": "fork_N1_astra_r_4",
+          "sourcePart": "gear_N",
+          "vertexStart": 332,
+          "vertexCount": 36,
+          "indexStart": 600,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_N__gear_door_N-1_astra_r_4",
+          "sourceObject": "gear_door_N-1_astra_r_4",
+          "sourcePart": "gear_N",
+          "vertexStart": 368,
+          "vertexCount": 24,
+          "indexStart": 660,
+          "indexCount": 36
+        },
+        {
+          "objectName": "gear_N__gear_door_N1_astra_r_4",
+          "sourceObject": "gear_door_N1_astra_r_4",
+          "sourcePart": "gear_N",
+          "vertexStart": 392,
+          "vertexCount": 24,
+          "indexStart": 696,
+          "indexCount": 36
+        },
+        {
+          "objectName": "gear_N__landing_oleo_N_astra_r_4",
+          "sourceObject": "landing_oleo_N_astra_r_4",
+          "sourcePart": "gear_N",
+          "vertexStart": 416,
+          "vertexCount": 58,
+          "indexStart": 732,
+          "indexCount": 156
+        },
+        {
+          "objectName": "gear_N__strut_collar_N_astra_r_4",
+          "sourceObject": "strut_collar_N_astra_r_4",
+          "sourcePart": "gear_N",
+          "vertexStart": 474,
+          "vertexCount": 58,
+          "indexStart": 888,
+          "indexCount": 156
+        },
+        {
+          "objectName": "gear_N__tire_N_astra_r_4",
+          "sourceObject": "tire_N_astra_r_4",
+          "sourcePart": "gear_N",
+          "vertexStart": 532,
+          "vertexCount": 292,
+          "indexStart": 1044,
+          "indexCount": 948
+        },
+        {
+          "objectName": "gear_N__wheel_axle_N-1_astra_r_4",
+          "sourceObject": "wheel_axle_N-1_astra_r_4",
+          "sourcePart": "gear_N",
+          "vertexStart": 824,
+          "vertexCount": 36,
+          "indexStart": 1992,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_N__wheel_axle_N1_astra_r_4",
+          "sourceObject": "wheel_axle_N1_astra_r_4",
+          "sourcePart": "gear_N",
+          "vertexStart": 860,
+          "vertexCount": 36,
+          "indexStart": 2052,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_N__wheel_rim_N-1_astra_r_4",
+          "sourceObject": "wheel_rim_N-1_astra_r_4",
+          "sourcePart": "gear_N",
+          "vertexStart": 896,
+          "vertexCount": 118,
+          "indexStart": 2112,
+          "indexCount": 324
+        },
+        {
+          "objectName": "gear_N__wheel_rim_N1_astra_r_4",
+          "sourceObject": "wheel_rim_N1_astra_r_4",
+          "sourcePart": "gear_N",
+          "vertexStart": 1014,
+          "vertexCount": 118,
+          "indexStart": 2436,
+          "indexCount": 324
+        }
+      ],
+      "sourceObjects": [
+        "door_hinge_N-1_astra_r_4",
+        "door_hinge_N1_astra_r_4",
+        "drag_brace_lower_N_astra_r_4",
+        "drag_brace_upper_N_astra_r_4",
+        "drag_link_pin_N_astra_r_4",
+        "fixed_trunnion_N_astra_r_4",
+        "fork_N-1_astra_r_4",
+        "fork_N1_astra_r_4",
+        "fork_bridge_N_astra_r_4",
+        "gear_door_N-1_astra_r_4",
+        "gear_door_N1_astra_r_4",
+        "landing_oleo_N_astra_r_4",
+        "strut_collar_N_astra_r_4",
+        "tire_N_astra_r_4",
+        "wheel_axle_N-1_astra_r_4",
+        "wheel_axle_N1_astra_r_4",
+        "wheel_rim_N-1_astra_r_4",
+        "wheel_rim_N1_astra_r_4"
+      ]
+    },
+    {
+      "id": "gear_L",
+      "node": "BreakSection_gear_L",
+      "anchorSection": "center",
+      "pivot": [
+        -0.6911474019289017,
+        -1.8903862237930298,
+        0.5295000076293945
+      ],
+      "massFraction": 0.035,
+      "collider": {
+        "halfExtents": [
+          0.4411473870277405,
+          0.38999998569488525,
+          0.5295000076293945
+        ],
+        "radius": 0.7918846279622699
+      },
+      "detachThreshold": 0.3,
+      "ranges": [
+        {
+          "objectName": "gear_L__door_hinge_L_astra_r_4",
+          "sourceObject": "door_hinge_L_astra_r_4",
+          "sourcePart": "gear_L",
+          "vertexStart": 0,
+          "vertexCount": 36,
+          "indexStart": 0,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_L__door_link_L_astra_r_4",
+          "sourceObject": "door_link_L_astra_r_4",
+          "sourcePart": "gear_L",
+          "vertexStart": 36,
+          "vertexCount": 36,
+          "indexStart": 60,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_L__drag_brace_lower_L_astra_r_4",
+          "sourceObject": "drag_brace_lower_L_astra_r_4",
+          "sourcePart": "gear_L",
+          "vertexStart": 72,
+          "vertexCount": 36,
+          "indexStart": 120,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_L__drag_brace_upper_L_astra_r_4",
+          "sourceObject": "drag_brace_upper_L_astra_r_4",
+          "sourcePart": "gear_L",
+          "vertexStart": 108,
+          "vertexCount": 36,
+          "indexStart": 180,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_L__drag_link_pin_L_astra_r_4",
+          "sourceObject": "drag_link_pin_L_astra_r_4",
+          "sourcePart": "gear_L",
+          "vertexStart": 144,
+          "vertexCount": 60,
+          "indexStart": 240,
+          "indexCount": 108
+        },
+        {
+          "objectName": "gear_L__fixed_trunnion_L_astra_r_4",
+          "sourceObject": "fixed_trunnion_L_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 204,
+          "vertexCount": 56,
+          "indexStart": 348,
+          "indexCount": 132
+        },
+        {
+          "objectName": "gear_L__fork_bridge_L_astra_r_4",
+          "sourceObject": "fork_bridge_L_astra_r_4",
+          "sourcePart": "gear_L",
+          "vertexStart": 260,
+          "vertexCount": 36,
+          "indexStart": 480,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_L__fork_L-1_astra_r_4",
+          "sourceObject": "fork_L-1_astra_r_4",
+          "sourcePart": "gear_L",
+          "vertexStart": 296,
+          "vertexCount": 36,
+          "indexStart": 540,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_L__fork_L1_astra_r_4",
+          "sourceObject": "fork_L1_astra_r_4",
+          "sourcePart": "gear_L",
+          "vertexStart": 332,
+          "vertexCount": 36,
+          "indexStart": 600,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_L__gear_door_L_astra_r_4",
+          "sourceObject": "gear_door_L_astra_r_4",
+          "sourcePart": "gear_L",
+          "vertexStart": 368,
+          "vertexCount": 24,
+          "indexStart": 660,
+          "indexCount": 36
+        },
+        {
+          "objectName": "gear_L__landing_oleo_L_astra_r_4",
+          "sourceObject": "landing_oleo_L_astra_r_4",
+          "sourcePart": "gear_L",
+          "vertexStart": 392,
+          "vertexCount": 58,
+          "indexStart": 696,
+          "indexCount": 156
+        },
+        {
+          "objectName": "gear_L__side_brace_L_astra_r_4",
+          "sourceObject": "side_brace_L_astra_r_4",
+          "sourcePart": "gear_L",
+          "vertexStart": 450,
+          "vertexCount": 36,
+          "indexStart": 852,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_L__strut_collar_L_astra_r_4",
+          "sourceObject": "strut_collar_L_astra_r_4",
+          "sourcePart": "gear_L",
+          "vertexStart": 486,
+          "vertexCount": 58,
+          "indexStart": 912,
+          "indexCount": 156
+        },
+        {
+          "objectName": "gear_L__tire_L_astra_r_4",
+          "sourceObject": "tire_L_astra_r_4",
+          "sourcePart": "gear_L",
+          "vertexStart": 544,
+          "vertexCount": 292,
+          "indexStart": 1068,
+          "indexCount": 948
+        },
+        {
+          "objectName": "gear_L__wheel_axle_L-1_astra_r_4",
+          "sourceObject": "wheel_axle_L-1_astra_r_4",
+          "sourcePart": "gear_L",
+          "vertexStart": 836,
+          "vertexCount": 36,
+          "indexStart": 2016,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_L__wheel_axle_L1_astra_r_4",
+          "sourceObject": "wheel_axle_L1_astra_r_4",
+          "sourcePart": "gear_L",
+          "vertexStart": 872,
+          "vertexCount": 36,
+          "indexStart": 2076,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_L__wheel_rim_L-1_astra_r_4",
+          "sourceObject": "wheel_rim_L-1_astra_r_4",
+          "sourcePart": "gear_L",
+          "vertexStart": 908,
+          "vertexCount": 118,
+          "indexStart": 2136,
+          "indexCount": 324
+        },
+        {
+          "objectName": "gear_L__wheel_rim_L1_astra_r_4",
+          "sourceObject": "wheel_rim_L1_astra_r_4",
+          "sourcePart": "gear_L",
+          "vertexStart": 1026,
+          "vertexCount": 118,
+          "indexStart": 2460,
+          "indexCount": 324
+        }
+      ],
+      "sourceObjects": [
+        "door_hinge_L_astra_r_4",
+        "door_link_L_astra_r_4",
+        "drag_brace_lower_L_astra_r_4",
+        "drag_brace_upper_L_astra_r_4",
+        "drag_link_pin_L_astra_r_4",
+        "fixed_trunnion_L_astra_r_4",
+        "fork_L-1_astra_r_4",
+        "fork_L1_astra_r_4",
+        "fork_bridge_L_astra_r_4",
+        "gear_door_L_astra_r_4",
+        "landing_oleo_L_astra_r_4",
+        "side_brace_L_astra_r_4",
+        "strut_collar_L_astra_r_4",
+        "tire_L_astra_r_4",
+        "wheel_axle_L-1_astra_r_4",
+        "wheel_axle_L1_astra_r_4",
+        "wheel_rim_L-1_astra_r_4",
+        "wheel_rim_L1_astra_r_4"
+      ]
+    },
+    {
+      "id": "gear_R",
+      "node": "BreakSection_gear_R",
+      "anchorSection": "center",
+      "pivot": [
+        0.6911474019289017,
+        -1.8903862237930298,
+        0.5295000076293945
+      ],
+      "massFraction": 0.035,
+      "collider": {
+        "halfExtents": [
+          0.4411473870277405,
+          0.38999998569488525,
+          0.5295000076293945
+        ],
+        "radius": 0.7918846279622699
+      },
+      "detachThreshold": 0.3,
+      "ranges": [
+        {
+          "objectName": "gear_R__door_hinge_R_astra_r_4",
+          "sourceObject": "door_hinge_R_astra_r_4",
+          "sourcePart": "gear_R",
+          "vertexStart": 0,
+          "vertexCount": 36,
+          "indexStart": 0,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_R__door_link_R_astra_r_4",
+          "sourceObject": "door_link_R_astra_r_4",
+          "sourcePart": "gear_R",
+          "vertexStart": 36,
+          "vertexCount": 36,
+          "indexStart": 60,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_R__drag_brace_lower_R_astra_r_4",
+          "sourceObject": "drag_brace_lower_R_astra_r_4",
+          "sourcePart": "gear_R",
+          "vertexStart": 72,
+          "vertexCount": 36,
+          "indexStart": 120,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_R__drag_brace_upper_R_astra_r_4",
+          "sourceObject": "drag_brace_upper_R_astra_r_4",
+          "sourcePart": "gear_R",
+          "vertexStart": 108,
+          "vertexCount": 36,
+          "indexStart": 180,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_R__drag_link_pin_R_astra_r_4",
+          "sourceObject": "drag_link_pin_R_astra_r_4",
+          "sourcePart": "gear_R",
+          "vertexStart": 144,
+          "vertexCount": 60,
+          "indexStart": 240,
+          "indexCount": 108
+        },
+        {
+          "objectName": "gear_R__fixed_trunnion_R_astra_r_4",
+          "sourceObject": "fixed_trunnion_R_astra_r_4",
+          "sourcePart": "hull",
+          "vertexStart": 204,
+          "vertexCount": 56,
+          "indexStart": 348,
+          "indexCount": 132
+        },
+        {
+          "objectName": "gear_R__fork_bridge_R_astra_r_4",
+          "sourceObject": "fork_bridge_R_astra_r_4",
+          "sourcePart": "gear_R",
+          "vertexStart": 260,
+          "vertexCount": 36,
+          "indexStart": 480,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_R__fork_R-1_astra_r_4",
+          "sourceObject": "fork_R-1_astra_r_4",
+          "sourcePart": "gear_R",
+          "vertexStart": 296,
+          "vertexCount": 36,
+          "indexStart": 540,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_R__fork_R1_astra_r_4",
+          "sourceObject": "fork_R1_astra_r_4",
+          "sourcePart": "gear_R",
+          "vertexStart": 332,
+          "vertexCount": 36,
+          "indexStart": 600,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_R__gear_door_R_astra_r_4",
+          "sourceObject": "gear_door_R_astra_r_4",
+          "sourcePart": "gear_R",
+          "vertexStart": 368,
+          "vertexCount": 24,
+          "indexStart": 660,
+          "indexCount": 36
+        },
+        {
+          "objectName": "gear_R__landing_oleo_R_astra_r_4",
+          "sourceObject": "landing_oleo_R_astra_r_4",
+          "sourcePart": "gear_R",
+          "vertexStart": 392,
+          "vertexCount": 58,
+          "indexStart": 696,
+          "indexCount": 156
+        },
+        {
+          "objectName": "gear_R__side_brace_R_astra_r_4",
+          "sourceObject": "side_brace_R_astra_r_4",
+          "sourcePart": "gear_R",
+          "vertexStart": 450,
+          "vertexCount": 36,
+          "indexStart": 852,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_R__strut_collar_R_astra_r_4",
+          "sourceObject": "strut_collar_R_astra_r_4",
+          "sourcePart": "gear_R",
+          "vertexStart": 486,
+          "vertexCount": 58,
+          "indexStart": 912,
+          "indexCount": 156
+        },
+        {
+          "objectName": "gear_R__tire_R_astra_r_4",
+          "sourceObject": "tire_R_astra_r_4",
+          "sourcePart": "gear_R",
+          "vertexStart": 544,
+          "vertexCount": 292,
+          "indexStart": 1068,
+          "indexCount": 948
+        },
+        {
+          "objectName": "gear_R__wheel_axle_R-1_astra_r_4",
+          "sourceObject": "wheel_axle_R-1_astra_r_4",
+          "sourcePart": "gear_R",
+          "vertexStart": 836,
+          "vertexCount": 36,
+          "indexStart": 2016,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_R__wheel_axle_R1_astra_r_4",
+          "sourceObject": "wheel_axle_R1_astra_r_4",
+          "sourcePart": "gear_R",
+          "vertexStart": 872,
+          "vertexCount": 36,
+          "indexStart": 2076,
+          "indexCount": 60
+        },
+        {
+          "objectName": "gear_R__wheel_rim_R-1_astra_r_4",
+          "sourceObject": "wheel_rim_R-1_astra_r_4",
+          "sourcePart": "gear_R",
+          "vertexStart": 908,
+          "vertexCount": 118,
+          "indexStart": 2136,
+          "indexCount": 324
+        },
+        {
+          "objectName": "gear_R__wheel_rim_R1_astra_r_4",
+          "sourceObject": "wheel_rim_R1_astra_r_4",
+          "sourcePart": "gear_R",
+          "vertexStart": 1026,
+          "vertexCount": 118,
+          "indexStart": 2460,
+          "indexCount": 324
+        }
+      ],
+      "sourceObjects": [
+        "door_hinge_R_astra_r_4",
+        "door_link_R_astra_r_4",
+        "drag_brace_lower_R_astra_r_4",
+        "drag_brace_upper_R_astra_r_4",
+        "drag_link_pin_R_astra_r_4",
+        "fixed_trunnion_R_astra_r_4",
+        "fork_R-1_astra_r_4",
+        "fork_R1_astra_r_4",
+        "fork_bridge_R_astra_r_4",
+        "gear_door_R_astra_r_4",
+        "landing_oleo_R_astra_r_4",
+        "side_brace_R_astra_r_4",
+        "strut_collar_R_astra_r_4",
+        "tire_R_astra_r_4",
+        "wheel_axle_R-1_astra_r_4",
+        "wheel_axle_R1_astra_r_4",
+        "wheel_rim_R-1_astra_r_4",
+        "wheel_rim_R1_astra_r_4"
+      ]
+    }
+  ]
+}

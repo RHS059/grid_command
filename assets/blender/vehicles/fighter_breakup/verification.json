@@ -1,0 +1,2925 @@
+{
+  "pass": true,
+  "sourceGlbSha256": "69293e6d20ff8128352c823832ec892c9bfdfc48d3ede0a1bfd4e76dced3b2fc",
+  "atlasSha256": "1341a9f08619117c4f105d3afd1ea552dc430884f933b77aef69450aaebb77c1",
+  "sourceVertices": 8983,
+  "exportVertices": 9465,
+  "exportTriangles": 8256,
+  "meshObjects": 98,
+  "sections": 9,
+  "materialCount": 1,
+  "colorAtlasCount": 1,
+  "atlasSize": [
+    1024,
+    1024
+  ],
+  "capUvRectGltf": [
+    0.1953125,
+    0.375,
+    0.2265625,
+    0.40625
+  ],
+  "capUvPolicy": "Four planar caps intentionally stack in a reserved unused 32px region; existing UVs and atlas bytes unchanged.",
+  "cutPlanesY": [
+    2.4,
+    -3.15
+  ],
+  "sourceRanges": [
+    {
+      "section": "nose",
+      "sourceObject": "fury_chined_fuselage_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          1282,
+          726
+        ],
+        [
+          2009,
+          1
+        ],
+        [
+          2130,
+          3
+        ],
+        [
+          2135,
+          3
+        ],
+        [
+          2161,
+          23
+        ]
+      ],
+      "exteriorTriangles": 782,
+      "capTriangles": 56
+    },
+    {
+      "section": "nose",
+      "sourceObject": "nose_probe_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "nose",
+      "sourceObject": "probe_vane_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "nose",
+      "sourceObject": "sensor_dark_window_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          2
+        ]
+      ],
+      "exteriorTriangles": 2,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_L",
+      "sourceObject": "aileron_L_astra_r_4",
+      "sourcePart": "control_L",
+      "sourceTriangleRanges": [
+        [
+          0,
+          60
+        ]
+      ],
+      "exteriorTriangles": 60,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_L",
+      "sourceObject": "main_wing_flap_L_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          60
+        ]
+      ],
+      "exteriorTriangles": 60,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_L",
+      "sourceObject": "main_wing_L_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          316
+        ]
+      ],
+      "exteriorTriangles": 316,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_L",
+      "sourceObject": "main_wing_root_trailing_L_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          60
+        ]
+      ],
+      "exteriorTriangles": 60,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_L",
+      "sourceObject": "main_wing_tip_trailing_L_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          44
+        ]
+      ],
+      "exteriorTriangles": 44,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_L",
+      "sourceObject": "paired_store_rack_L_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          44
+        ]
+      ],
+      "exteriorTriangles": 44,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_L",
+      "sourceObject": "rack_clamp_L0-1.44_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_L",
+      "sourceObject": "rack_clamp_L0-1.9_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_L",
+      "sourceObject": "rack_clamp_L1-1.44_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_L",
+      "sourceObject": "rack_clamp_L1-1.9_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_L",
+      "sourceObject": "weapon_pylon_L_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          12
+        ]
+      ],
+      "exteriorTriangles": 12,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_L",
+      "sourceObject": "wing_hinge_fairing_L1.65_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          92
+        ]
+      ],
+      "exteriorTriangles": 92,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_L",
+      "sourceObject": "wing_hinge_fairing_L2.58_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          92
+        ]
+      ],
+      "exteriorTriangles": 92,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_L",
+      "sourceObject": "wingtip_navigation_L_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_R",
+      "sourceObject": "aileron_R_astra_r_4",
+      "sourcePart": "control_R",
+      "sourceTriangleRanges": [
+        [
+          0,
+          60
+        ]
+      ],
+      "exteriorTriangles": 60,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_R",
+      "sourceObject": "main_wing_flap_R_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          60
+        ]
+      ],
+      "exteriorTriangles": 60,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_R",
+      "sourceObject": "main_wing_R_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          316
+        ]
+      ],
+      "exteriorTriangles": 316,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_R",
+      "sourceObject": "main_wing_root_trailing_R_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          60
+        ]
+      ],
+      "exteriorTriangles": 60,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_R",
+      "sourceObject": "main_wing_tip_trailing_R_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          44
+        ]
+      ],
+      "exteriorTriangles": 44,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_R",
+      "sourceObject": "paired_store_rack_R_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          44
+        ]
+      ],
+      "exteriorTriangles": 44,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_R",
+      "sourceObject": "rack_clamp_R0-1.44_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_R",
+      "sourceObject": "rack_clamp_R0-1.9_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_R",
+      "sourceObject": "rack_clamp_R1-1.44_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_R",
+      "sourceObject": "rack_clamp_R1-1.9_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_R",
+      "sourceObject": "weapon_pylon_R_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          12
+        ]
+      ],
+      "exteriorTriangles": 12,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_R",
+      "sourceObject": "wing_hinge_fairing_R1.65_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          92
+        ]
+      ],
+      "exteriorTriangles": 92,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_R",
+      "sourceObject": "wing_hinge_fairing_R2.58_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          92
+        ]
+      ],
+      "exteriorTriangles": 92,
+      "capTriangles": 0
+    },
+    {
+      "section": "wing_R",
+      "sourceObject": "wingtip_navigation_R_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "tail",
+      "sourceObject": "single_vertical_tail_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          212
+        ]
+      ],
+      "exteriorTriangles": 212,
+      "capTriangles": 0
+    },
+    {
+      "section": "tail",
+      "sourceObject": "tail_root_fairing_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          116
+        ]
+      ],
+      "exteriorTriangles": 116,
+      "capTriangles": 0
+    },
+    {
+      "section": "tail",
+      "sourceObject": "elevator_L_astra_r_4",
+      "sourcePart": "tail_L",
+      "sourceTriangleRanges": [
+        [
+          0,
+          176
+        ]
+      ],
+      "exteriorTriangles": 176,
+      "capTriangles": 0
+    },
+    {
+      "section": "tail",
+      "sourceObject": "elevator_R_astra_r_4",
+      "sourcePart": "tail_R",
+      "sourceTriangleRanges": [
+        [
+          0,
+          176
+        ]
+      ],
+      "exteriorTriangles": 176,
+      "capTriangles": 0
+    },
+    {
+      "section": "engine",
+      "sourceObject": "exhaust_recess_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          92
+        ]
+      ],
+      "exteriorTriangles": 92,
+      "capTriangles": 0
+    },
+    {
+      "section": "engine",
+      "sourceObject": "fury_chined_fuselage_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          468
+        ],
+        [
+          2008,
+          1
+        ],
+        [
+          2138,
+          23
+        ]
+      ],
+      "exteriorTriangles": 518,
+      "capTriangles": 52
+    },
+    {
+      "section": "engine",
+      "sourceObject": "single_exhaust_nozzle_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          192
+        ]
+      ],
+      "exteriorTriangles": 192,
+      "capTriangles": 0
+    },
+    {
+      "section": "center",
+      "sourceObject": "dorsal_antenna_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          12
+        ]
+      ],
+      "exteriorTriangles": 12,
+      "capTriangles": 0
+    },
+    {
+      "section": "center",
+      "sourceObject": "dorsal_antenna_astra_r_4.001",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          12
+        ]
+      ],
+      "exteriorTriangles": 12,
+      "capTriangles": 0
+    },
+    {
+      "section": "center",
+      "sourceObject": "fury_chined_fuselage_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          416,
+          916
+        ],
+        [
+          2010,
+          128
+        ],
+        [
+          2184,
+          48
+        ]
+      ],
+      "exteriorTriangles": 1148,
+      "capTriangles": 108
+    },
+    {
+      "section": "center",
+      "sourceObject": "ventral_intake_depth_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          2
+        ]
+      ],
+      "exteriorTriangles": 2,
+      "capTriangles": 0
+    },
+    {
+      "section": "center",
+      "sourceObject": "ventral_intake_lip_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          24
+        ]
+      ],
+      "exteriorTriangles": 24,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_N",
+      "sourceObject": "door_hinge_N-1_astra_r_4",
+      "sourcePart": "gear_N",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_N",
+      "sourceObject": "door_hinge_N1_astra_r_4",
+      "sourcePart": "gear_N",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_N",
+      "sourceObject": "drag_brace_lower_N_astra_r_4",
+      "sourcePart": "gear_N",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_N",
+      "sourceObject": "drag_brace_upper_N_astra_r_4",
+      "sourcePart": "gear_N",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_N",
+      "sourceObject": "drag_link_pin_N_astra_r_4",
+      "sourcePart": "gear_N",
+      "sourceTriangleRanges": [
+        [
+          0,
+          36
+        ]
+      ],
+      "exteriorTriangles": 36,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_N",
+      "sourceObject": "fork_bridge_N_astra_r_4",
+      "sourcePart": "gear_N",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_N",
+      "sourceObject": "fork_N-1_astra_r_4",
+      "sourcePart": "gear_N",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_N",
+      "sourceObject": "fork_N1_astra_r_4",
+      "sourcePart": "gear_N",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_N",
+      "sourceObject": "gear_door_N-1_astra_r_4",
+      "sourcePart": "gear_N",
+      "sourceTriangleRanges": [
+        [
+          0,
+          12
+        ]
+      ],
+      "exteriorTriangles": 12,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_N",
+      "sourceObject": "gear_door_N1_astra_r_4",
+      "sourcePart": "gear_N",
+      "sourceTriangleRanges": [
+        [
+          0,
+          12
+        ]
+      ],
+      "exteriorTriangles": 12,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_N",
+      "sourceObject": "landing_oleo_N_astra_r_4",
+      "sourcePart": "gear_N",
+      "sourceTriangleRanges": [
+        [
+          0,
+          52
+        ]
+      ],
+      "exteriorTriangles": 52,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_N",
+      "sourceObject": "strut_collar_N_astra_r_4",
+      "sourcePart": "gear_N",
+      "sourceTriangleRanges": [
+        [
+          0,
+          52
+        ]
+      ],
+      "exteriorTriangles": 52,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_N",
+      "sourceObject": "tire_N_astra_r_4",
+      "sourcePart": "gear_N",
+      "sourceTriangleRanges": [
+        [
+          0,
+          316
+        ]
+      ],
+      "exteriorTriangles": 316,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_N",
+      "sourceObject": "wheel_axle_N-1_astra_r_4",
+      "sourcePart": "gear_N",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_N",
+      "sourceObject": "wheel_axle_N1_astra_r_4",
+      "sourcePart": "gear_N",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_N",
+      "sourceObject": "wheel_rim_N-1_astra_r_4",
+      "sourcePart": "gear_N",
+      "sourceTriangleRanges": [
+        [
+          0,
+          108
+        ]
+      ],
+      "exteriorTriangles": 108,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_N",
+      "sourceObject": "wheel_rim_N1_astra_r_4",
+      "sourcePart": "gear_N",
+      "sourceTriangleRanges": [
+        [
+          0,
+          108
+        ]
+      ],
+      "exteriorTriangles": 108,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_N",
+      "sourceObject": "fixed_trunnion_N_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          44
+        ]
+      ],
+      "exteriorTriangles": 44,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_L",
+      "sourceObject": "door_hinge_L_astra_r_4",
+      "sourcePart": "gear_L",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_L",
+      "sourceObject": "door_link_L_astra_r_4",
+      "sourcePart": "gear_L",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_L",
+      "sourceObject": "drag_brace_lower_L_astra_r_4",
+      "sourcePart": "gear_L",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_L",
+      "sourceObject": "drag_brace_upper_L_astra_r_4",
+      "sourcePart": "gear_L",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_L",
+      "sourceObject": "drag_link_pin_L_astra_r_4",
+      "sourcePart": "gear_L",
+      "sourceTriangleRanges": [
+        [
+          0,
+          36
+        ]
+      ],
+      "exteriorTriangles": 36,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_L",
+      "sourceObject": "fork_bridge_L_astra_r_4",
+      "sourcePart": "gear_L",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_L",
+      "sourceObject": "fork_L-1_astra_r_4",
+      "sourcePart": "gear_L",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_L",
+      "sourceObject": "fork_L1_astra_r_4",
+      "sourcePart": "gear_L",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_L",
+      "sourceObject": "gear_door_L_astra_r_4",
+      "sourcePart": "gear_L",
+      "sourceTriangleRanges": [
+        [
+          0,
+          12
+        ]
+      ],
+      "exteriorTriangles": 12,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_L",
+      "sourceObject": "landing_oleo_L_astra_r_4",
+      "sourcePart": "gear_L",
+      "sourceTriangleRanges": [
+        [
+          0,
+          52
+        ]
+      ],
+      "exteriorTriangles": 52,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_L",
+      "sourceObject": "side_brace_L_astra_r_4",
+      "sourcePart": "gear_L",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_L",
+      "sourceObject": "strut_collar_L_astra_r_4",
+      "sourcePart": "gear_L",
+      "sourceTriangleRanges": [
+        [
+          0,
+          52
+        ]
+      ],
+      "exteriorTriangles": 52,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_L",
+      "sourceObject": "tire_L_astra_r_4",
+      "sourcePart": "gear_L",
+      "sourceTriangleRanges": [
+        [
+          0,
+          316
+        ]
+      ],
+      "exteriorTriangles": 316,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_L",
+      "sourceObject": "wheel_axle_L-1_astra_r_4",
+      "sourcePart": "gear_L",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_L",
+      "sourceObject": "wheel_axle_L1_astra_r_4",
+      "sourcePart": "gear_L",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_L",
+      "sourceObject": "wheel_rim_L-1_astra_r_4",
+      "sourcePart": "gear_L",
+      "sourceTriangleRanges": [
+        [
+          0,
+          108
+        ]
+      ],
+      "exteriorTriangles": 108,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_L",
+      "sourceObject": "wheel_rim_L1_astra_r_4",
+      "sourcePart": "gear_L",
+      "sourceTriangleRanges": [
+        [
+          0,
+          108
+        ]
+      ],
+      "exteriorTriangles": 108,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_L",
+      "sourceObject": "fixed_trunnion_L_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          44
+        ]
+      ],
+      "exteriorTriangles": 44,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_R",
+      "sourceObject": "door_hinge_R_astra_r_4",
+      "sourcePart": "gear_R",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_R",
+      "sourceObject": "door_link_R_astra_r_4",
+      "sourcePart": "gear_R",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_R",
+      "sourceObject": "drag_brace_lower_R_astra_r_4",
+      "sourcePart": "gear_R",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_R",
+      "sourceObject": "drag_brace_upper_R_astra_r_4",
+      "sourcePart": "gear_R",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_R",
+      "sourceObject": "drag_link_pin_R_astra_r_4",
+      "sourcePart": "gear_R",
+      "sourceTriangleRanges": [
+        [
+          0,
+          36
+        ]
+      ],
+      "exteriorTriangles": 36,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_R",
+      "sourceObject": "fork_bridge_R_astra_r_4",
+      "sourcePart": "gear_R",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_R",
+      "sourceObject": "fork_R-1_astra_r_4",
+      "sourcePart": "gear_R",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_R",
+      "sourceObject": "fork_R1_astra_r_4",
+      "sourcePart": "gear_R",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_R",
+      "sourceObject": "gear_door_R_astra_r_4",
+      "sourcePart": "gear_R",
+      "sourceTriangleRanges": [
+        [
+          0,
+          12
+        ]
+      ],
+      "exteriorTriangles": 12,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_R",
+      "sourceObject": "landing_oleo_R_astra_r_4",
+      "sourcePart": "gear_R",
+      "sourceTriangleRanges": [
+        [
+          0,
+          52
+        ]
+      ],
+      "exteriorTriangles": 52,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_R",
+      "sourceObject": "side_brace_R_astra_r_4",
+      "sourcePart": "gear_R",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_R",
+      "sourceObject": "strut_collar_R_astra_r_4",
+      "sourcePart": "gear_R",
+      "sourceTriangleRanges": [
+        [
+          0,
+          52
+        ]
+      ],
+      "exteriorTriangles": 52,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_R",
+      "sourceObject": "tire_R_astra_r_4",
+      "sourcePart": "gear_R",
+      "sourceTriangleRanges": [
+        [
+          0,
+          316
+        ]
+      ],
+      "exteriorTriangles": 316,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_R",
+      "sourceObject": "wheel_axle_R-1_astra_r_4",
+      "sourcePart": "gear_R",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_R",
+      "sourceObject": "wheel_axle_R1_astra_r_4",
+      "sourcePart": "gear_R",
+      "sourceTriangleRanges": [
+        [
+          0,
+          20
+        ]
+      ],
+      "exteriorTriangles": 20,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_R",
+      "sourceObject": "wheel_rim_R-1_astra_r_4",
+      "sourcePart": "gear_R",
+      "sourceTriangleRanges": [
+        [
+          0,
+          108
+        ]
+      ],
+      "exteriorTriangles": 108,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_R",
+      "sourceObject": "wheel_rim_R1_astra_r_4",
+      "sourcePart": "gear_R",
+      "sourceTriangleRanges": [
+        [
+          0,
+          108
+        ]
+      ],
+      "exteriorTriangles": 108,
+      "capTriangles": 0
+    },
+    {
+      "section": "gear_R",
+      "sourceObject": "fixed_trunnion_R_astra_r_4",
+      "sourcePart": "hull",
+      "sourceTriangleRanges": [
+        [
+          0,
+          44
+        ]
+      ],
+      "exteriorTriangles": 44,
+      "capTriangles": 0
+    }
+  ],
+  "sourceHullVolume": 12.186593941965633,
+  "sectionHullVolumeSum": 12.186593941965633,
+  "sourceHullExteriorArea": 43.13223537364986,
+  "sectionHullExteriorAreaSum": 43.13223537364986,
+  "normalRoundTrip": {
+    "pass": true,
+    "method": "Each evaluated source corner normal must match a GLB normal at the same world position.",
+    "position_tolerance": 2e-05,
+    "normal_tolerance_degrees": 0.1,
+    "source_split_normal_edges": 0,
+    "mismatched_corners": 0,
+    "components": [
+      {
+        "name": "nose__fury_chined_fuselage_astra_r_4",
+        "source_corners_tested": 2514,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.034691131011574824
+      },
+      {
+        "name": "nose__nose_probe_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.013392806510944854
+      },
+      {
+        "name": "nose__probe_vane_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.0
+      },
+      {
+        "name": "nose__sensor_dark_window_astra_r_4",
+        "source_corners_tested": 6,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.0
+      },
+      {
+        "name": "wing_L__aileron_L_astra_r_4",
+        "source_corners_tested": 180,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.019403351381321928
+      },
+      {
+        "name": "wing_L__main_wing_flap_L_astra_r_4",
+        "source_corners_tested": 180,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.02481182814183745
+      },
+      {
+        "name": "wing_L__main_wing_L_astra_r_4",
+        "source_corners_tested": 948,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.035279156024762046
+      },
+      {
+        "name": "wing_L__main_wing_root_trailing_L_astra_r_4",
+        "source_corners_tested": 180,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.02148542080286076
+      },
+      {
+        "name": "wing_L__main_wing_tip_trailing_L_astra_r_4",
+        "source_corners_tested": 132,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.01516249292188892
+      },
+      {
+        "name": "wing_L__paired_store_rack_L_astra_r_4",
+        "source_corners_tested": 132,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.022392614659191942
+      },
+      {
+        "name": "wing_L__rack_clamp_L0-1.44_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.013152655029316604
+      },
+      {
+        "name": "wing_L__rack_clamp_L0-1.9_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.0
+      },
+      {
+        "name": "wing_L__rack_clamp_L1-1.44_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.013152655029316604
+      },
+      {
+        "name": "wing_L__rack_clamp_L1-1.9_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.0
+      },
+      {
+        "name": "wing_L__weapon_pylon_L_astra_r_4",
+        "source_corners_tested": 36,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.012841097284947043
+      },
+      {
+        "name": "wing_L__wing_hinge_fairing_L1.65_astra_r_4",
+        "source_corners_tested": 276,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.0275209617362468
+      },
+      {
+        "name": "wing_L__wing_hinge_fairing_L2.58_astra_r_4",
+        "source_corners_tested": 276,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.02307080653726723
+      },
+      {
+        "name": "wing_L__wingtip_navigation_L_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.0
+      },
+      {
+        "name": "wing_R__aileron_R_astra_r_4",
+        "source_corners_tested": 180,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.019648718689352303
+      },
+      {
+        "name": "wing_R__main_wing_flap_R_astra_r_4",
+        "source_corners_tested": 180,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.024704367617308993
+      },
+      {
+        "name": "wing_R__main_wing_R_astra_r_4",
+        "source_corners_tested": 948,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.027049397648476997
+      },
+      {
+        "name": "wing_R__main_wing_root_trailing_R_astra_r_4",
+        "source_corners_tested": 180,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.01632761235663513
+      },
+      {
+        "name": "wing_R__main_wing_tip_trailing_R_astra_r_4",
+        "source_corners_tested": 132,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.016059294153218974
+      },
+      {
+        "name": "wing_R__paired_store_rack_R_astra_r_4",
+        "source_corners_tested": 132,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.022392815180007523
+      },
+      {
+        "name": "wing_R__rack_clamp_R0-1.44_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.013152655029316604
+      },
+      {
+        "name": "wing_R__rack_clamp_R0-1.9_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.0
+      },
+      {
+        "name": "wing_R__rack_clamp_R1-1.44_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.0
+      },
+      {
+        "name": "wing_R__rack_clamp_R1-1.9_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.0
+      },
+      {
+        "name": "wing_R__weapon_pylon_R_astra_r_4",
+        "source_corners_tested": 36,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.012841097284947043
+      },
+      {
+        "name": "wing_R__wing_hinge_fairing_R1.65_astra_r_4",
+        "source_corners_tested": 276,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.025487536922002323
+      },
+      {
+        "name": "wing_R__wing_hinge_fairing_R2.58_astra_r_4",
+        "source_corners_tested": 276,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.019303392717059824
+      },
+      {
+        "name": "wing_R__wingtip_navigation_R_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.0
+      },
+      {
+        "name": "tail__single_vertical_tail_astra_r_4",
+        "source_corners_tested": 636,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.02736177991389245
+      },
+      {
+        "name": "tail__tail_root_fairing_astra_r_4",
+        "source_corners_tested": 348,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.02393837611310232
+      },
+      {
+        "name": "tail__elevator_L_astra_r_4",
+        "source_corners_tested": 528,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.020237641367567883
+      },
+      {
+        "name": "tail__elevator_R_astra_r_4",
+        "source_corners_tested": 528,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.02027976312784123
+      },
+      {
+        "name": "engine__exhaust_recess_astra_r_4",
+        "source_corners_tested": 276,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.020189188676541917
+      },
+      {
+        "name": "engine__fury_chined_fuselage_astra_r_4",
+        "source_corners_tested": 1710,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.027449948274634716
+      },
+      {
+        "name": "engine__single_exhaust_nozzle_astra_r_4",
+        "source_corners_tested": 576,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.020407460307568126
+      },
+      {
+        "name": "center__dorsal_antenna_astra_r_4",
+        "source_corners_tested": 36,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.015571255164695959
+      },
+      {
+        "name": "center__dorsal_antenna_astra_r_4.001",
+        "source_corners_tested": 36,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.015571255164695959
+      },
+      {
+        "name": "center__fury_chined_fuselage_astra_r_4",
+        "source_corners_tested": 3768,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.028698579272339018
+      },
+      {
+        "name": "center__ventral_intake_depth_astra_r_4",
+        "source_corners_tested": 6,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.0
+      },
+      {
+        "name": "center__ventral_intake_lip_astra_r_4",
+        "source_corners_tested": 72,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.0269645767040258
+      },
+      {
+        "name": "gear_N__door_hinge_N-1_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.007606187722213553
+      },
+      {
+        "name": "gear_N__door_hinge_N1_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.007606187722213553
+      },
+      {
+        "name": "gear_N__drag_brace_lower_N_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.02123932476850349
+      },
+      {
+        "name": "gear_N__drag_brace_upper_N_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.021792443457306042
+      },
+      {
+        "name": "gear_N__drag_link_pin_N_astra_r_4",
+        "source_corners_tested": 108,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.009803762899989889
+      },
+      {
+        "name": "gear_N__fork_bridge_N_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.005831491758380731
+      },
+      {
+        "name": "gear_N__fork_N-1_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.016468945186676232
+      },
+      {
+        "name": "gear_N__fork_N1_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.014801851757979696
+      },
+      {
+        "name": "gear_N__gear_door_N-1_astra_r_4",
+        "source_corners_tested": 36,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.021616718665247284
+      },
+      {
+        "name": "gear_N__gear_door_N1_astra_r_4",
+        "source_corners_tested": 36,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.015781725425516625
+      },
+      {
+        "name": "gear_N__landing_oleo_N_astra_r_4",
+        "source_corners_tested": 156,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.016707934461887924
+      },
+      {
+        "name": "gear_N__strut_collar_N_astra_r_4",
+        "source_corners_tested": 156,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.018993574479818424
+      },
+      {
+        "name": "gear_N__tire_N_astra_r_4",
+        "source_corners_tested": 948,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.01797175982624385
+      },
+      {
+        "name": "gear_N__wheel_axle_N-1_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.023970982822401406
+      },
+      {
+        "name": "gear_N__wheel_axle_N1_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.020335308638631526
+      },
+      {
+        "name": "gear_N__wheel_rim_N-1_astra_r_4",
+        "source_corners_tested": 324,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.017723906507537805
+      },
+      {
+        "name": "gear_N__wheel_rim_N1_astra_r_4",
+        "source_corners_tested": 324,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.01885645743831769
+      },
+      {
+        "name": "gear_N__fixed_trunnion_N_astra_r_4",
+        "source_corners_tested": 132,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.021511537243210994
+      },
+      {
+        "name": "gear_L__door_hinge_L_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.0
+      },
+      {
+        "name": "gear_L__door_link_L_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.015590407676207995
+      },
+      {
+        "name": "gear_L__drag_brace_lower_L_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.021884856997780932
+      },
+      {
+        "name": "gear_L__drag_brace_upper_L_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.015793298438586068
+      },
+      {
+        "name": "gear_L__drag_link_pin_L_astra_r_4",
+        "source_corners_tested": 108,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.017213208324850883
+      },
+      {
+        "name": "gear_L__fork_bridge_L_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.004868738073523348
+      },
+      {
+        "name": "gear_L__fork_L-1_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.020576750457086845
+      },
+      {
+        "name": "gear_L__fork_L1_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.017851303894258336
+      },
+      {
+        "name": "gear_L__gear_door_L_astra_r_4",
+        "source_corners_tested": 36,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.023657589652043592
+      },
+      {
+        "name": "gear_L__landing_oleo_L_astra_r_4",
+        "source_corners_tested": 156,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.01622867936309461
+      },
+      {
+        "name": "gear_L__side_brace_L_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.0
+      },
+      {
+        "name": "gear_L__strut_collar_L_astra_r_4",
+        "source_corners_tested": 156,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.017848893152065014
+      },
+      {
+        "name": "gear_L__tire_L_astra_r_4",
+        "source_corners_tested": 948,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.022466317810854508
+      },
+      {
+        "name": "gear_L__wheel_axle_L-1_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.014667749781335731
+      },
+      {
+        "name": "gear_L__wheel_axle_L1_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.015474928291990327
+      },
+      {
+        "name": "gear_L__wheel_rim_L-1_astra_r_4",
+        "source_corners_tested": 324,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.020430841584911777
+      },
+      {
+        "name": "gear_L__wheel_rim_L1_astra_r_4",
+        "source_corners_tested": 324,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.018381894991992567
+      },
+      {
+        "name": "gear_L__fixed_trunnion_L_astra_r_4",
+        "source_corners_tested": 132,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.01022760507753961
+      },
+      {
+        "name": "gear_R__door_hinge_R_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.0
+      },
+      {
+        "name": "gear_R__door_link_R_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.012793745441961258
+      },
+      {
+        "name": "gear_R__drag_brace_lower_R_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.014313007348521922
+      },
+      {
+        "name": "gear_R__drag_brace_upper_R_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.021396510611306485
+      },
+      {
+        "name": "gear_R__drag_link_pin_R_astra_r_4",
+        "source_corners_tested": 108,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.013041766033694816
+      },
+      {
+        "name": "gear_R__fork_bridge_R_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.011338427258173559
+      },
+      {
+        "name": "gear_R__fork_R-1_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.02175226403330477
+      },
+      {
+        "name": "gear_R__fork_R1_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.020776918934112543
+      },
+      {
+        "name": "gear_R__gear_door_R_astra_r_4",
+        "source_corners_tested": 36,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.023657589652043592
+      },
+      {
+        "name": "gear_R__landing_oleo_R_astra_r_4",
+        "source_corners_tested": 156,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.012679856462780375
+      },
+      {
+        "name": "gear_R__side_brace_R_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.02288480556831915
+      },
+      {
+        "name": "gear_R__strut_collar_R_astra_r_4",
+        "source_corners_tested": 156,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.024686750666290967
+      },
+      {
+        "name": "gear_R__tire_R_astra_r_4",
+        "source_corners_tested": 948,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.02471145647270753
+      },
+      {
+        "name": "gear_R__wheel_axle_R-1_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.006105703481994487
+      },
+      {
+        "name": "gear_R__wheel_axle_R1_astra_r_4",
+        "source_corners_tested": 60,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.012192804088583295
+      },
+      {
+        "name": "gear_R__wheel_rim_R-1_astra_r_4",
+        "source_corners_tested": 324,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.021514283268443186
+      },
+      {
+        "name": "gear_R__wheel_rim_R1_astra_r_4",
+        "source_corners_tested": 324,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.020430841584911777
+      },
+      {
+        "name": "gear_R__fixed_trunnion_R_astra_r_4",
+        "source_corners_tested": 132,
+        "source_split_normal_edges": 0,
+        "mismatched_corners": 0,
+        "maximum_error_degrees": 0.003772658713900511
+      }
+    ]
+  },
+  "roundTripGeometry": [
+    {
+      "name": "nose__fury_chined_fuselage_astra_r_4",
+      "sourceObject": "fury_chined_fuselage_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 1.149016699377578,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "nose__nose_probe_astra_r_4",
+      "sourceObject": "nose_probe_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.00016942846852658347,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "nose__probe_vane_astra_r_4",
+      "sourceObject": "probe_vane_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 5.798821920257978e-06,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "nose__sensor_dark_window_astra_r_4",
+      "sourceObject": "sensor_dark_window_astra_r_4",
+      "boundaryEdges": 4,
+      "nonmanifoldEdges": 4,
+      "zeroAreaFaces": 0,
+      "signedVolume": null,
+      "intentionalOpenSurface": true
+    },
+    {
+      "name": "wing_L__aileron_L_astra_r_4",
+      "sourceObject": "aileron_L_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.005577704989531628,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_L__main_wing_flap_L_astra_r_4",
+      "sourceObject": "main_wing_flap_L_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.012015961862918234,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_L__main_wing_L_astra_r_4",
+      "sourceObject": "main_wing_L_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.4847073337051501,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_L__main_wing_root_trailing_L_astra_r_4",
+      "sourceObject": "main_wing_root_trailing_L_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.01750403873614369,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_L__main_wing_tip_trailing_L_astra_r_4",
+      "sourceObject": "main_wing_tip_trailing_L_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0001322617538646231,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_L__paired_store_rack_L_astra_r_4",
+      "sourceObject": "paired_store_rack_L_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.031192084285207814,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_L__rack_clamp_L0-1.44_astra_r_4",
+      "sourceObject": "rack_clamp_L0-1.44_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0006322678998211701,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_L__rack_clamp_L0-1.9_astra_r_4",
+      "sourceObject": "rack_clamp_L0-1.9_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0006322678998211706,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_L__rack_clamp_L1-1.44_astra_r_4",
+      "sourceObject": "rack_clamp_L1-1.44_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.00063226789982117,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_L__rack_clamp_L1-1.9_astra_r_4",
+      "sourceObject": "rack_clamp_L1-1.9_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0006322678998211712,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_L__weapon_pylon_L_astra_r_4",
+      "sourceObject": "weapon_pylon_L_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.03451350621688364,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_L__wing_hinge_fairing_L1.65_astra_r_4",
+      "sourceObject": "wing_hinge_fairing_L1.65_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0006876946539690552,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_L__wing_hinge_fairing_L2.58_astra_r_4",
+      "sourceObject": "wing_hinge_fairing_L2.58_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0006876948599894473,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_L__wingtip_navigation_L_astra_r_4",
+      "sourceObject": "wingtip_navigation_L_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.00010995037908502736,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_R__aileron_R_astra_r_4",
+      "sourceObject": "aileron_R_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.005577704989531624,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_R__main_wing_flap_R_astra_r_4",
+      "sourceObject": "main_wing_flap_R_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.012015961862918234,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_R__main_wing_R_astra_r_4",
+      "sourceObject": "main_wing_R_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.48470733370514985,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_R__main_wing_root_trailing_R_astra_r_4",
+      "sourceObject": "main_wing_root_trailing_R_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.017504038736143684,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_R__main_wing_tip_trailing_R_astra_r_4",
+      "sourceObject": "main_wing_tip_trailing_R_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0001322617538646234,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_R__paired_store_rack_R_astra_r_4",
+      "sourceObject": "paired_store_rack_R_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.031192084285207814,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_R__rack_clamp_R0-1.44_astra_r_4",
+      "sourceObject": "rack_clamp_R0-1.44_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0006322678998211702,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_R__rack_clamp_R0-1.9_astra_r_4",
+      "sourceObject": "rack_clamp_R0-1.9_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0006322678998211713,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_R__rack_clamp_R1-1.44_astra_r_4",
+      "sourceObject": "rack_clamp_R1-1.44_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0006322678998211699,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_R__rack_clamp_R1-1.9_astra_r_4",
+      "sourceObject": "rack_clamp_R1-1.9_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0006322678998211702,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_R__weapon_pylon_R_astra_r_4",
+      "sourceObject": "weapon_pylon_R_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.03451350621688365,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_R__wing_hinge_fairing_R1.65_astra_r_4",
+      "sourceObject": "wing_hinge_fairing_R1.65_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0006876946539680843,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_R__wing_hinge_fairing_R2.58_astra_r_4",
+      "sourceObject": "wing_hinge_fairing_R2.58_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.000687694859988217,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "wing_R__wingtip_navigation_R_astra_r_4",
+      "sourceObject": "wingtip_navigation_R_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.00010995037908502841,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "tail__elevator_L_astra_r_4",
+      "sourceObject": "elevator_L_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0886393913281173,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "tail__elevator_R_astra_r_4",
+      "sourceObject": "elevator_R_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.08863939132811725,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "tail__single_vertical_tail_astra_r_4",
+      "sourceObject": "single_vertical_tail_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.07105569846925681,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "tail__tail_root_fairing_astra_r_4",
+      "sourceObject": "tail_root_fairing_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.026340572327557987,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "engine__exhaust_recess_astra_r_4",
+      "sourceObject": "exhaust_recess_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.014177604087535881,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "engine__fury_chined_fuselage_astra_r_4",
+      "sourceObject": "fury_chined_fuselage_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 2.0128866196327007,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "engine__single_exhaust_nozzle_astra_r_4",
+      "sourceObject": "single_exhaust_nozzle_astra_r_4",
+      "boundaryEdges": 48,
+      "nonmanifoldEdges": 48,
+      "zeroAreaFaces": 0,
+      "signedVolume": null,
+      "intentionalOpenSurface": true
+    },
+    {
+      "name": "center__dorsal_antenna_astra_r_4",
+      "sourceObject": "dorsal_antenna_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0004688002629742397,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "center__dorsal_antenna_astra_r_4.001",
+      "sourceObject": "dorsal_antenna_astra_r_4.001",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.00046880026297424043,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "center__fury_chined_fuselage_astra_r_4",
+      "sourceObject": "fury_chined_fuselage_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 9.024690685722593,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "center__ventral_intake_depth_astra_r_4",
+      "sourceObject": "ventral_intake_depth_astra_r_4",
+      "boundaryEdges": 4,
+      "nonmanifoldEdges": 4,
+      "zeroAreaFaces": 0,
+      "signedVolume": null,
+      "intentionalOpenSurface": true
+    },
+    {
+      "name": "center__ventral_intake_lip_astra_r_4",
+      "sourceObject": "ventral_intake_lip_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.05061824641412486,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_N__door_hinge_N-1_astra_r_4",
+      "sourceObject": "door_hinge_N-1_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0004150417593138566,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_N__door_hinge_N1_astra_r_4",
+      "sourceObject": "door_hinge_N1_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0004150417593138563,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_N__drag_brace_lower_N_astra_r_4",
+      "sourceObject": "drag_brace_lower_N_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.00037984655367153015,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_N__drag_brace_upper_N_astra_r_4",
+      "sourceObject": "drag_brace_upper_N_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.00076124971848208,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_N__drag_link_pin_N_astra_r_4",
+      "sourceObject": "drag_link_pin_N_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0004665838189432508,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_N__fixed_trunnion_N_astra_r_4",
+      "sourceObject": "fixed_trunnion_N_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.004908209683863719,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_N__fork_bridge_N_astra_r_4",
+      "sourceObject": "fork_bridge_N_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0005028576345825163,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_N__fork_N-1_astra_r_4",
+      "sourceObject": "fork_N-1_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0004935924506364349,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_N__fork_N1_astra_r_4",
+      "sourceObject": "fork_N1_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0004935924720236746,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_N__gear_door_N-1_astra_r_4",
+      "sourceObject": "gear_door_N-1_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.00278495915998407,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_N__gear_door_N1_astra_r_4",
+      "sourceObject": "gear_door_N1_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0027849591599840694,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_N__landing_oleo_N_astra_r_4",
+      "sourceObject": "landing_oleo_N_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0028461623080875457,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_N__strut_collar_N_astra_r_4",
+      "sourceObject": "strut_collar_N_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0023468134642258415,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_N__tire_N_astra_r_4",
+      "sourceObject": "tire_N_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.020896889434090668,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_N__wheel_axle_N-1_astra_r_4",
+      "sourceObject": "wheel_axle_N-1_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.00011948587544725097,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_N__wheel_axle_N1_astra_r_4",
+      "sourceObject": "wheel_axle_N1_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.00011948586530213459,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_N__wheel_rim_N-1_astra_r_4",
+      "sourceObject": "wheel_rim_N-1_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0005885488162880443,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_N__wheel_rim_N1_astra_r_4",
+      "sourceObject": "wheel_rim_N1_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0005885488162880445,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_L__door_hinge_L_astra_r_4",
+      "sourceObject": "door_hinge_L_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0006940495566939445,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_L__door_link_L_astra_r_4",
+      "sourceObject": "door_link_L_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.00032488427664156605,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_L__drag_brace_lower_L_astra_r_4",
+      "sourceObject": "drag_brace_lower_L_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.000513572093505359,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_L__drag_brace_upper_L_astra_r_4",
+      "sourceObject": "drag_brace_upper_L_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0010329221584555346,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_L__drag_link_pin_L_astra_r_4",
+      "sourceObject": "drag_link_pin_L_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0004665843394596857,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_L__fixed_trunnion_L_astra_r_4",
+      "sourceObject": "fixed_trunnion_L_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.006265800102991181,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_L__fork_bridge_L_astra_r_4",
+      "sourceObject": "fork_bridge_L_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0005028584236385602,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_L__fork_L-1_astra_r_4",
+      "sourceObject": "fork_L-1_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.000540469679171277,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_L__fork_L1_astra_r_4",
+      "sourceObject": "fork_L1_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0005404703319937682,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_L__gear_door_L_astra_r_4",
+      "sourceObject": "gear_door_L_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.008894197870234946,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_L__landing_oleo_L_astra_r_4",
+      "sourceObject": "landing_oleo_L_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.004037421090788331,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_L__side_brace_L_astra_r_4",
+      "sourceObject": "side_brace_L_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0023428271360927014,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_L__strut_collar_L_astra_r_4",
+      "sourceObject": "strut_collar_L_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.003329070975556838,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_L__tire_L_astra_r_4",
+      "sourceObject": "tire_L_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.02592651170632,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_L__wheel_axle_L-1_astra_r_4",
+      "sourceObject": "wheel_axle_L-1_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.00014824472775227415,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_L__wheel_axle_L1_astra_r_4",
+      "sourceObject": "wheel_axle_L1_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0001482447277522744,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_L__wheel_rim_L-1_astra_r_4",
+      "sourceObject": "wheel_rim_L-1_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0007302046796061749,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_L__wheel_rim_L1_astra_r_4",
+      "sourceObject": "wheel_rim_L1_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.000730205997791399,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_R__door_hinge_R_astra_r_4",
+      "sourceObject": "door_hinge_R_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0006940495566939438,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_R__door_link_R_astra_r_4",
+      "sourceObject": "door_link_R_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.00032488428942404593,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_R__drag_brace_lower_R_astra_r_4",
+      "sourceObject": "drag_brace_lower_R_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.000513572047979853,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_R__drag_brace_upper_R_astra_r_4",
+      "sourceObject": "drag_brace_upper_R_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0010329221998249217,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_R__drag_link_pin_R_astra_r_4",
+      "sourceObject": "drag_link_pin_R_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.00046658433945968576,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_R__fixed_trunnion_R_astra_r_4",
+      "sourceObject": "fixed_trunnion_R_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.006265800102991182,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_R__fork_bridge_R_astra_r_4",
+      "sourceObject": "fork_bridge_R_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0005028584236385601,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_R__fork_R-1_astra_r_4",
+      "sourceObject": "fork_R-1_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0005404703453931407,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_R__fork_R1_astra_r_4",
+      "sourceObject": "fork_R1_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.000540469639509095,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_R__gear_door_R_astra_r_4",
+      "sourceObject": "gear_door_R_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.008894197870234943,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_R__landing_oleo_R_astra_r_4",
+      "sourceObject": "landing_oleo_R_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.004037421131587777,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_R__side_brace_R_astra_r_4",
+      "sourceObject": "side_brace_R_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.002342827136091946,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_R__strut_collar_R_astra_r_4",
+      "sourceObject": "strut_collar_R_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0033290702522407725,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_R__tire_R_astra_r_4",
+      "sourceObject": "tire_R_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.025926511706320023,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_R__wheel_axle_R-1_astra_r_4",
+      "sourceObject": "wheel_axle_R-1_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.00014824472775227447,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_R__wheel_axle_R1_astra_r_4",
+      "sourceObject": "wheel_axle_R1_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.00014824472775227417,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_R__wheel_rim_R-1_astra_r_4",
+      "sourceObject": "wheel_rim_R-1_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0007302059977913988,
+      "intentionalOpenSurface": false
+    },
+    {
+      "name": "gear_R__wheel_rim_R1_astra_r_4",
+      "sourceObject": "wheel_rim_R1_astra_r_4",
+      "boundaryEdges": 0,
+      "nonmanifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "signedVolume": 0.0007302046796061768,
+      "intentionalOpenSurface": false
+    }
+  ],
+  "limitations": [
+    "Planar structural closure caps; no internal engine or avionics detail.",
+    "Masses, joint thresholds and box/sphere colliders are gameplay approximations.",
+    "Gear is authored in its deployed rest pose; runtime must choose or transform its breakup pose.",
+    "Sensor, exhaust ring and intake back plate retain their intentional open boundaries."
+  ]
+}
