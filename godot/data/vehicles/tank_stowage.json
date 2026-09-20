@@ -1,0 +1,10 @@
+{
+  "units": "metres, assembly-local Godot Y-up; Blender (x,y,z) maps to (x,z,-y)",
+  "mounts": [
+    {"name":"Stowage_BustleCase","asset":"Greeble_TransitCase","parent":"Assembly_turret","position":[-0.79,0.466,2.0],"yaw_degrees":0,"soft":false},
+    {"name":"Stowage_BustleTarp","asset":"Greeble_RolledTarp","parent":"Assembly_turret","position":[-0.08,0.508,2.0],"yaw_degrees":0,"soft":true},
+    {"name":"Stowage_BustleDuffel","asset":"Greeble_Duffel","parent":"Assembly_turret","position":[0.68,0.514,2.0],"yaw_degrees":0,"soft":true},
+    {"name":"Stowage_LeftRucksack","asset":"Greeble_FieldRucksack","parent":"Assembly_turret","position":[-1.572,0.66,0.95],"yaw_degrees":-90,"soft":true},
+    {"name":"Stowage_RearJerryCan","asset":"Greeble_JerryCan","parent":"Assembly_hull","position":[1.52,1.866,2.94],"yaw_degrees":90,"soft":false}
+  ]
+}

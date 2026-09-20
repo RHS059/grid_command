@@ -270,6 +270,9 @@ func _load_model(id: String) -> void:
 	model_root.add_child(model)
 	if id == "TANK":
 		preload("res://scripts/tank_material.gd").apply(model)
+		preview_greebles = preload("res://scripts/vehicle_greebles.gd").new()
+		model.add_child(preview_greebles)
+		preview_greebles.build_tank_stowage(model)
 	# These Blender-authored GLBs retain their source Z-up axes. Rotate the
 	# complete vehicle once; this also keeps wheel and rotor child axes aligned.
 	if MODEL_FILES.get(id,"") in Z_UP_MODEL_FILES: model.rotation_degrees.x = -90
@@ -279,13 +282,6 @@ func _load_model(id: String) -> void:
 	var factor := 3.0 / span
 	model_root.scale = Vector3.ONE*factor
 	model_root.position = Vector3(-bounds.get_center().x,-bounds.position.y,-bounds.get_center().z)*factor
-	if id == "TANK":
-		preview_greebles = preload("res://scripts/vehicle_greebles.gd").new()
-		preview_greebles.build_tank_stowage()
-		# The gameplay library is authored in theater units; scale it back into
-		# this imported model's native span before the preview root is normalized.
-		preview_greebles.scale = Vector3.ONE*(span/0.095)
-		model.add_child(preview_greebles)
 	model_title.text = MODEL_NAMES[id]
 	_find_animation(model)
 	if animation:
@@ -349,7 +345,9 @@ func _update_camera() -> void:
 
 func _process(delta: float) -> void:
 	if not visible: return
-	if is_instance_valid(preview_greebles): preview_greebles.set_activity(false,auto_rotate,delta)
+	if is_instance_valid(preview_greebles):
+		var driving := is_instance_valid(animation) and animation.is_playing() and "drive" in animation.current_animation.to_lower()
+		preview_greebles.set_activity(driving, delta)
 	if model_page.visible and selected_model == "TRANSPORT_HELI" and is_instance_valid(model):
 		preload("res://scripts/browser_aircraft_models.gd").animate(model, delta)
 	if model_page.visible and auto_rotate:

@@ -68,7 +68,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	if is_instance_valid(vehicle_greebles):
-		vehicle_greebles.set_activity(not route.is_empty(), is_instance_valid(attack_target), delta)
+		vehicle_greebles.set_activity(is_alive and not route.is_empty(), delta)
 	if kind == "transport_heli" and is_instance_valid(source_model):
 		preload("res://scripts/browser_aircraft_models.gd").animate(source_model, delta, is_alive)
 	# Simulation records advance at 20 Hz. Retain the previous rendered transform
@@ -110,6 +110,9 @@ func _create_model() -> void:
 		source_model = model
 		if source_kind == "tank":
 			preload("res://scripts/tank_material.gd").apply(model)
+			vehicle_greebles = preload("res://scripts/vehicle_greebles.gd").new()
+			model.add_child(vehicle_greebles)
+			vehicle_greebles.build_tank_stowage(model)
 		var orient := Node3D.new()
 		orient.name = "SourceAxisCorrection"
 		visual.add_child(orient)
@@ -137,11 +140,6 @@ func _create_model() -> void:
 		for part in visual_meshes:
 			part.scale *= 0.01
 			part.position *= 0.01
-	if kind == "tank":
-		vehicle_greebles = preload("res://scripts/vehicle_greebles.gd").new()
-		vehicle_greebles.build_tank_stowage()
-		visual.add_child(vehicle_greebles)
-		_collect_meshes(vehicle_greebles)
 	overlay = ShaderMaterial.new()
 	overlay.shader = FRESNEL
 	overlay.set_shader_parameter("rim_color", Color.WHITE)
