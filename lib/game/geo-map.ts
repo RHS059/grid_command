@@ -14,6 +14,8 @@ export type { StyleSpecification } from './geo-map-types'
 interface CameraOptions { center?: LngLatLike; zoom?: number; pitch?: number; bearing?: number; elevation?: number; duration?: number; essential?: boolean }
 interface MapOptions extends CameraOptions { container: HTMLElement; style: StyleSpecification; minZoom?: number; maxZoom?: number; maxPitch?: number; pixelRatio?: number; interactive?: boolean; attributionControl?: false | { compact?: boolean }; [key: string]: unknown }
 interface MapEvent { originalEvent?: MouseEvent | TouchEvent; sourceId?: string; isSourceLoaded?: boolean; error?: Error }
+interface OverlayProjection { matrix: Matrix; viewport: Viewport; world: Matrix; zoom: number; terrain: boolean; labels: boolean; terrainRevision: number }
+interface OverlayLayer { group: SVGGElement; source: GeoJSONSource; data: FeatureCollection; sourceRevision: number; style: string; projection: OverlayProjection }
 export const cameraClipPlanes=(distance:number)=>({near:Math.max(.1,distance/100),far:Math.max(20000,distance*8)})
 export class GeoJSONSource {
   constructor(public data: FeatureCollection, private changed: () => void) {}
@@ -29,6 +31,11 @@ export class GeoMap {
   private svg: SVGSVGElement
   private events = new Map<string, Set<(event: MapEvent) => void>>()
   private sources = new Map<string, GeoJSONSource>()
+  private overlaySourceRevisions = new Map<string, number>()
+  private overlayLayers = new Map<LayerSpecification, OverlayLayer>()
+  private overlayChildren: SVGGElement[] = []
+  private overlayProjection?: OverlayProjection
+  private overlayTerrainRevision = 0
   private layers: LayerSpecification[]
   private center: LngLat
   private zoom: number
@@ -56,7 +63,7 @@ export class GeoMap {
     this.canvas = document.createElement('canvas'); this.canvas.className = 'geographic-canvas'; this.canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;touch-action:none;outline:none'; this.canvas.tabIndex = 0; this.canvas.setAttribute('aria-label', 'Interactive geographic battlefield'); options.container.append(this.canvas)
     this.overlay = document.createElement('div'); this.overlay.style.cssText = 'position:absolute;inset:0;pointer-events:none;overflow:hidden'; options.container.append(this.overlay)
     this.svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); this.svg.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none'; this.overlay.append(this.svg)
-    for (const [name, source] of Object.entries(options.style.sources)) if (source.type === 'geojson' && source.data && typeof source.data !== 'string') this.sources.set(name, new GeoJSONSource(source.data, () => this.triggerRepaint()))
+    for (const [name, source] of Object.entries(options.style.sources)) if (source.type === 'geojson' && source.data && typeof source.data !== 'string') this.sources.set(name, new GeoJSONSource(source.data, () => { this.overlaySourceRevisions.set(name, (this.overlaySourceRevisions.get(name) ?? 0) + 1); this.triggerRepaint() }))
     if (options.attributionControl !== false) { const credit = document.createElement('div'); credit.style.cssText = 'position:absolute;right:8px;bottom:3px;color:#96a8b7;font:10px system-ui;pointer-events:auto;background:#101c29bb;padding:2px 5px'; credit.innerHTML = '<a href="https://openfreemap.org" target="_blank" rel="noopener noreferrer">OpenFreeMap</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap</a>'; this.overlay.append(credit) }
     this.resizeObserver = new ResizeObserver(() => this.resize()); this.resizeObserver.observe(options.container); this.resize()
     this.ready = BabylonRuntime.create(this.canvas).then(runtime => {
@@ -64,6 +71,8 @@ export class GeoMap {
       this.runtime = runtime; this.canvas = runtime.canvas; runtime.resize(this.width, this.height, this.ratio)
       runtime.configure({ ...DEFAULT_GRAPHICS, performanceMode: options.interactive === false })
       this.tiles = new GeographicTiles(runtime.scene, event => {
+        // A replacement without a DEM can still retire older elevated tiles.
+        if (!event.error && this.terrain) this.overlayTerrainRevision++
         this.triggerRepaint()
         if (event.error) this.emit('error', { error: new Error(`Map tile ${event.address.z}/${event.address.x}/${event.address.y} failed: ${event.error.message}`) })
         else {
@@ -111,7 +120,7 @@ export class GeoMap {
     if (document.hidden || !this.runtime || this.options.container.clientWidth < 2 || this.options.container.clientHeight < 2) return
     if (this.animation) { const a = this.animation, progress = Math.min(1, (performance.now() - a.start) / a.duration), t = progress * progress * (3 - 2 * progress), target = a.to.center ? LngLat.convert(a.to.center) : a.from.center; this.apply({ center: [a.from.center.lng + (target.lng - a.from.center.lng) * t, a.from.center.lat + (target.lat - a.from.center.lat) * t], zoom: a.from.zoom + ((a.to.zoom ?? a.from.zoom) - a.from.zoom) * t, pitch: a.from.pitch + ((a.to.pitch ?? a.from.pitch) - a.from.pitch) * t, bearing: a.from.bearing + ((a.to.bearing ?? a.from.bearing) - a.from.bearing) * t }); if (progress === 1) this.animation = undefined; this.dirty = true }
     if (!this.dirty) return
-    this.dirty = false; this.camera(); this.tiles?.update(this.center, this.zoom, !!this.terrain, this.getLayer('road-labels')?.layout?.visibility !== 'none')
+    this.dirty = false; this.camera(); this.tiles?.update(this.center, this.zoom, !!this.terrain, this.getLayer('road-labels')?.layout?.visibility !== 'none' && this.pitch < 15)
     this.draw?.(Array.from(this.runtime.getViewProjection().asArray()))
     if (this.graph) this.runtime.sync(this.graph)
     this.runtime.render(); this.renderOverlay(); for (const marker of this.markers) marker.update()
@@ -120,20 +129,43 @@ export class GeoMap {
   detachBattlefield() { this.graph = undefined; this.draw = undefined; this.triggerRepaint() }
   configure(graphics: Graphics) { this.runtime?.configure(graphics) }
   private renderOverlay() {
-    this.svg.replaceChildren()
-    const property = (value: unknown, properties: Record<string, unknown> | null, fallback: string | number): string | number => Array.isArray(value) && value[0] === 'get' ? properties?.[String(value[1])] as string | number || fallback : typeof value === 'string' || typeof value === 'number' ? value : fallback
+    if (!this.runtime) return
+    const matrix = this.runtime.getViewProjection(), previous = this.overlayProjection, terrain = !!this.terrain, labels = this.getLayer('road-labels')?.layout?.visibility !== 'none' && this.pitch < 15
+    // Compare the effective camera after rendering, including chase-camera overrides.
+    // Terrain arrivals and label toggles can alter sampled heights with a fixed camera.
+    if (!previous || !previous.matrix.equals(matrix) || previous.viewport.width !== this.width || previous.viewport.height !== this.height || previous.zoom !== this.zoom || previous.terrain !== terrain || previous.labels !== labels || previous.terrainRevision !== this.overlayTerrainRevision) {
+      this.overlayProjection = { matrix: matrix.clone(), viewport: new Viewport(0, 0, this.width, this.height), world: Matrix.Identity(), zoom: this.zoom, terrain, labels, terrainRevision: this.overlayTerrainRevision }
+    }
+    const projection = this.overlayProjection!, children: SVGGElement[] = []
     for (const layer of this.layers) {
       if (!layer.source || layer.layout?.visibility === 'none' || (layer.minzoom ?? 0) > this.zoom || (layer.maxzoom ?? 99) <= this.zoom) continue
       const source = this.sources.get(layer.source); if (!source) continue
-      for (const feature of source.data.features) {
+      if (!['fill', 'line', 'circle'].includes(layer.type)) continue
+      const cached = this.overlayLayers.get(layer), sourceRevision = this.overlaySourceRevisions.get(layer.source) ?? 0, style = JSON.stringify([layer.type, layer.paint])
+      let group = cached?.group
+      if (!cached || cached.source !== source || cached.data !== source.data || cached.sourceRevision !== sourceRevision || cached.style !== style || cached.projection !== projection) {
+        group ??= document.createElementNS(this.svg.namespaceURI, 'g') as SVGGElement
+        this.renderOverlayLayer(layer, source.data, group, projection)
+        this.overlayLayers.set(layer, { group, source, data: source.data, sourceRevision, style, projection })
+      }
+      children.push(group!)
+    }
+    // Preserve stacking order when a hidden or zoom-limited layer becomes visible.
+    if (children.length !== this.overlayChildren.length || children.some((child, i) => child !== this.overlayChildren[i])) { this.svg.replaceChildren(...children); this.overlayChildren = children }
+  }
+  private renderOverlayLayer(layer: LayerSpecification, data: FeatureCollection, group: SVGGElement, projection: OverlayProjection) {
+    const elements: SVGElement[] = [], property = (value: unknown, properties: Record<string, unknown> | null, fallback: string | number): string | number => Array.isArray(value) && value[0] === 'get' ? properties?.[String(value[1])] as string | number || fallback : typeof value === 'string' || typeof value === 'number' ? value : fallback
+    // One view-projection snapshot per overlay update, rather than per vertex.
+    const project = (coordinates: Position) => { const ll = new LngLat(coordinates[0], coordinates[1]), point = toPoint(ll.lng, ll.lat); return Vector3.Project(new Vector3(point.x, point.y, this.terrain ? this.tiles?.elevation(ll) || 0 : 0), projection.world, projection.matrix, projection.viewport) }
+    for (const feature of data.features) {
         const geometry = feature.geometry, paint = layer.paint || {}, props = feature.properties
-        if (geometry.type === 'Point' && layer.type === 'circle') { const p = this.project(geometry.coordinates as [number, number]); if (!Number.isFinite(p.x)) continue; const circle = document.createElementNS(this.svg.namespaceURI, 'circle'); circle.setAttribute('cx', String(p.x)); circle.setAttribute('cy', String(p.y)); circle.setAttribute('r', String(property(paint['circle-radius'], props, 2))); circle.setAttribute('fill', String(property(paint['circle-color'], props, '#54b7ff'))); this.svg.append(circle); continue }
+        if (geometry.type === 'Point' && layer.type === 'circle') { const p = project(geometry.coordinates); if (!Number.isFinite(p.x)) continue; const circle = document.createElementNS(this.svg.namespaceURI, 'circle'); circle.setAttribute('cx', String(p.x)); circle.setAttribute('cy', String(p.y)); circle.setAttribute('r', String(property(paint['circle-radius'], props, 2))); circle.setAttribute('fill', String(property(paint['circle-color'], props, '#54b7ff'))); elements.push(circle as SVGElement); continue }
         const lines: Position[][] = geometry.type === 'LineString' ? [geometry.coordinates] : geometry.type === 'MultiLineString' || geometry.type === 'Polygon' ? geometry.coordinates : geometry.type === 'MultiPolygon' ? geometry.coordinates.flat() : []
         if (!lines.length || !['fill', 'line'].includes(layer.type)) continue
         const path = document.createElementNS(this.svg.namespaceURI, 'path'), fill = layer.type === 'fill'
-        path.setAttribute('d', lines.map(line => line.map((ll, i) => { const p = this.project(ll as [number, number]); return `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}` }).join(' ') + (fill ? 'Z' : '')).join(' ')); path.setAttribute('fill', fill ? String(property(paint['fill-color'], props, '#54b7ff')) : 'none'); path.setAttribute('stroke', fill ? 'none' : String(property(paint['line-color'], props, '#54b7ff'))); path.setAttribute('opacity', String(property(paint[fill ? 'fill-opacity' : 'line-opacity'], props, 1))); path.setAttribute('stroke-width', String(property(paint['line-width'], props, 1))); if (Array.isArray(paint['line-dasharray'])) path.setAttribute('stroke-dasharray', paint['line-dasharray'].join(' ')); this.svg.append(path)
-      }
+        path.setAttribute('d', lines.map(line => line.map((ll, i) => { const p = project(ll); return `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}` }).join(' ') + (fill ? 'Z' : '')).join(' ')); path.setAttribute('fill', fill ? String(property(paint['fill-color'], props, '#54b7ff')) : 'none'); path.setAttribute('stroke', fill ? 'none' : String(property(paint['line-color'], props, '#54b7ff'))); path.setAttribute('opacity', String(property(paint[fill ? 'fill-opacity' : 'line-opacity'], props, 1))); path.setAttribute('stroke-width', String(property(paint['line-width'], props, 1))); if (Array.isArray(paint['line-dasharray'])) path.setAttribute('stroke-dasharray', paint['line-dasharray'].join(' ')); elements.push(path as SVGElement)
     }
+    group.replaceChildren(...elements)
   }
   project(value: LngLatLike) { const ll = LngLat.convert(value), point = toPoint(ll.lng, ll.lat); if (!this.runtime) return { x: 0, y: 0 }; const v = Vector3.Project(new Vector3(point.x, point.y, this.terrain ? this.tiles?.elevation(ll) || 0 : 0), Matrix.Identity(), this.runtime.getViewProjection(), new Viewport(0, 0, this.width, this.height)); return { x: v.x, y: v.y } }
   unproject(point: [number, number]) { if (!this.runtime) return this.center; const camera = this.runtime.camera, a = Vector3.Unproject(new Vector3(point[0], point[1], 0), this.width, this.height, Matrix.Identity(), camera.getViewMatrix(), camera.getProjectionMatrix()), b = Vector3.Unproject(new Vector3(point[0], point[1], 1), this.width, this.height, Matrix.Identity(), camera.getViewMatrix(), camera.getProjectionMatrix()), direction = b.subtract(a), t = Math.max(0, (this.elevation - a.z) / (direction.z || -.0001)); return LngLat.convert(fromPoint({ x: a.x + direction.x * t, y: a.y + direction.y * t })) }
@@ -158,7 +190,7 @@ export class GeoMap {
   triggerRepaint() { this.dirty = true; return this } stop() { this.animation = undefined; return this }
   addMarker(marker: Marker) { this.markers.add(marker); this.overlay.append(marker.getElement()); marker.update() }
   removeMarker(marker: Marker) { this.markers.delete(marker) }
-  remove() { this.disposed = true; cancelAnimationFrame(this.frame); this.resizeObserver.disconnect(); this.tiles?.dispose(); this.runtime?.dispose(); this.canvas.remove(); this.overlay.remove(); this.events.clear() }
+  remove() { this.disposed = true; cancelAnimationFrame(this.frame); this.resizeObserver.disconnect(); this.tiles?.dispose(); this.runtime?.dispose(); this.canvas.remove(); this.overlay.remove(); this.events.clear(); this.overlayLayers.clear(); this.overlayChildren = []; this.overlayProjection = undefined }
 }
 export class Marker {
   private map?: GeoMap
