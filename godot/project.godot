@@ -6,7 +6,7 @@ config/name="Grid Command"
 config/description="A native tactical command game on a global geographic map. Current theater: San Diego."
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
-config/version="0.2.2"
+config/version="0.2.3"
 
 [autoload]
 UpdateService="*res://scripts/update_service.gd"
@@ -19,7 +19,7 @@ window/size/viewport_width=1600
 window/size/viewport_height=1000
 window/size/window_width_override=1440
 window/size/window_height_override=900
-window/stretch/mode="canvas_items"
+window/stretch/mode="disabled"
 window/size/min_width=1100
 window/size/min_height=720
 

@@ -123,6 +123,8 @@ jobs:
           grep -F "GRID_COMMAND_CAMERA_FOLLOW_SMOKE_OK" "$RUNNER_TEMP/camera-follow-smoke.log"
           "$GODOT" --headless --path "$PROJECT_DIR" --script res://tests/tactical_hud_smoke.gd 2>&1 | tee "$RUNNER_TEMP/tactical-hud-smoke.log"
           grep -F "GRID_COMMAND_TACTICAL_HUD_SMOKE_OK" "$RUNNER_TEMP/tactical-hud-smoke.log"
+          "$GODOT" --headless --path "$PROJECT_DIR" --script res://tests/hud_input_smoke.gd 2>&1 | tee "$RUNNER_TEMP/hud-input-smoke.log"
+          grep -F "GRID_COMMAND_HUD_INPUT_SMOKE_OK" "$RUNNER_TEMP/hud-input-smoke.log"
           "$GODOT" --headless --path "$PROJECT_DIR" --script res://tests/maritime_navigation_smoke.gd 2>&1 | tee "$RUNNER_TEMP/maritime-navigation-smoke.log"
           grep -F "GRID_COMMAND_MARITIME_NAVIGATION_SMOKE_OK" "$RUNNER_TEMP/maritime-navigation-smoke.log"
           "$GODOT" --headless --path "$PROJECT_DIR" --script res://tests/building_streamer_smoke.gd 2>&1 | tee "$RUNNER_TEMP/building-streamer-smoke.log"

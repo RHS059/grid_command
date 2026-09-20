@@ -88,7 +88,8 @@ func presentation_heading() -> float:
 	return rotation.y+presentation_yaw_offset
 
 func _create_model() -> void:
-	var path := "res://assets/models/" + kind + ".glb"
+	var source_kind := "soldier" if kind == "command" else kind
+	var path := "res://assets/models/" + source_kind + ".glb"
 	var model: Node3D
 	if ResourceLoader.exists(path):
 		var resource := load(path)
@@ -103,6 +104,8 @@ func _create_model() -> void:
 		orient.name = "SourceAxisCorrection"
 		visual.add_child(orient)
 		orient.add_child(model)
+		if source_kind == "soldier":
+			_filter_personnel_gear(model)
 		if kind == "fighter":
 			orient.rotation_degrees.x = -90.0
 		_collect_meshes(orient)
@@ -141,6 +144,12 @@ func _create_model() -> void:
 				mat.roughness = maxf(mat.roughness, 0.60)
 				mat.metallic = minf(mat.metallic, 0.45)
 				mesh.set_surface_override_material(surface, mat)
+
+func _filter_personnel_gear(node: Node) -> void:
+	if node is Node3D and str(node.name).begins_with("Gear_"):
+		node.visible = str(node.name) == "Gear_" + role
+	for child in node.get_children():
+		_filter_personnel_gear(child)
 
 func _collect_meshes(node: Node) -> void:
 	if node is MeshInstance3D and node.mesh != null:

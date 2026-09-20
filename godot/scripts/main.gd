@@ -15,6 +15,7 @@ var theater_origin: Array = []
 var theater_camera_state: Dictionary = {}
 var camera: RTSCamera
 var hud: Control
+var native_workspaces: Control
 var sun: DirectionalLight3D
 var units: Array[CombatUnit] = []
 var selected_units: Array[CombatUnit] = []
@@ -62,6 +63,7 @@ var active_side := "BLU"
 var show_routes := false
 var show_grid := false
 var winner_side := ""
+var graphics_settings := {"performanceMode":false,"quality":"balanced","terrain":false,"buildings":false,"models":true,"shadows":true,"labels":true,"routes":false,"grid":false}
 
 func _ready() -> void:
 	_create_environment()
@@ -234,6 +236,7 @@ func _spawn(kind: String, team: int, call_sign: String, pos: Vector3, role: Stri
 	return unit
 
 func _process(delta: float) -> void:
+	_apply_model_visibility()
 	message_time = maxf(0.0, message_time - delta)
 	_tick_effects(delta)
 	if paused or mission_state != "ACTIVE":
@@ -320,7 +323,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_F9:
 				show_routes = not show_routes
 			KEY_F1:
-				hud.close_panels()
+				open_battlefield()
+			KEY_F2:
+				open_model_preview()
+			KEY_F4:
+				open_sfx_designer()
 			KEY_PERIOD:
 				step_once()
 			KEY_F:
@@ -336,6 +343,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				clear_selection()
 			KEY_X:
 				hold_selection()
+	if is_instance_valid(native_workspaces) and native_workspaces.visible: return
 	if not operation_view_active: return
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
@@ -359,6 +367,32 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and mouse_down:
 		drag_end = event.position
 		selection_drag = drag_start.distance_to(drag_end) > 7.0
+
+func _ensure_native_workspaces() -> void:
+	if is_instance_valid(native_workspaces): return
+	native_workspaces = load("res://scripts/native_workspaces.gd").new()
+	hud.get_parent().add_child(native_workspaces)
+	native_workspaces.setup(self)
+
+func open_model_preview() -> void:
+	_ensure_native_workspaces()
+	hud.close_panels()
+	hud.hide()
+	camera.input_enabled = false
+	native_workspaces.show_models()
+
+func open_sfx_designer() -> void:
+	_ensure_native_workspaces()
+	hud.close_panels()
+	hud.hide()
+	camera.input_enabled = false
+	native_workspaces.show_sfx()
+
+func open_battlefield() -> void:
+	if is_instance_valid(native_workspaces): native_workspaces.hide()
+	camera.input_enabled = true
+	hud.show()
+	hud.close_panels()
 
 func _pick_unit(screen_pos: Vector2) -> CombatUnit:
 	if not operation_view_active: return null
@@ -490,6 +524,23 @@ func step_once() -> void:
 	if not paused: toggle_pause()
 	_tick_simulation(0.05)
 	notify("Simulation advanced by 0.05 seconds.")
+
+func set_graphics_setting(key: String, value: Variant) -> void:
+	if not graphics_settings.has(key): return
+	graphics_settings[key] = value
+	var performance: bool = graphics_settings["performanceMode"]
+	set_shadows(bool(graphics_settings["shadows"]) and not performance)
+	show_routes = bool(graphics_settings["routes"]) and not performance
+	show_grid = bool(graphics_settings["grid"]) and not performance
+	get_viewport().scaling_3d_scale = 1.0 if performance else {"performance":1.0,"balanced":1.5,"high":2.0}.get(graphics_settings["quality"],1.0)
+	for node in map.get_children():
+		if node is MultiMeshInstance3D: node.visible = bool(graphics_settings["models"])
+	_apply_model_visibility()
+	hud.queue_redraw()
+
+func _apply_model_visibility() -> void:
+	for unit in units:
+		unit.visible = bool(graphics_settings["models"]) and (not graphics_settings["performanceMode"] or unit.position.distance_to(camera.focus) <= 10.0)
 
 func set_shadows(enabled: bool) -> void:
 	shadow_enabled = enabled

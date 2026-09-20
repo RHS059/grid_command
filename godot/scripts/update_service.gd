@@ -24,6 +24,14 @@ var session_snapshot: Dictionary = {}
 var smoke_finished := false
 var native_download_url := RELEASE_PAGE
 var _http: HTTPRequest
+var progress := 0.0
+var staged_executable := ""
+var staged_native_version := ""
+var _download_base := 0.0
+var _download_span := 1.0
+var _download_expected := 0
+var _last_download_percent := -1
+var _track_download_progress := false
 
 func _init() -> void:
 	base_version = str(ProjectSettings.get_setting("application/config/version", "0.1.0"))
@@ -43,6 +51,7 @@ func _status(next_phase: String, text: String) -> void:
 func check_for_updates() -> void:
 	if is_busy():
 		return
+	progress = 0.0
 	_status("checking", "Checking the public update channel...")
 	var channel := str(ProjectSettings.get_setting("updates/channel_url", DEFAULT_CHANNEL))
 	if channel != DEFAULT_CHANNEL and not channel.begins_with("https://raw.githubusercontent.com/RHS059/grid_command/"):
@@ -67,17 +76,17 @@ func check_for_updates() -> void:
 	var engine := Engine.get_version_info()
 	var engine_version := "%d.%d.%d" % [engine["major"], engine["minor"], engine["patch"]]
 	if manifest.get("requires_restart", false) or compare_versions(engine_version, str(manifest.get("min_runtime_version", "4.3.0"))) < 0:
-		_status("restart_required", "This update changes the native app. Install the new app. It takes effect on the next launch.")
+		await _stage_native_update()
 		return
 	pending_patches = patch_chain(manifest, current_version)
 	if pending_patches.is_empty():
-		_status("restart_required", "This version needs a new app download. Install it and use it on the next launch.")
+		await _stage_native_update()
 		return
 	# Autoloads and native settings cannot safely replace a running coordinator.
 	for patch in pending_patches:
 		for file_path in patch["files"]:
 			if str(file_path) in ["res://scripts/update_service.gd", "res://scripts/update_service.gdc", "res://project.godot", "res://project.binary"] or str(file_path).ends_with(".gdextension"):
-				_status("restart_required", "This update changes app startup files. Install the new app. It takes effect on the next launch.")
+				await _stage_native_update()
 				return
 	_status("available", "Version %s is ready. Download %d changed-file patch%s and keep this mission." % [manifest["version"], pending_patches.size(), "" if pending_patches.size() == 1 else "es"])
 
@@ -89,7 +98,10 @@ func apply_update() -> void:
 		return
 	_status("downloading", "Downloading changed files...")
 	var staged: Array[Dictionary] = []
+	progress = 0.0
 	for index in range(pending_patches.size()):
+		_download_base = float(index)/pending_patches.size()
+		_download_span = 1.0/pending_patches.size()
 		var patch := pending_patches[index].duplicate(true)
 		var final_path := _patch_path(patch)
 		var part_path := final_path + ".part"
@@ -122,12 +134,17 @@ func apply_update() -> void:
 			return
 		patch["local_path"] = final_path
 		staged.append(patch)
+		progress = float(index+1)/pending_patches.size()
+		status_changed.emit()
 	# Verify the full chain before mounting any part of it.
+	progress = 0.0
 	_status("applying", "Applying verified files. The mission will resume shortly.")
+	await get_tree().process_frame
 	var scene := get_tree().current_scene
 	if scene == null or not scene.has_method("export_session_state"):
 		_status("error", "This scene cannot keep the mission state. No patch was applied.")
 		return
+	var update_menu_open: bool = bool(get_meta("update_menu_open",false))
 	session_snapshot = scene.export_session_state()
 	scene.set_process(false)
 	scene.set_process_unhandled_input(false)
@@ -136,8 +153,11 @@ func apply_update() -> void:
 			scene.set_process(true)
 			scene.set_process_unhandled_input(true)
 			session_snapshot.clear()
-			_status("restart_required", "The patch could not load. Keep this mission, then install the new app for the next launch.")
+			_status("error", "The patch could not load. The mission is still active. Download the new app from the release page.")
 			return
+	progress = 0.5
+	status_changed.emit()
+	await get_tree().process_frame
 	# Keep the old scene alive until the replacement can be loaded and instanced.
 	# A bad pack therefore cannot persist itself or leave only a blank viewport.
 	for path in _changed_resources(staged):
@@ -149,16 +169,20 @@ func apply_update() -> void:
 		scene.set_process(true)
 		scene.set_process_unhandled_input(true)
 		session_snapshot.clear()
-		_status("restart_required", "The patch did not start. The current mission is still active; install the new app on the next launch.")
+		_status("error", "The patch did not start. The current mission is still active. Download the new app from the release page.")
 		return
 	current_version = str(manifest["version"])
+	set_meta("update_menu_open",update_menu_open)
+	progress = 0.85
+	status_changed.emit()
 	get_tree().root.add_child(next_scene)
 	get_tree().current_scene = next_scene
 	await get_tree().process_frame
 	scene.queue_free()
 	installed_patches.append_array(staged)
 	var persisted := _save_receipt()
-	_status("idle", "Version %s is active. The mission was kept.%s" % [current_version, "" if persisted else " The patch could not be saved for the next launch."])
+	progress = 1.0
+	_status("applied", "Version %s is active. The mission was kept.%s" % [current_version, "" if persisted else " The patch could not be saved for the next launch."])
 
 func take_session_snapshot() -> Dictionary:
 	var snapshot := session_snapshot
@@ -169,7 +193,195 @@ func open_native_download() -> void:
 	if phase == "restart_required":
 		OS.shell_open(native_download_url)
 
+func _stage_native_update() -> void:
+	staged_executable = ""
+	staged_native_version = ""
+	if OS.get_name() != "Windows":
+		_status("error","This update contains a Windows app. Download the release for your operating system.")
+		return
+	var url := str(manifest.get("download_url",""))
+	if not url.begins_with(RELEASE_PREFIX) or not url.ends_with(".zip"):
+		_status("error","This release has no Windows ZIP download. The current game remains active.")
+		return
+	var version := str(manifest.get("version",""))
+	if not valid_semver(version) or compare_versions(version,current_version) <= 0:
+		_status("error","The native update version is not newer than this game.")
+		return
+	var directory := CACHE_DIR.path_join("native").path_join(version)
+	if DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(directory)) != OK:
+		_status("error","Cannot create the update folder. The current game remains active.")
+		return
+	var archive := directory.path_join("download.zip.part")
+	progress = 0.0
+	_download_base = 0.0
+	_download_span = 1.0
+	_status("downloading","Downloading version %s..." % version)
+	var result: Dictionary = await _fetch(url,archive,MAX_PATCH_BYTES)
+	if not result.get("ok",false):
+		_remove_partial(archive)
+		_status("error","The app download did not finish. Try again; the current game remains active.")
+		return
+	var checksum := str(manifest.get("download_sha256",""))
+	if not checksum.is_empty() and FileAccess.get_sha256(archive).to_lower() != checksum.to_lower():
+		_remove_partial(archive)
+		_status("error","The app download failed its checksum. No update was applied.")
+		return
+	progress = 0.0
+	_status("applying","Preparing the new app. The current mission is still active.")
+	await get_tree().process_frame
+	var unpacked: Dictionary = await _unpack_native_archive(archive,directory)
+	_remove_partial(archive)
+	if not unpacked.get("ok",false):
+		_status("error",str(unpacked.get("error","Cannot prepare this native app update.")))
+		return
+	staged_executable = str(unpacked["executable"])
+	staged_native_version = version
+	progress = 1.0
+	_status("restart_required","Version %s is downloaded and ready. Restart the game to use it." % version)
+
+func restart_game() -> void:
+	if phase != "restart_required" or staged_executable.is_empty() or not FileAccess.file_exists(staged_executable):
+		_status("error","No downloaded native update is ready. Check for updates first.")
+		return
+	if not valid_semver(staged_native_version) or compare_versions(staged_native_version,current_version) <= 0:
+		_status("error","The downloaded app is not newer. The current game remains active.")
+		return
+	# Never launch another editor or terminate the test host.
+	if OS.has_feature("editor") or Engine.is_editor_hint() or "--smoke-test" in OS.get_cmdline_user_args():
+		_status("restart_required","The new app is ready. Automatic restart is available in the installed game.")
+		return
+	var executable := ProjectSettings.globalize_path(staged_executable)
+	if executable == OS.get_executable_path():
+		_status("error","The new app path matches the current app. Restart was cancelled.")
+		return
+	var process := OS.create_process(executable,PackedStringArray())
+	if process <= 0:
+		_status("error","The new game could not start. The current game remains active.")
+		return
+	get_tree().quit()
+
+static func _safe_archive_path(path: String) -> bool:
+	if path.is_empty() or path.begins_with("/") or "\\" in path or ":" in path or path.length() > 240:
+		return false
+	for component in path.trim_suffix("/").split("/"):
+		if component.is_empty() or component in [".",".."] or component.ends_with(".") or component.ends_with(" "):
+			return false
+		var stem := component.get_slice(".",0).to_upper()
+		if stem in ["CON","PRN","AUX","NUL","COM1","COM2","COM3","COM4","COM5","COM6","COM7","COM8","COM9","LPT1","LPT2","LPT3","LPT4","LPT5","LPT6","LPT7","LPT8","LPT9"]: return false
+		for character in component:
+			if character.unicode_at(0) < 32 or character in ["<",">","\"","|","?","*"]: return false
+	return true
+
+static func _native_archive_index(path: String) -> Dictionary:
+	# Read central directory metadata before any decompression. This bounds both
+	# expanded memory/disk usage and entry count, and rejects ZIP64 and symlinks.
+	var file := FileAccess.open(path,FileAccess.READ)
+	if file == null: return {"ok":false,"error":"Cannot read the downloaded archive."}
+	var length := file.get_length()
+	if length < 22 or length > MAX_PATCH_BYTES: return {"ok":false,"error":"The update archive size is not valid."}
+	var tail_start := maxi(0,length-65557)
+	file.seek(tail_start)
+	var tail := file.get_buffer(length-tail_start)
+	var end_offset := -1
+	for index in range(tail.size()-22,-1,-1):
+		if tail.decode_u32(index) == 0x06054b50 and index+22+tail.decode_u16(index+20) == tail.size():
+			end_offset = index
+			break
+	if end_offset < 0: return {"ok":false,"error":"The downloaded file is not a supported ZIP archive."}
+	var count := tail.decode_u16(end_offset+10)
+	var directory_size := tail.decode_u32(end_offset+12)
+	var directory_offset := tail.decode_u32(end_offset+16)
+	if tail.decode_u16(end_offset+4) != 0 or tail.decode_u16(end_offset+6) != 0 or tail.decode_u16(end_offset+8) != count or count < 1 or count > 4096 or directory_size > 8388608 or directory_offset+directory_size > tail_start+end_offset:
+		return {"ok":false,"error":"The update archive directory is not supported."}
+	file.seek(directory_offset)
+	var entries: Array[Dictionary] = []
+	var expanded := 0
+	var names := {}
+	var executable := ""
+	for index in range(count):
+		var header := file.get_buffer(46)
+		if header.size() != 46 or header.decode_u32(0) != 0x02014b50: return {"ok":false,"error":"The archive directory is damaged."}
+		var flags := header.decode_u16(8)
+		var method := header.decode_u16(10)
+		var size_bytes := header.decode_u32(24)
+		var name_length := header.decode_u16(28)
+		var extra_length := header.decode_u16(30)
+		var comment_length := header.decode_u16(32)
+		var mode := (header.decode_u32(38)>>16)&0xf000
+		var local_offset := header.decode_u32(42)
+		if (flags&1) != 0 or method not in [0,8] or size_bytes > MAX_PATCH_BYTES or name_length < 1 or name_length > 1024 or mode == 0xa000 or local_offset >= directory_offset:
+			return {"ok":false,"error":"The archive contains unsupported entries."}
+		var name := file.get_buffer(name_length).get_string_from_utf8()
+		if not _safe_archive_path(name) or names.has(name.to_lower()): return {"ok":false,"error":"The archive contains an unsafe or duplicate file path."}
+		names[name.to_lower()] = true
+		expanded += size_bytes
+		if expanded > MAX_PATCH_BYTES: return {"ok":false,"error":"The expanded update exceeds 512 MB."}
+		if name.get_file().to_lower() == "gridcommand.exe":
+			if not executable.is_empty(): return {"ok":false,"error":"The archive contains more than one game executable."}
+			executable = name
+		entries.append({"name":name,"size":size_bytes})
+		file.seek(file.get_position()+extra_length+comment_length)
+		if file.get_position() > directory_offset+directory_size: return {"ok":false,"error":"The archive directory is truncated."}
+	if executable.is_empty() or not names.has(executable.get_basename().to_lower()+".pck"):
+		return {"ok":false,"error":"The update must include GridCommand.exe and its matching PCK file."}
+	return {"ok":true,"entries":entries,"executable":executable,"expanded":expanded}
+
+func _unpack_native_archive(archive: String, directory: String) -> Dictionary:
+	if not directory.begins_with(CACHE_DIR+"/native/") or not valid_semver(directory.get_file()):
+		return {"ok":false,"error":"The update destination is not valid."}
+	var index := _native_archive_index(archive)
+	if not index.get("ok",false): return index
+	var reader := ZIPReader.new()
+	if reader.open(archive) != OK: return {"ok":false,"error":"Cannot open the downloaded ZIP archive."}
+	var bytes_written := 0
+	for entry in index["entries"]:
+		var name: String = entry["name"]
+		var destination := directory.path_join(name)
+		if name.ends_with("/"):
+			if DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(destination)) != OK:
+				reader.close()
+				return {"ok":false,"error":"Cannot create the native update folder."}
+			continue
+		if DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(destination.get_base_dir())) != OK:
+			reader.close()
+			return {"ok":false,"error":"Cannot create an update subfolder."}
+		var bytes := reader.read_file(name)
+		if bytes.size() != int(entry["size"]):
+			reader.close()
+			return {"ok":false,"error":"An update file is damaged. The current game remains active."}
+		var file := FileAccess.open(destination,FileAccess.WRITE)
+		if file == null:
+			reader.close()
+			return {"ok":false,"error":"Cannot write the new app files."}
+		file.store_buffer(bytes)
+		var write_error := file.get_error()
+		file.close()
+		if write_error != OK:
+			reader.close()
+			return {"ok":false,"error":"The new app files could not be saved completely."}
+		bytes_written += bytes.size()
+		progress = float(bytes_written)/maxf(1,float(index["expanded"]))
+		status_changed.emit()
+		await get_tree().process_frame
+	reader.close()
+	var executable := directory.path_join(str(index["executable"]))
+	return {"ok":true,"executable":executable}
+
+func _process(_delta: float) -> void:
+	if phase != "downloading" or not _track_download_progress or not is_instance_valid(_http): return
+	var total := _http.get_body_size()
+	if total <= 0: total = _download_expected
+	if total <= 0: return
+	progress = clampf(_download_base+_download_span*float(_http.get_downloaded_bytes())/float(total),0.0,1.0)
+	var percent := int(progress*100)
+	if percent != _last_download_percent:
+		_last_download_percent = percent
+		status_changed.emit()
+
 func _fetch(url: String, destination: String, limit: int) -> Dictionary:
+	_track_download_progress = not destination.is_empty()
+	_download_expected = limit if limit < MAX_PATCH_BYTES else 0
+	_last_download_percent = -1
 	_http = HTTPRequest.new()
 	_http.timeout = 60.0
 	_http.max_redirects = 6
@@ -255,6 +467,9 @@ static func validate_manifest(value: Variant) -> Dictionary:
 	var download := str(value.get("download_url", RELEASE_PAGE))
 	if download != RELEASE_PAGE and not download.begins_with(RELEASE_PREFIX):
 		return {"ok": false}
+	var native_hash := str(value.get("download_sha256",""))
+	if not native_hash.is_empty() and (native_hash.length() != 64 or not native_hash.is_valid_hex_number(false)):
+		return {"ok":false}
 	for patch in value["patches"]:
 		if not patch is Dictionary or not _valid_patch(patch):
 			return {"ok": false}
@@ -369,6 +584,9 @@ func run_smoke_tests() -> bool:
 	bad["patches"][0]["url"] = "https://example.com/untrusted.pck"
 	if validate_manifest(bad)["ok"]:
 		return false
+	for path in ["../escape.exe","C:/escape.exe","/escape.exe","folder/../escape.exe","CON.txt"]:
+		if _safe_archive_path(path): return false
+	if not _safe_archive_path("game/GridCommand.exe"): return false
 	print("GRID_COMMAND_UPDATE_SMOKE_OK: semver, manifest, patch chain, SHA-256, rejected invalid origin; no network")
 	smoke_finished = true
 	return true
