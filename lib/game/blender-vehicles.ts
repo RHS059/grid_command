@@ -105,7 +105,7 @@ export function blenderVehicleGeometry(role: Role, side: Side, attachment = fals
 
 /** Keep each animated propeller around its actual hub, independent of fuselage origin. */
 export function createBlenderVehicle(role: Role, side: Side) {
-  const root = new T.Group(); root.name = role
+  const root = new T.Group(); root.name = role; root.userData.unitSurface = true
   const lowAsset = lowAssets[role]
   const lod: ModelLodState | undefined = lowAsset ? { transition: new LodTransition(), span: 7.4, detail: 1 } : undefined
   if (lod) root.userData.modelLodRoot = lod

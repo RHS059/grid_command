@@ -32,6 +32,7 @@ import type { Graphics } from './types'
 import { StartupDeadlineError, withStartupDeadline } from './startup-deadline'
 import { configureShadowNormalBias, fitStudioShadowDepth } from './shadow-shading'
 import { ensureLodDither } from './babylon-lod-dither'
+import { ensureUnitContour, hasUnitSurface } from './babylon-unit-contour'
 import { lodDitherRange, type LodDitherRange, type ModelLodState } from './lod-transition'
 
 type DrawRecord={mesh:Mesh;geometry:D.BufferGeometry;version:string;instanceVersion:string;castShadow:boolean;ownedGeometry?:boolean;sectors?:Map<string,number[]>;sectorVersion?:string;instanceCount?:number;instanceBuffers?:Map<string,Float32Array>;instanceBoundsDirty?:boolean;world?:Matrix;worldValues?:number[]}
@@ -224,9 +225,11 @@ export class BabylonRuntime {
     this.updateGeometry(record,object,low?record.geometry:object.geometry)
     const source=Array.isArray(object.material)?object.material[0]:object.material
     const material=this.damagedMaterial(this.getMaterial(source),hasDestroyedAppearance(object))
+    const unitContour=hasUnitSurface(object)&&source instanceof D.MeshStandardMaterial&&source.toneMapped&&!source.transparent&&source.blending!==D.AdditiveBlending&&source.name!=='interior-window'
+    if(unitContour)ensureUnitContour(material)
     record.mesh.material=material
     const collider=colliderState(object)
-    record.mesh.metadata={...record.mesh.metadata,gridVehicleDamage:vehicleDamage,gridVehicleCollider:collider,gridLodRange:range,gridLodDetail:source.uniforms.buildingDetailFade?.value??1}
+    record.mesh.metadata={...record.mesh.metadata,gridUnitContour:unitContour,gridVehicleDamage:vehicleDamage,gridVehicleCollider:collider,gridLodRange:range,gridLodDetail:source.uniforms.buildingDetailFade?.value??1}
     record.mesh.isPickable=!low&&(!collider||collider.enabled)&&(vehicleDamage?.destruction??0)<1
     record.mesh.receiveShadows=!object.userData.vehicleEffect&&(root.profile==='studio'?object.receiveShadow:true)
     this.updateWorld(record,object)
@@ -259,7 +262,12 @@ export class BabylonRuntime {
       record.destroyed=destroyed
       }
       const state=damageState(source)
-      for(const root of record.entries.rootNodes)for(const node of [root,...root.getDescendants(false)])if(node instanceof Mesh)node.metadata={...node.metadata,gridVehicleDamage:state}
+      const unitSurface=hasUnitSurface(source)
+      for(const root of record.entries.rootNodes)for(const node of [root,...root.getDescendants(false)])if(node instanceof Mesh){
+        const unitContour=unitSurface&&node.material instanceof PBRMaterial&&!node.material.unlit&&node.material.alpha===1&&node.material.alphaMode!==Engine.ALPHA_ADD
+        if(unitContour)ensureUnitContour(node.material as PBRMaterial)
+        node.metadata={...node.metadata,gridUnitContour:unitContour,gridVehicleDamage:state}
+      }
       const filter=source.userData.nativeNodeName as string|undefined
       if(filter)for(const root of record.entries.rootNodes)for(const node of root.getDescendants(false)){if(node instanceof TransformNode&&node.name.startsWith('Weapon_'))node.setEnabled(node.name===filter)}
       source.traverse(node=>{if(node.name.startsWith('Gear_')||node.name.startsWith('Weapon_'))this.nativeNodes.get(node.id)?.setEnabled(node.visible)})

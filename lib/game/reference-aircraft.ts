@@ -5,7 +5,7 @@ import { SIDE_COLOR, type Role, type Side } from './types'
 
 // Z up, +Y nose. Only moving assemblies remain separate after baking.
 export function createReferenceAircraft(role: Role, side: Side) {
-  const root=new T.Group();root.name=role
+  const root=new T.Group();root.name=role;root.userData.unitSurface=true
   const jet=role==='JET',cas=role==='CAS_FIGHTER',transport=role==='TRANSPORT_HELI'
   const body=new T.MeshStandardMaterial({color:jet?'#858f96':cas?'#67786a':transport?'#777868':'#b1b7b4',roughness:.88,metalness:.08,flatShading:true})
   const dark=new T.MeshStandardMaterial({color:'#272e30',roughness:.9,flatShading:true}),glass=new T.MeshStandardMaterial({color:'#344b59',roughness:.3,metalness:.2,flatShading:true}),metal=new T.MeshStandardMaterial({color:'#555f60',roughness:.8,flatShading:true}),mark=new T.MeshStandardMaterial({color:SIDE_COLOR[side],roughness:.85})

@@ -13,7 +13,7 @@ export function disposeModel(root: T.Object3D) {
 export function createAircraft(role: Role, side: Side) {
   if(hasBlenderVehicle(role))return createBlenderVehicle(role,side)
   if (['CARGO_PLANE','CAS_FIGHTER','JET','TRANSPORT_HELI','HEAVY_LIFT_HELI','ATTACK_HELI'].includes(role)) return createReferenceAircraft(role, side)
-  const root = new T.Group(); root.name = role
+  const root = new T.Group(); root.name = role; root.userData.unitSurface = true
   const body = new T.MeshStandardMaterial({ color: '#65716a', roughness: .62, metalness: .3 })
   const dark = new T.MeshStandardMaterial({ color: '#18222b', roughness: .7, metalness: .35 })
   const glass = new T.MeshStandardMaterial({ color: '#293e4c', roughness: .12, metalness: .75 })

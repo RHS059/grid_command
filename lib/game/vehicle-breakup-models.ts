@@ -128,6 +128,7 @@ export class VehicleBreakupModels {
     const index = this.pool.findIndex(visual => visual.key === key)
     const visual = index >= 0 ? this.pool.splice(index, 1)[0] : { root: template.root.clone() as T.Group, pieces: new Map<string, T.Object3D>(), key }
     visual.root.name = `vehicle-breakup-${event.id}`
+    visual.root.userData.unitSurface = true
     visual.root.userData.destroyed = true
     visual.root.userData.vehicleDamage = { damage: 1, destruction: .12, heat: .35, seed: event.seed % 1000 }
     for (const piece of visual.root.children) visual.pieces.set(piece.name, piece)

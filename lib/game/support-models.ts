@@ -8,7 +8,7 @@ import { SIDE_COLOR, type Role, type Side, type MissionState } from './types'
 export const isSupportModel=(role:Role)=>['FORKLIFT','TRUCK','TROOP_TRUCK','UAV_JAMMER','APC','CANNON_APC','TANK','AMPHIBIOUS_APC','PATROL_BOAT','LANDING_CRAFT','FRIGATE','AIRCRAFT_CARRIER'].includes(role)
 export function createSupportModel(role:Role,side:Side){
   if(['TROOP_TRUCK','APC','CANNON_APC','TANK','AMPHIBIOUS_APC','PATROL_BOAT','LANDING_CRAFT','FRIGATE','AIRCRAFT_CARRIER'].includes(role))return createBlenderVehicle(role,side)
-  const root=new T.Group();root.name=role
+  const root=new T.Group();root.name=role;root.userData.unitSurface=true
   const body=new T.MeshStandardMaterial({color:'#73765a',roughness:.9,flatShading:true}),dark=new T.MeshStandardMaterial({color:'#262c29',roughness:.9,flatShading:true}),metal=new T.MeshStandardMaterial({color:'#565f51',metalness:.15,roughness:.8,flatShading:true}),glass=new T.MeshStandardMaterial({color:'#293e4c',metalness:.6,roughness:.15}),mark=new T.MeshStandardMaterial({color:SIDE_COLOR[side]})
   root.userData.materials=[body,dark,metal,glass,mark]
   const b=(w:number,d:number,h:number,x:number,y:number,z:number,m=body,parent:T.Object3D=root)=>{const o=new T.Mesh(new T.BoxGeometry(w,d,h),m);o.position.set(x,y,z);parent.add(o);return o}

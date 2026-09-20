@@ -28,6 +28,8 @@ jobs:
           cache: pnpm
       - uses: actions/configure-pages@v5
       - run: pnpm install --frozen-lockfile
+      - name: Validate shipped vehicle assets
+        run: pnpm exec tsx --test tests/vehicle-texture-assets.test.ts tests/fighter-pbr.test.ts
       - name: Validate or populate root building catalog
         id: building_catalog
         continue-on-error: true

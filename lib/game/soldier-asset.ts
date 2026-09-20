@@ -55,11 +55,11 @@ export function loadSoldierWeaponAsset() { return soldierWeaponAsset ??= loadRig
 export function cloneSoldierWeapon(source: D.Object3D, weapon: SoldierWeapon) {
   const node = source.getObjectByName(`Weapon_${weapon}`)
   if (!node) return undefined
-  const clone = node.clone(true); clone.userData.nativeAssetURL = source.userData.nativeAssetURL; clone.userData.nativeNodeName = node.name
+  const clone = node.clone(true); clone.userData.nativeAssetURL = source.userData.nativeAssetURL; clone.userData.nativeNodeName = node.name; clone.userData.unitSurface = true
   return clone
 }
 export function createSoldierTemplate(source: D.Object3D, side: Side) {
-  const template = source.clone(true); template.name = `soldier-${side}-template`; template.visible = false; template.userData.teamColor = SIDE_COLOR[side]
+  const template = source.clone(true); template.name = `soldier-${side}-template`; template.visible = false; template.userData.teamColor = SIDE_COLOR[side]; template.userData.unitSurface = true
   return template
 }
 export const cloneSoldierRig = (template: D.Object3D) => template.clone(true)

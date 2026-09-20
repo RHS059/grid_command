@@ -3,12 +3,36 @@ import assert from 'node:assert/strict'
 import { NullEngine } from '@babylonjs/core/Engines/nullEngine'
 import type { CascadedShadowGenerator } from '@babylonjs/core/Lights/Shadows/cascadedShadowGenerator'
 import { Observable } from '@babylonjs/core/Misc/observable'
+import { ShaderStore } from '@babylonjs/core/Engines/shaderStore'
 import { BabylonRuntime } from '../lib/game/babylon-runtime'
-import { configureShadowNormalBias, fitStudioShadowDepth } from '../lib/game/shadow-shading'
+import { configureShadowNormalBias, fitStudioShadowDepth, prepareTwoSidedShadowBias, shadowNormalBias } from '../lib/game/shadow-shading'
 import { createBlenderVehicle } from '../lib/game/blender-vehicles'
 import { buildingGeometry } from '../lib/game/building-model'
 import { disposeModel } from '../lib/game/aircraft-models'
 import * as T from '../lib/game/scene-data'
+
+test('both shadow backends keep thin shell undersides behind the visible surface', () => {
+  prepareTwoSidedShadowBias()
+  for (const store of [ShaderStore.IncludesShadersStore, ShaderStore.IncludesShadersStoreWGSL]) {
+    const shader = store.shadowMapVertexNormalBias
+    // Exercise the actual installed shader expression, so a missing replacement
+    // or a Babylon include change fails this regression instead of testing a copy.
+    const expression = shader.match(/vNormalW\*=([^;]+);/)?.[1]
+    assert.ok(expression, 'the shadow shader orients the normal before applying bias')
+    const orientation = new Function('ndlSM', 'select', `return ${expression}`) as (dot: number, select: (a: number, b: number, chooseB: boolean) => number) => number
+    const select = (a: number, b: number, chooseB: boolean) => chooseB ? b : a
+    for (const cosine of [.21, .5, .95]) for (const thickness of [.03, .35, .4]) {
+      const bias = shadowNormalBias(2048, 1024, 1024) * Math.sqrt(1 - cosine * cosine)
+      const top = -orientation(cosine, select) * bias
+      const underside = -thickness + orientation(-cosine, select) * bias
+      assert.ok(underside < top, `a ${thickness} m slab never becomes its own occluder at light cosine ${cosine}`)
+      for (const dot of [cosine, -cosine]) assert.ok(-dot * orientation(dot, select) * bias <= 0, 'both faces move away from the light')
+    }
+    assert.match(shader, /clamp\(dot\(vNormalW,worldLightDirSM\),-1\.0,1\.0\)/, 'rounding cannot give sqrt a negative argument')
+    prepareTwoSidedShadowBias()
+    assert.equal(store.shadowMapVertexNormalBias, shader, 'configuration is idempotent across runtimes')
+  }
+})
 
 test('each shadow cascade uses its own pixel size instead of a fixed world offset', () => {
   const render = new Observable<number>(), extents = [4, 64, 4000]

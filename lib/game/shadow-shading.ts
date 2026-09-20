@@ -1,5 +1,26 @@
 import type { FreeCamera } from '@babylonjs/core/Cameras/freeCamera'
 import type { CascadedShadowGenerator } from '@babylonjs/core/Lights/Shadows/cascadedShadowGenerator'
+import { ShaderStore } from '@babylonjs/core/Engines/shaderStore'
+import { shadowMapVertexNormalBias } from '@babylonjs/core/Shaders/ShadersInclude/shadowMapVertexNormalBias'
+import { shadowMapVertexNormalBiasWGSL } from '@babylonjs/core/ShadersWGSL/ShadersInclude/shadowMapVertexNormalBias'
+
+/**
+ * Babylon offsets every caster along -normal. On double-sided roofs, runway paint,
+ * and base slabs, that moves the underside up through the visible top whenever the
+ * pixel-scaled bias exceeds the shell thickness. Both faces must move away from
+ * the light. Change only the shadow pass; keep the surface's authored normals.
+ * Register both includes before Babylon compiles its shadow effects.
+ */
+export function prepareTwoSidedShadowBias() {
+  ShaderStore.IncludesShadersStore[shadowMapVertexNormalBias.name] = shadowMapVertexNormalBias.shader.replace(
+    'float ndlSM=dot(vNormalW,worldLightDirSM);',
+    'float ndlSM=clamp(dot(vNormalW,worldLightDirSM),-1.0,1.0);vNormalW*=ndlSM<0.0?-1.0:1.0;',
+  )
+  ShaderStore.IncludesShadersStoreWGSL[shadowMapVertexNormalBiasWGSL.name] = shadowMapVertexNormalBiasWGSL.shader.replace(
+    'var ndlSM: f32=dot(vNormalW,worldLightDirSM);',
+    'var ndlSM: f32=clamp(dot(vNormalW,worldLightDirSM),-1.0,1.0);vNormalW*=select(1.0,-1.0,ndlSM<0.0);',
+  )
+}
 
 /** Use two shadow pixels of normal offset at each cascade's world scale. */
 export function shadowNormalBias(width: number, height: number, resolution: number) {
@@ -8,6 +29,7 @@ export function shadowNormalBias(width: number, height: number, resolution: numb
 
 /** Set the offset after Babylon computes the current cascade projection. */
 export function configureShadowNormalBias(shadows: CascadedShadowGenerator) {
+  prepareTwoSidedShadowBias()
   const map = shadows.getShadowMap()!
   shadows.normalBias = .001
   map.onBeforeRenderObservable.add(layer => {

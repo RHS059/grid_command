@@ -34,6 +34,7 @@ export function ModelViewport(props: Props) {
     else if (isSupportModel(id)) object = createSupportModel(id, props.side)
     else if (isVehicle(id)) {
       object = new T.Mesh(vehicleGeometry(id, props.side), material)
+      object.userData.unitSurface = true
       if (['TANK', 'APC', 'IFV', 'CANNON_APC', 'ATTACK_HELI'].includes(id)) {
         const attachment = new T.Mesh(vehicleGeometry(id, props.side, true), material)
         attachment.name = 'turret'
@@ -55,7 +56,10 @@ export function ModelViewport(props: Props) {
     floor.position.z = bounds.min.z - .05; floor.receiveShadow = true; scene.add(floor)
     const grid = new T.GridHelper(radius * 8, 32, '#5f9fc4', '#2d4a63'); grid.rotation.x = Math.PI / 2; grid.position.z = bounds.min.z - .04; scene.add(grid)
     const studio = addStudioLighting(scene)
-    const frameModel = () => { const direction = new T.Vector3(1, 1.55, 1.05).normalize(), right = new T.Vector3().crossVectors(camera.up, direction).normalize(), up = new T.Vector3().crossVectors(direction, right), tan = Math.tan(T.MathUtils.degToRad(camera.fov / 2)); let distance = 0; for (const x of [-1, 1]) for (const y of [-1, 1]) for (const z of [-1, 1]) { const p = new T.Vector3(x * size.x / 2, y * size.y / 2, z * size.z / 2); distance = Math.max(distance, Math.abs(p.dot(right)) / (tan * camera.aspect) + p.dot(direction), Math.abs(p.dot(up)) / tan + p.dot(direction)) } distance *= 1.1; camera.position.copy(center).add(direction.multiplyScalar(distance)); orbit.target.copy(center); orbit.minDistance = radius * .3; orbit.maxDistance = distance * 4; camera.near = Math.max(.015, radius / 1000); camera.far = distance * 20; camera.updateProjectionMatrix(); orbit.update() }
+    // A near plane at radius/1000 loses centimetre-separated runway paint to depth
+    // rounding on a 1,200 m airfield. Radius/20 preserves those layers and remains
+    // well inside the minimum orbit distance (radius * .3), including small units.
+    const frameModel = () => { const direction = new T.Vector3(1, 1.55, 1.05).normalize(), right = new T.Vector3().crossVectors(camera.up, direction).normalize(), up = new T.Vector3().crossVectors(direction, right), tan = Math.tan(T.MathUtils.degToRad(camera.fov / 2)); let distance = 0; for (const x of [-1, 1]) for (const y of [-1, 1]) for (const z of [-1, 1]) { const p = new T.Vector3(x * size.x / 2, y * size.y / 2, z * size.z / 2); distance = Math.max(distance, Math.abs(p.dot(right)) / (tan * camera.aspect) + p.dot(direction), Math.abs(p.dot(up)) / tan + p.dot(direction)) } distance *= 1.1; camera.position.copy(center).add(direction.multiplyScalar(distance)); orbit.target.copy(center); orbit.minDistance = radius * .3; orbit.maxDistance = distance * 4; camera.near = Math.max(.015, radius / 20); camera.far = distance * 20; camera.updateProjectionMatrix(); orbit.update() }
     const resize = () => { const r = element.getBoundingClientRect(); if (!r.width || !r.height) return; renderer.setSize(r.width, r.height); camera.aspect = r.width / r.height; frameModel() }
     const observer = new ResizeObserver(resize); observer.observe(element); resize()
     let frame = 0, time = 0, previous = performance.now(), lastReset = current.current.reset, clipTime=0, lastClip="", lastSeek=-1, lastReport=0
