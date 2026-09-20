@@ -1,0 +1,77 @@
+name: Build Godot Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "godot/**"
+      - ".github/workflows/build-windows.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: godot-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: "4.7.2"
+
+jobs:
+  export-windows:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out project
+        uses: actions/checkout@v4
+
+      - name: Select project directory
+        shell: bash
+        run: |
+          if [[ -f godot/project.godot ]]; then
+            echo "PROJECT_DIR=godot" >> "$GITHUB_ENV"
+          else
+            echo "PROJECT_DIR=." >> "$GITHUB_ENV"
+          fi
+
+      - name: Download Godot and export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          mkdir -p "$RUNNER_TEMP/godot" "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          curl --fail --location --retry 3 "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip" --output "$RUNNER_TEMP/godot/editor.zip"
+          curl --fail --location --retry 3 "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz" --output "$RUNNER_TEMP/godot/templates.tpz"
+          unzip -q "$RUNNER_TEMP/godot/editor.zip" -d "$RUNNER_TEMP/godot"
+          unzip -q "$RUNNER_TEMP/godot/templates.tpz" -d "$RUNNER_TEMP/godot/templates"
+          cp -R "$RUNNER_TEMP/godot/templates/templates/." "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/"
+          chmod +x "$RUNNER_TEMP/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64"
+          echo "GODOT=$RUNNER_TEMP/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64" >> "$GITHUB_ENV"
+
+      - name: Import and parse project
+        shell: bash
+        run: |
+          "$GODOT" --headless --path "$PROJECT_DIR" --import --quit
+          "$GODOT" --headless --path "$PROJECT_DIR" --editor --quit-after 2
+
+      - name: Export Windows build
+        shell: bash
+        run: |
+          mkdir -p "$PROJECT_DIR/build/windows"
+          "$GODOT" --headless --path "$PROJECT_DIR" --export-release "Windows Desktop" "build/windows/GridCommand.exe"
+
+      - name: Package build
+        shell: bash
+        run: |
+          cd "$PROJECT_DIR/build"
+          zip -9 -r GridCommand-Windows-x86_64.zip windows
+
+      - name: Upload playable build
+        uses: actions/upload-artifact@v4
+        with:
+          name: GridCommand-Windows-x86_64
+          path: ${{ env.PROJECT_DIR }}/build/GridCommand-Windows-x86_64.zip
+          if-no-files-found: error
+          retention-days: 14
+

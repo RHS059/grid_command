@@ -1,0 +1,245 @@
+{
+  "schema_version": 1,
+  "units": "source game units; preserve the GLB's authored scale",
+  "godot_orientation": "Y up, -Z forward; apply wrapper_rotation_degrees outside the imported scene",
+  "orm_channels": {
+    "r": "ambient_occlusion",
+    "g": "roughness",
+    "b": "metallic"
+  },
+  "normal_map_convention": "OpenGL +Y",
+  "shared_damage_mask": "res://assets/textures/vehicle_destroyed_mask.png",
+  "models": [
+    {
+      "id": "fighter",
+      "label": "FQ-44 Fury",
+      "source_role": "JET",
+      "scene": "res://assets/models/fighter.glb",
+      "wrapper_rotation_degrees": [
+        -90,
+        0,
+        0
+      ],
+      "lod_scenes": [],
+      "collision_scene": null,
+      "textures": {
+        "albedo": "res://assets/models/fighter_albedo.png",
+        "normal": "res://assets/models/fighter_normal.png",
+        "orm": "res://assets/models/fighter_orm.png",
+        "roughness": "res://assets/models/fighter_roughness.png",
+        "metalness": "res://assets/models/fighter_metalness.png"
+      },
+      "companion_data": []
+    },
+    {
+      "id": "tank",
+      "label": "Tank",
+      "source_role": "TANK",
+      "scene": "res://assets/models/tank.glb",
+      "wrapper_rotation_degrees": [
+        0,
+        0,
+        0
+      ],
+      "lod_scenes": [],
+      "collision_scene": null,
+      "textures": {
+        "albedo": "res://assets/models/tank_albedo.png",
+        "orm": "res://assets/models/tank_orm.png"
+      },
+      "companion_data": []
+    },
+    {
+      "id": "apc",
+      "label": "APC",
+      "source_role": "APC",
+      "scene": "res://assets/models/apc.glb",
+      "wrapper_rotation_degrees": [
+        0,
+        0,
+        0
+      ],
+      "lod_scenes": [
+        "res://assets/models/apc_lod1.glb"
+      ],
+      "collision_scene": null,
+      "textures": {
+        "albedo": "res://assets/models/stryker_albedo.png",
+        "orm": "res://assets/models/stryker_orm.png"
+      },
+      "companion_data": []
+    },
+    {
+      "id": "cannon_apc",
+      "label": "Cannon APC",
+      "source_role": "CANNON_APC",
+      "scene": "res://assets/models/cannon_apc.glb",
+      "wrapper_rotation_degrees": [
+        0,
+        0,
+        0
+      ],
+      "lod_scenes": [
+        "res://assets/models/cannon_apc_lod1.glb"
+      ],
+      "collision_scene": null,
+      "textures": {
+        "albedo": "res://assets/models/stryker_albedo.png",
+        "orm": "res://assets/models/stryker_orm.png"
+      },
+      "companion_data": []
+    },
+    {
+      "id": "aircraft_carrier",
+      "label": "Aircraft carrier",
+      "source_role": "AIRCRAFT_CARRIER",
+      "scene": "res://assets/models/aircraft_carrier.glb",
+      "wrapper_rotation_degrees": [
+        0,
+        0,
+        0
+      ],
+      "lod_scenes": [
+        "res://assets/models/aircraft_carrier_lod1.glb"
+      ],
+      "collision_scene": "res://assets/models/aircraft_carrier_collision.glb",
+      "textures": {
+        "albedo": "res://assets/models/aircraft_carrier_albedo.png"
+      },
+      "companion_data": [
+        "res://assets/models/aircraft_carrier_rig.json",
+        "res://assets/models/aircraft_carrier.json"
+      ]
+    },
+    {
+      "id": "missile_cruiser",
+      "label": "Missile cruiser",
+      "source_role": "FRIGATE",
+      "scene": "res://assets/models/missile_cruiser.glb",
+      "wrapper_rotation_degrees": [
+        0,
+        0,
+        0
+      ],
+      "lod_scenes": [
+        "res://assets/models/missile_cruiser_lod1.glb"
+      ],
+      "collision_scene": "res://assets/models/missile_cruiser_collision.glb",
+      "textures": {
+        "albedo": "res://assets/models/missile_cruiser_albedo.png"
+      },
+      "companion_data": []
+    },
+    {
+      "id": "cas",
+      "label": "CAS aircraft",
+      "source_role": "CAS_FIGHTER",
+      "scene": "res://assets/models/cas.glb",
+      "wrapper_rotation_degrees": [
+        0,
+        0,
+        0
+      ],
+      "lod_scenes": [],
+      "collision_scene": null,
+      "textures": {
+        "albedo": "res://assets/models/cas_albedo.png",
+        "orm": "res://assets/models/cas_orm.png"
+      },
+      "companion_data": []
+    },
+    {
+      "id": "recon_uav",
+      "label": "Reconnaissance UAV",
+      "source_role": "RECON_UAV",
+      "scene": "res://assets/models/recon_uav.glb",
+      "wrapper_rotation_degrees": [
+        0,
+        0,
+        0
+      ],
+      "lod_scenes": [],
+      "collision_scene": null,
+      "textures": {
+        "albedo": "res://assets/models/recon_uav_albedo.png",
+        "orm": "res://assets/models/recon_uav_orm.png"
+      },
+      "companion_data": []
+    },
+    {
+      "id": "patrol_boat",
+      "label": "Patrol boat",
+      "source_role": "PATROL_BOAT",
+      "scene": "res://assets/models/patrol_boat.glb",
+      "wrapper_rotation_degrees": [
+        0,
+        0,
+        0
+      ],
+      "lod_scenes": [
+        "res://assets/models/patrol_boat_lod1.glb",
+        "res://assets/models/patrol_boat_lod2.glb"
+      ],
+      "collision_scene": "res://assets/models/patrol_boat_collision.glb",
+      "textures": {
+        "albedo": "res://assets/models/patrol_boat_albedo.png"
+      },
+      "companion_data": []
+    },
+    {
+      "id": "landing_craft",
+      "label": "Landing craft",
+      "source_role": "LANDING_CRAFT",
+      "scene": "res://assets/models/landing_craft.glb",
+      "wrapper_rotation_degrees": [
+        0,
+        0,
+        0
+      ],
+      "lod_scenes": [
+        "res://assets/models/landing_craft_lod1.glb",
+        "res://assets/models/landing_craft_lod2.glb"
+      ],
+      "collision_scene": "res://assets/models/landing_craft_collision.glb",
+      "textures": {
+        "albedo": "res://assets/models/landing_craft_albedo.png"
+      },
+      "companion_data": []
+    },
+    {
+      "id": "aircraft_weapons",
+      "label": "Aircraft stores",
+      "source_role": "ATTACHMENT",
+      "scene": "res://assets/models/aircraft_weapons.glb",
+      "wrapper_rotation_degrees": [
+        -90,
+        0,
+        0
+      ],
+      "lod_scenes": [],
+      "collision_scene": null,
+      "textures": {
+        "albedo": "res://assets/models/aircraft_weapons_albedo.png"
+      },
+      "companion_data": []
+    },
+    {
+      "id": "aircraft_fuel_tank",
+      "label": "Aircraft fuel tank",
+      "source_role": "ATTACHMENT",
+      "scene": "res://assets/models/aircraft_fuel_tank.glb",
+      "wrapper_rotation_degrees": [
+        0,
+        0,
+        0
+      ],
+      "lod_scenes": [],
+      "collision_scene": null,
+      "textures": {
+        "albedo": "res://assets/models/aircraft_fuel_tank_albedo.png",
+        "orm": "res://assets/models/aircraft_fuel_tank_orm.png"
+      },
+      "companion_data": []
+    }
+  ]
+}

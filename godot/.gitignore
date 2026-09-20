@@ -1,0 +1,6 @@
+.godot/
+.tools/
+build/
+godot-*.zip
+*.tmp
+

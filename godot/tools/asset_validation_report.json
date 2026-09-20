@@ -1,0 +1,591 @@
+{
+  "status": "passed",
+  "source_commit": "a64ac714f5c9e7f5630c69b3c55caa0ec5b81833",
+  "file_count": 47,
+  "total_size_bytes": 28910264,
+  "glb_count": 24,
+  "png_count": 21,
+  "json_count": 2,
+  "files": [
+    {
+      "path": "assets/models/aircraft_carrier.glb",
+      "size_bytes": 836776,
+      "sha256": "639d2ea63eaac6a65711af911121789688583d0593621ee06bd6d9c66a7941f3",
+      "integrity": {
+        "format": "GLB",
+        "version": 2,
+        "meshes": 9,
+        "nodes": 9,
+        "materials": 1,
+        "embedded_pngs": 1
+      }
+    },
+    {
+      "path": "assets/models/aircraft_carrier.json",
+      "size_bytes": 516436,
+      "sha256": "ae9c8c9f527e1fd0068460deb9f1b66dd93f2d82d31ce81c0c940ed082b0f509",
+      "integrity": {
+        "format": "JSON"
+      }
+    },
+    {
+      "path": "assets/models/aircraft_carrier_albedo.png",
+      "size_bytes": 482580,
+      "sha256": "28bd9f94d30f15b705b1a1b782d08aa539b9d1baa774cc64dc94a5cffa8d8638",
+      "integrity": {
+        "format": "PNG",
+        "width": 1024,
+        "height": 1024,
+        "bit_depth": 8,
+        "color_type": 2
+      }
+    },
+    {
+      "path": "assets/models/aircraft_carrier_collision.glb",
+      "size_bytes": 10892,
+      "sha256": "562946d3f6482190042029956b2e2343d37b27c1c0c06d64f600045e37d3bca3",
+      "integrity": {
+        "format": "GLB",
+        "version": 2,
+        "meshes": 1,
+        "nodes": 1,
+        "materials": 0,
+        "embedded_pngs": 0
+      }
+    },
+    {
+      "path": "assets/models/aircraft_carrier_lod1.glb",
+      "size_bytes": 712712,
+      "sha256": "c9f0bae577327236b60d6486090bca97cd5062a8aec4636fd302478a277b9416",
+      "integrity": {
+        "format": "GLB",
+        "version": 2,
+        "meshes": 6,
+        "nodes": 6,
+        "materials": 1,
+        "embedded_pngs": 1
+      }
+    },
+    {
+      "path": "assets/models/aircraft_carrier_rig.json",
+      "size_bytes": 1220,
+      "sha256": "937b23462e685f2bef89799b74c98c3fdd6cdbeacdf5672a2f4d5af6aecca345",
+      "integrity": {
+        "format": "JSON"
+      }
+    },
+    {
+      "path": "assets/models/aircraft_fuel_tank.glb",
+      "size_bytes": 475576,
+      "sha256": "51a24978b10d5b7565adb59961bdbf5729888b779dc233ecf9b249892183092b",
+      "integrity": {
+        "format": "GLB",
+        "version": 2,
+        "meshes": 1,
+        "nodes": 2,
+        "materials": 1,
+        "embedded_pngs": 2
+      }
+    },
+    {
+      "path": "assets/models/aircraft_fuel_tank_albedo.png",
+      "size_bytes": 314170,
+      "sha256": "96791b9e741a409ef77e4425413b922e5f48026ca559ea2369861f1ef21cb7f7",
+      "integrity": {
+        "format": "PNG",
+        "width": 1024,
+        "height": 1024,
+        "bit_depth": 8,
+        "color_type": 2
+      }
+    },
+    {
+      "path": "assets/models/aircraft_fuel_tank_orm.png",
+      "size_bytes": 143407,
+      "sha256": "f6435a86e95a40f47c397c11f7f3d21a3f5da4958b5c72d0fbb9bc5b98666a36",
+      "integrity": {
+        "format": "PNG",
+        "width": 1024,
+        "height": 1024,
+        "bit_depth": 8,
+        "color_type": 2
+      }
+    },
+    {
+      "path": "assets/models/aircraft_weapons.glb",
+      "size_bytes": 645908,
+      "sha256": "51a20c37465dfd71fc98dae5e1064d3546c22f167db55a1227f51bd0b12bdd0c",
+      "integrity": {
+        "format": "GLB",
+        "version": 2,
+        "meshes": 10,
+        "nodes": 13,
+        "materials": 1,
+        "embedded_pngs": 1
+      }
+    },
+    {
+      "path": "assets/models/aircraft_weapons_albedo.png",
+      "size_bytes": 587047,
+      "sha256": "84eacb828e0b8fce6311f50a1a4f233250c320445a21f3cd73318f3d824d4c06",
+      "integrity": {
+        "format": "PNG",
+        "width": 1024,
+        "height": 1024,
+        "bit_depth": 8,
+        "color_type": 2
+      }
+    },
+    {
+      "path": "assets/models/apc.glb",
+      "size_bytes": 1116988,
+      "sha256": "6fdc07bc58d6ba0242594cd4876c721c05cd395e54b468faa8ffaac88887b907",
+      "integrity": {
+        "format": "GLB",
+        "version": 2,
+        "meshes": 12,
+        "nodes": 24,
+        "materials": 1,
+        "embedded_pngs": 2
+      }
+    },
+    {
+      "path": "assets/models/apc_lod1.glb",
+      "size_bytes": 1085928,
+      "sha256": "136f8d392fb447f101beb8791d27ee4de050f4da8bf3f33d292caeea2158a002",
+      "integrity": {
+        "format": "GLB",
+        "version": 2,
+        "meshes": 12,
+        "nodes": 24,
+        "materials": 1,
+        "embedded_pngs": 2
+      }
+    },
+    {
+      "path": "assets/models/cannon_apc.glb",
+      "size_bytes": 1130936,
+      "sha256": "464548288e8c7f257bb8f08b2949a00e414b2e3c6bda98f7817e79f19f35ef02",
+      "integrity": {
+        "format": "GLB",
+        "version": 2,
+        "meshes": 12,
+        "nodes": 24,
+        "materials": 1,
+        "embedded_pngs": 2
+      }
+    },
+    {
+      "path": "assets/models/cannon_apc_lod1.glb",
+      "size_bytes": 1099124,
+      "sha256": "88c59559f12b5f9b2b028d01ffc67b0e2e1a38fe7eb9636365cbbdf05dac5e64",
+      "integrity": {
+        "format": "GLB",
+        "version": 2,
+        "meshes": 12,
+        "nodes": 24,
+        "materials": 1,
+        "embedded_pngs": 2
+      }
+    },
+    {
+      "path": "assets/models/cas.glb",
+      "size_bytes": 1227192,
+      "sha256": "ca881e555c0d7adb41f45af854c3257d644bfe54b9ca68058d735a2dd9d7e5a9",
+      "integrity": {
+        "format": "GLB",
+        "version": 2,
+        "meshes": 12,
+        "nodes": 26,
+        "materials": 1,
+        "embedded_pngs": 2
+      }
+    },
+    {
+      "path": "assets/models/cas_albedo.png",
+      "size_bytes": 528324,
+      "sha256": "7aac4ab7db0ace683adc445d09b223b400d7aa05df19606c6075f1670d88c2cb",
+      "integrity": {
+        "format": "PNG",
+        "width": 1024,
+        "height": 1024,
+        "bit_depth": 8,
+        "color_type": 2
+      }
+    },
+    {
+      "path": "assets/models/cas_orm.png",
+      "size_bytes": 331273,
+      "sha256": "be8f049f28acec9afab18221ccc82ffb03a88762ccfb87c85641b21b5d8d6cc3",
+      "integrity": {
+        "format": "PNG",
+        "width": 1024,
+        "height": 1024,
+        "bit_depth": 8,
+        "color_type": 2
+      }
+    },
+    {
+      "path": "assets/models/fighter.glb",
+      "size_bytes": 1530688,
+      "sha256": "1e8d0406823b5dfac3b07b223705fe5965200695c8854885e9b8b6624a4a9274",
+      "integrity": {
+        "format": "GLB",
+        "version": 2,
+        "meshes": 96,
+        "nodes": 105,
+        "materials": 1,
+        "embedded_pngs": 1
+      }
+    },
+    {
+      "path": "assets/models/fighter_albedo.png",
+      "size_bytes": 1104229,
+      "sha256": "61688c8bf1b34f069c14ff7a5bb7463639c40e29d3dce41a0f0b48ab04cd59f6",
+      "integrity": {
+        "format": "PNG",
+        "width": 1024,
+        "height": 1024,
+        "bit_depth": 8,
+        "color_type": 2
+      }
+    },
+    {
+      "path": "assets/models/fighter_metalness.png",
+      "size_bytes": 18534,
+      "sha256": "574e21f8daea8397dee5bb0e8a90b15f84ddaabf9767336440208f2c764d066b",
+      "integrity": {
+        "format": "PNG",
+        "width": 1024,
+        "height": 1024,
+        "bit_depth": 8,
+        "color_type": 0
+      }
+    },
+    {
+      "path": "assets/models/fighter_normal.png",
+      "size_bytes": 981436,
+      "sha256": "bc580846b16b03896ea68251be3b214ae1c58b42c08b8f27c88813054f47a736",
+      "integrity": {
+        "format": "PNG",
+        "width": 1024,
+        "height": 1024,
+        "bit_depth": 8,
+        "color_type": 2
+      }
+    },
+    {
+      "path": "assets/models/fighter_orm.png",
+      "size_bytes": 283798,
+      "sha256": "1814fc85c9a12a5e3e8e6d641f0ce82c0af4e253bc09a5544d16a1080c3fe25f",
+      "integrity": {
+        "format": "PNG",
+        "width": 1024,
+        "height": 1024,
+        "bit_depth": 8,
+        "color_type": 2
+      }
+    },
+    {
+      "path": "assets/models/fighter_roughness.png",
+      "size_bytes": 215290,
+      "sha256": "3ea8a468e7bbc44ce737a4f4752be9c890684775e25ee64a8a72bcb888d91911",
+      "integrity": {
+        "format": "PNG",
+        "width": 1024,
+        "height": 1024,
+        "bit_depth": 8,
+        "color_type": 0
+      }
+    },
+    {
+      "path": "assets/models/landing_craft.glb",
+      "size_bytes": 978612,
+      "sha256": "9d86635e1682a4f3d922e05e056dcca5dbd8b05e669e813da647808c4147d209",
+      "integrity": {
+        "format": "GLB",
+        "version": 2,
+        "meshes": 9,
+        "nodes": 18,
+        "materials": 1,
+        "embedded_pngs": 1
+      }
+    },
+    {
+      "path": "assets/models/landing_craft_albedo.png",
+      "size_bytes": 627291,
+      "sha256": "6f2889d5e9931a5a12a38e8abddaf03f900f6eeae7958c0e3b19c49abcf2ef67",
+      "integrity": {
+        "format": "PNG",
+        "width": 1024,
+        "height": 1024,
+        "bit_depth": 8,
+        "color_type": 2
+      }
+    },
+    {
+      "path": "assets/models/landing_craft_collision.glb",
+      "size_bytes": 3788,
+      "sha256": "e9a7b3aea37b06688ccc315bdb5af7f43af12cfc9902d88524b1a52ffca56c25",
+      "integrity": {
+        "format": "GLB",
+        "version": 2,
+        "meshes": 1,
+        "nodes": 1,
+        "materials": 0,
+        "embedded_pngs": 0
+      }
+    },
+    {
+      "path": "assets/models/landing_craft_lod1.glb",
+      "size_bytes": 856096,
+      "sha256": "2a1cac9d22e9a65d06bd9a908dd46f4d6364b6b6f0d7160a9e0f721794249f9c",
+      "integrity": {
+        "format": "GLB",
+        "version": 2,
+        "meshes": 9,
+        "nodes": 18,
+        "materials": 1,
+        "embedded_pngs": 1
+      }
+    },
+    {
+      "path": "assets/models/landing_craft_lod2.glb",
+      "size_bytes": 826888,
+      "sha256": "516e2f732d70c454b24aaf109a66ecfeb1af622070bbbd8282c39753f480a24f",
+      "integrity": {
+        "format": "GLB",
+        "version": 2,
+        "meshes": 9,
+        "nodes": 18,
+        "materials": 1,
+        "embedded_pngs": 1
+      }
+    },
+    {
+      "path": "assets/models/missile_cruiser.glb",
+      "size_bytes": 764964,
+      "sha256": "4ba9d93d5569ecb69e316b4b75e32fc61f8180dd0788afa7bce82a2176a7813e",
+      "integrity": {
+        "format": "GLB",
+        "version": 2,
+        "meshes": 13,
+        "nodes": 13,
+        "materials": 1,
+        "embedded_pngs": 1
+      }
+    },
+    {
+      "path": "assets/models/missile_cruiser_albedo.png",
+      "size_bytes": 404601,
+      "sha256": "7fd68081e866f4cac73e7668dfad524f61aaba232c8da115d54c4509f629179c",
+      "integrity": {
+        "format": "PNG",
+        "width": 1024,
+        "height": 1024,
+        "bit_depth": 8,
+        "color_type": 2
+      }
+    },
+    {
+      "path": "assets/models/missile_cruiser_collision.glb",
+      "size_bytes": 14660,
+      "sha256": "ae234d8515eb3ebb338e52d5438009d3e88cbf6fea5759d472cd1c902669e0f5",
+      "integrity": {
+        "format": "GLB",
+        "version": 2,
+        "meshes": 1,
+        "nodes": 1,
+        "materials": 0,
+        "embedded_pngs": 0
+      }
+    },
+    {
+      "path": "assets/models/missile_cruiser_lod1.glb",
+      "size_bytes": 636200,
+      "sha256": "8cfb49291e5d74b60b90bf268df9fb2e1ff81ac02441535cd1517a6ef86afc46",
+      "integrity": {
+        "format": "GLB",
+        "version": 2,
+        "meshes": 10,
+        "nodes": 10,
+        "materials": 1,
+        "embedded_pngs": 1
+      }
+    },
+    {
+      "path": "assets/models/patrol_boat.glb",
+      "size_bytes": 874784,
+      "sha256": "c0c81bcd31671367b803f53ff6d3d848df87d3704a557da88d4064b52f901fd9",
+      "integrity": {
+        "format": "GLB",
+        "version": 2,
+        "meshes": 10,
+        "nodes": 20,
+        "materials": 1,
+        "embedded_pngs": 1
+      }
+    },
+    {
+      "path": "assets/models/patrol_boat_albedo.png",
+      "size_bytes": 517318,
+      "sha256": "813a2a6c24e8ea5525d44bff3ebfaf2743f1c0990a1ae6a46c0b6f373ac4a2f9",
+      "integrity": {
+        "format": "PNG",
+        "width": 1024,
+        "height": 1024,
+        "bit_depth": 8,
+        "color_type": 2
+      }
+    },
+    {
+      "path": "assets/models/patrol_boat_collision.glb",
+      "size_bytes": 6236,
+      "sha256": "c46957fddab2109671d154039c947a6ad1b23243c574cf66e3ae3fb766a91375",
+      "integrity": {
+        "format": "GLB",
+        "version": 2,
+        "meshes": 1,
+        "nodes": 1,
+        "materials": 0,
+        "embedded_pngs": 0
+      }
+    },
+    {
+      "path": "assets/models/patrol_boat_lod1.glb",
+      "size_bytes": 720692,
+      "sha256": "37835bc6b6da0e26ba1319372633a9136d7e818905c5efcc7dce70a5a022de41",
+      "integrity": {
+        "format": "GLB",
+        "version": 2,
+        "meshes": 10,
+        "nodes": 20,
+        "materials": 1,
+        "embedded_pngs": 1
+      }
+    },
+    {
+      "path": "assets/models/patrol_boat_lod2.glb",
+      "size_bytes": 702416,
+      "sha256": "4bbd275f5d9d0566648c1cd70e5032d67af130071ab628e1142d9fd4de5a283e",
+      "integrity": {
+        "format": "GLB",
+        "version": 2,
+        "meshes": 10,
+        "nodes": 20,
+        "materials": 1,
+        "embedded_pngs": 1
+      }
+    },
+    {
+      "path": "assets/models/recon_uav.glb",
+      "size_bytes": 1109652,
+      "sha256": "e0d6a547bbe32fd4fd9088b7c1a2d884a690968ec69ed3fabbdbf1a9e99751f5",
+      "integrity": {
+        "format": "GLB",
+        "version": 2,
+        "meshes": 10,
+        "nodes": 22,
+        "materials": 1,
+        "embedded_pngs": 2
+      }
+    },
+    {
+      "path": "assets/models/recon_uav_albedo.png",
+      "size_bytes": 503690,
+      "sha256": "a465d06986b656f2d142b8fd32d1b81b928261328a156b4b1413c0e5f8273e72",
+      "integrity": {
+        "format": "PNG",
+        "width": 1024,
+        "height": 1024,
+        "bit_depth": 8,
+        "color_type": 2
+      }
+    },
+    {
+      "path": "assets/models/recon_uav_orm.png",
+      "size_bytes": 240581,
+      "sha256": "d3caa975be61896c751b410e8aea55f6957157dbfd93f0aa85a13a60160e4abb",
+      "integrity": {
+        "format": "PNG",
+        "width": 1024,
+        "height": 1024,
+        "bit_depth": 8,
+        "color_type": 2
+      }
+    },
+    {
+      "path": "assets/models/stryker_albedo.png",
+      "size_bytes": 507565,
+      "sha256": "f82e80872c08da14bbb344c16ef7c836a0ad17a6a2cef907c706e4bc25143296",
+      "integrity": {
+        "format": "PNG",
+        "width": 1024,
+        "height": 1024,
+        "bit_depth": 8,
+        "color_type": 2
+      }
+    },
+    {
+      "path": "assets/models/stryker_orm.png",
+      "size_bytes": 264982,
+      "sha256": "1c4af4db7c9f4c0f9a8975d9a41ed5e300a7ca85d07adab7b08157ec50da214e",
+      "integrity": {
+        "format": "PNG",
+        "width": 1024,
+        "height": 1024,
+        "bit_depth": 8,
+        "color_type": 2
+      }
+    },
+    {
+      "path": "assets/models/tank.glb",
+      "size_bytes": 1502240,
+      "sha256": "542d09213554300e32563f320157c1ec084b6b817b95891913f9692023167787",
+      "integrity": {
+        "format": "GLB",
+        "version": 2,
+        "meshes": 129,
+        "nodes": 301,
+        "materials": 1,
+        "embedded_pngs": 2
+      }
+    },
+    {
+      "path": "assets/models/tank_albedo.png",
+      "size_bytes": 517139,
+      "sha256": "881b86766107d22360515d72b4642981cff66ad521e6a531d97d05ab733e2b63",
+      "integrity": {
+        "format": "PNG",
+        "width": 1024,
+        "height": 1024,
+        "bit_depth": 8,
+        "color_type": 2
+      }
+    },
+    {
+      "path": "assets/models/tank_orm.png",
+      "size_bytes": 273348,
+      "sha256": "0b870f4d7b18c43043ea79ecfd28f2e83741226e716560ce8949ddebe2c7e866",
+      "integrity": {
+        "format": "PNG",
+        "width": 1024,
+        "height": 1024,
+        "bit_depth": 8,
+        "color_type": 2
+      }
+    },
+    {
+      "path": "assets/textures/vehicle_destroyed_mask.png",
+      "size_bytes": 676057,
+      "sha256": "982fe2998122f404032ec1409b8f00ca7f990e096cb26838c859de191278d388",
+      "integrity": {
+        "format": "PNG",
+        "width": 1024,
+        "height": 1024,
+        "bit_depth": 8,
+        "color_type": 0
+      }
+    }
+  ]
+}
