@@ -9,7 +9,7 @@ on:
       - ".github/workflows/godot-windows.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: godot-windows-${{ github.ref }}
@@ -76,3 +76,17 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+
+      - name: Commit build to repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f builds/GridCommand-Windows-x86_64.zip
+          if git diff --cached --quiet; then
+            echo "The repository already contains this exact build."
+            exit 0
+          fi
+          git commit -m "Publish Godot Windows build [skip ci]"
+          git push
