@@ -108,6 +108,8 @@ func _create_model() -> void:
 				candidate.free()
 	if model != null:
 		source_model = model
+		if source_kind == "tank":
+			preload("res://scripts/tank_material.gd").apply(model)
 		var orient := Node3D.new()
 		orient.name = "SourceAxisCorrection"
 		visual.add_child(orient)

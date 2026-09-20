@@ -268,6 +268,8 @@ func _load_model(id: String) -> void:
 		var packed: PackedScene = load(path)
 		model = packed.instantiate()
 	model_root.add_child(model)
+	if id == "TANK":
+		preload("res://scripts/tank_material.gd").apply(model)
 	# These Blender-authored GLBs retain their source Z-up axes. Rotate the
 	# complete vehicle once; this also keeps wheel and rotor child axes aligned.
 	if MODEL_FILES.get(id,"") in Z_UP_MODEL_FILES: model.rotation_degrees.x = -90
