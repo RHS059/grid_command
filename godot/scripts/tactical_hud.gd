@@ -21,15 +21,21 @@ var inspector_title: Label
 var inspector_text: RichTextLabel
 var inspector_phase: Label
 var inspector_metrics: Array[Label] = []
-var inspector_actions: HBoxContainer
+var inspector_actions: VBoxContainer
+var inspector_action_signature := ""
 var carrier_actions: HBoxContainer
 var launch_button: Button
+var victory_panel: PanelContainer
+var victory_title: Label
+var victory_detail: Label
 var drawer: PanelContainer
 var drawer_text: RichTextLabel
 var drawer_actions: VBoxContainer
 var drawer_tab := "Forces"
+var drawer_roster_ids := ""
 var menu: PanelContainer
 var rail: HBoxContainer
+var rail_label: Label
 var rail_ids := ""
 var rail_buttons: Dictionary = {}
 var objective_buttons: Dictionary = {}
@@ -205,7 +211,7 @@ func _build_time() -> void:
 	pause_banner.offset_left = -170; pause_banner.offset_right = 170; pause_banner.offset_top = 182; pause_banner.offset_bottom = 206; pause_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 func _build_inspector() -> void:
-	inspector = _panel(self,Rect2(-320,20,300,330),Vector2(1,0))
+	inspector = _panel(self,Rect2(-340,20,320,430),Vector2(1,0))
 	inspector.z_index = 22
 	var box := _column(inspector)
 	var heading := _row(box)
@@ -215,22 +221,32 @@ func _build_inspector() -> void:
 	inspector_phase.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(inspector_phase)
 	var metrics := HBoxContainer.new(); metrics.add_theme_constant_override("separation",7); box.add_child(metrics)
-	for caption in ["HEALTH","AMMO","FUEL"]:
+	for caption in ["CONDITION","AMMUNITION","PERSONNEL"]:
 		var card := PanelContainer.new(); card.size_flags_horizontal = Control.SIZE_EXPAND_FILL; card.custom_minimum_size.x = 84; card.add_theme_stylebox_override("panel",_style(Color("151d25"),7)); metrics.add_child(card)
 		var column := _column(card)
-		var value := _label("100%",15,Color("9ad7a6") if caption == "HEALTH" else RED if caption == "AMMO" else BLUE)
+		var value := _label("100%",15,Color("9ad7a6") if caption == "CONDITION" else RED if caption == "AMMUNITION" else BLUE)
 		column.add_child(value); inspector_metrics.append(value)
 		column.add_child(_label(caption,9,MUTED))
-	inspector_text = _rich(box,Vector2(276,225))
-	inspector_actions = _row(box)
-	_button("Focus",world.focus_selection,inspector_actions)
-	_button("Hold",world.hold_selection,inspector_actions)
-	_button("Get In",world.embark_selection,inspector_actions)
-	_button("Dismount",world.dismount_selection,inspector_actions)
+	inspector_text = _rich(box,Vector2(296,155))
+	inspector_actions = _column(box)
 	carrier_actions = _row(box)
 	_button("Deploy",func(): world.carrier_action("deploying"),carrier_actions)
 	_button("Undeploy",func(): world.carrier_action("undeploying"),carrier_actions)
 	launch_button = _button("Launch",func(): world.carrier_action("launch"),carrier_actions)
+	_build_victory_panel()
+
+func _build_victory_panel() -> void:
+	victory_panel = _panel(self,Rect2(-190,-95,190,95),Vector2(0.5,0.5))
+	victory_panel.z_index = 60
+	var box := _column(victory_panel)
+	victory_title = _label("OPERATION COMPLETE",20,INK)
+	victory_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(victory_title)
+	victory_detail = _label("",11,MUTED)
+	victory_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(victory_detail)
+	_button("New operation",func(): world.get_tree().reload_current_scene(),box)
+	victory_panel.hide()
 
 func _build_map_tools() -> void:
 	var tools := VBoxContainer.new(); add_child(tools)
@@ -270,7 +286,8 @@ func _build_rail() -> void:
 	var rail_area := VBoxContainer.new(); add_child(rail_area)
 	rail_area.anchor_top = 1; rail_area.anchor_bottom = 1; rail_area.anchor_right = 1
 	rail_area.offset_left = 332; rail_area.offset_right = -222; rail_area.offset_top = -118; rail_area.offset_bottom = -16
-	rail_area.add_child(_label("FORCE ELEMENTS     ·     SELECT TO INSPECT",9,INK))
+	rail_label = _label("BLU ELEMENTS · 0     0 LOST",9,INK)
+	rail_area.add_child(rail_label)
 	rail_area.clip_contents = true
 	var scroll := ScrollContainer.new(); scroll.clip_contents = true; scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL; scroll.custom_minimum_size.y = 83; scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO; scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED; rail_area.add_child(scroll)
 	rail = _row(scroll)
@@ -284,8 +301,17 @@ func _build_drawer() -> void:
 	_button("×",close_panels,heading)
 	var tabs := _row(box)
 	for tab in ["Forces","Logistics","Staff"]: _button(tab,func(): open_drawer(tab),tabs)
-	drawer_text = _rich(box,Vector2(402,200))
-	drawer_actions = _column(box)
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	box.add_child(scroll)
+	var content := _column(scroll)
+	content.custom_minimum_size.x = 402
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	drawer_text = _rich(content,Vector2(402,200))
+	drawer_text.fit_content = true
+	drawer_text.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	drawer_actions = _column(content)
 	box.add_child(_label("LOCAL COMMANDERS · BLU / RED OBSERVER",9,MUTED))
 	drawer.hide()
 
@@ -295,11 +321,7 @@ func open_drawer(tab: String) -> void:
 	if tab == "Forces":
 		var row := _row(drawer_actions)
 		for side in ["BLU","RED"]: _button(side,func(): _set_side(side),row)
-		objective_choice = OptionButton.new()
-		for objective in world.map.get_objectives(): objective_choice.add_item("OBJ "+str(objective["id"])+" · "+str(objective["name"]))
-		drawer_actions.add_child(objective_choice)
-		_button("Assign objective",func(): world.core.forces[world.active_side]["target"] = world.map.get_objectives()[objective_choice.selected]["id"]; world.core.forces[world.active_side]["hold"] = false; world._update_command_orders(),drawer_actions)
-		_button("Toggle commander hold",func(): world.core.forces[world.active_side]["hold"] = not world.core.forces[world.active_side]["hold"],drawer_actions)
+		_add_force_roster(world.active_side)
 	elif tab == "Logistics":
 		var row := _row(drawer_actions)
 		_button("Upgrade MOB",func(): _logistics_action(world.core.upgrade_mob(world.active_side)),row)
@@ -338,10 +360,105 @@ func open_drawer(tab: String) -> void:
 		_button("Native releases",UpdateService.open_native_download,drawer_actions)
 	_refresh_drawer()
 
+func _add_force_roster(side: String) -> void:
+	drawer_roster_ids = side
+	drawer_actions.add_child(_label("CURRENT FORCE",9,MUTED))
+	for record in world.core.units.get(side,[]):
+		if float(record.get("hp",100.0)) <= 0.0: continue
+		var id := str(record.get("id",""))
+		drawer_roster_ids += "|"+id
+		var role := str(record.get("role","")).replace("_"," ").capitalize()
+		var visual: CombatUnit = world.visual_core_units.get(id)
+		var callsign := visual.call_sign if visual != null else id
+		var button := _button("%s\n%s · %d personnel" % [callsign,role,int(record.get("members",0))],func(): _select_roster_unit(id),drawer_actions)
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.tooltip_text = "Inspect and select this element"
+
+func _select_roster_unit(id: String) -> void:
+	var visual: CombatUnit = world.visual_core_units.get(id)
+	if visual == null: return
+	world.select_unit(visual,false)
+	world.focus_selection()
+
+func _unit_side(unit: CombatUnit) -> String:
+	return "BLU" if unit.team == 0 else "RED"
+
+func _core_unit(side: String, id: String) -> Dictionary:
+	return world.core._unit(side,id)
+
+func _passengers(record: Dictionary) -> Array:
+	var result: Array = []
+	var side := str(record.get("side",""))
+	for id in record.get("transport",{}).get("passengers",[]):
+		var passenger := _core_unit(side,str(id))
+		if not passenger.is_empty() and float(passenger.get("hp",100.0)) > 0.0: result.append(passenger)
+	return result
+
+func _nearest_boarding_transport(unit: CombatUnit) -> Dictionary:
+	var record: Dictionary = unit.core_record
+	if SimulationCore.is_vehicle(str(record.get("role",""))) or str(record.get("role","")) == "COMMAND" or not record.get("transport",{}).is_empty(): return {}
+	var best: Dictionary = {}
+	var best_distance := INF
+	var side := _unit_side(unit)
+	for carrier in world.core.units.get(side,[]):
+		var role := str(carrier.get("role",""))
+		if not SimulationCore.TRANSPORT_CAPACITY.has(role) or carrier.get("moving",false) or float(carrier.get("hp",100.0)) <= 0.0: continue
+		var occupied := 0
+		for passenger in _passengers(carrier): occupied += int(passenger.get("members",0))
+		if occupied+int(record.get("members",0)) > int(SimulationCore.TRANSPORT_CAPACITY[role]): continue
+		var distance: float = record.get("position",unit.position).distance_to(carrier.get("position",Vector3.ZERO))
+		if distance <= 0.18 and distance < best_distance: best = carrier; best_distance = distance
+	return best
+
+func _carrier_for(record: Dictionary) -> Dictionary:
+	var id := str(record.get("transport",{}).get("carrier",""))
+	return {} if id.is_empty() else _core_unit(str(record.get("side","")),id)
+
+func _request_boarding(passenger_id: String, carrier_id: String, side: String) -> void:
+	if world.core.embark(side,passenger_id,carrier_id):
+		world.notify("Manual vehicle pickup ordered.")
+	else:
+		world.notify("Move the squad within 18 m of a stopped friendly carrier with free seats.")
+
+func _request_passenger_dismount(record: Dictionary, include_crew: bool = false) -> void:
+	var side := str(record.get("side",""))
+	var accepted: bool = world.core.request_dismount(side,str(record.get("id","")),include_crew)
+	world.notify(("Passenger and crew dismount ordered." if include_crew else "Passenger dismount ordered.") if accepted else "The carrier must stop before passengers can dismount.")
+
+func _deploy_jammer(record: Dictionary) -> void:
+	var error: String = world.core.deploy_jammer(str(record.get("side","")),str(record.get("id","")))
+	if error.is_empty():
+		world._sync_core_visuals()
+		world.notify("UAV jammer construction started. Coverage online in 15 seconds.")
+	else:
+		world.notify(error)
+
+func _rebuild_inspector_actions(unit: CombatUnit, record: Dictionary) -> void:
+	var boarding := _nearest_boarding_transport(unit)
+	var carrier := _carrier_for(record)
+	var passengers := _passengers(record)
+	var signature := "%s|%s|%s|%d" % [record.get("id",""),boarding.get("id",""),carrier.get("id",""),passengers.size()]
+	if signature == inspector_action_signature: return
+	inspector_action_signature = signature
+	for child in inspector_actions.get_children(): child.free()
+	var general := _row(inspector_actions)
+	_button("Focus",world.focus_selection,general)
+	if not boarding.is_empty():
+		_button("Get in · "+str(boarding.get("id","carrier")),func(): _request_boarding(str(record.get("id","")),str(boarding.get("id","")),str(record.get("side",""))),inspector_actions)
+	if not carrier.is_empty() or not passengers.is_empty():
+		_button("Dismount passengers",func(): _request_passenger_dismount(record),inspector_actions)
+	if not carrier.is_empty() and not str(carrier.get("role","")) in SimulationCore.AIR:
+		var destructive := _button("Dismount all incl. crew",func(): _request_passenger_dismount(record,true),inspector_actions)
+		destructive.add_theme_color_override("font_color",RED)
+	var role := str(record.get("role",""))
+	if role in ["LOGISTICS","RIFLE","SCOUT","MG","AT","ENGINEER"] and not record.get("transport",{}).has("carrier") and float(record.get("hp",100.0)) > 0.0:
+		_button("Deploy UAV jammer · 200 SP",func(): _deploy_jammer(record),inspector_actions)
+
 func _logistics_action(ok: bool) -> void:
 	world.notify("Construction queued." if ok else "Unavailable: check ownership, existing construction and SP reserve.")
 func _set_side(side: String) -> void:
 	world.active_side = side; rail_ids = ""; refresh = 0
+	if drawer.visible and drawer_tab == "Forces": call_deferred("open_drawer","Forces")
 func toggle_help() -> void:
 	open_drawer("Help")
 func close_panels() -> void:
@@ -351,7 +468,7 @@ func close_panels() -> void:
 func _refresh_drawer() -> void:
 	var text := ""
 	if drawer_tab == "Help":
-		text = "[b]CONTROLS & HELP[/b]\n\nLeft click · inspect either side\nShift + click / drag · multi-select\nRight click · observer movement order\nW A S D / arrows · pan camera\nMiddle drag · rotate\nShift + middle drag · pan\nWheel / + / − · zoom\nSpace · pause / resume\n1 / 2 / 4 / 8 · simulation speed\nStep · pause and advance 0.05 s\nO · overview    F · focus    Tab · next unit\nG · grid    F9 · routes\nEsc · close panels / clear selection\nCtrl + R · new operation\n\nCapture needs six active dismounted infantry within 100 m, unopposed for eight seconds. Hold every objective for 60 seconds to win. Both commanders operate autonomously.\n\nCarrier deck: stop 8 s, deploy 20 s, undeploy 15 s. Only a stationary deployed carrier can launch; fuel, ammunition, aircraft inventory and deck interval also apply."
+		text = "[b]CONTROLS & HELP[/b]\n\nLeft click · inspect either side\nLeft drag · pan the map\nRight drag · orbit the 3D view\nW A S D / arrows · pan camera\nWheel / + / − · zoom\nSpace · pause / resume\n1 / 2 / 4 / 8 · simulation speed\nStep · pause and advance 0.05 s\nO · overview\nG · grid    F9 · routes\nEsc · close panels / clear selection\nCtrl + R · new operation\n\nCapture needs six active dismounted infantry within 100 m, unopposed for eight seconds. Hold every objective for 60 seconds to win. Both commanders operate autonomously.\n\nCarrier deck: stop 8 s, deploy 20 s, undeploy 15 s. Only a stationary deployed carrier can launch; fuel, ammunition, aircraft inventory and deck interval also apply."
 	elif drawer_tab == "Map":
 		text = "[b]GLOBAL MAP[/b]\n\nPan and zoom anywhere in the world, or enter a longitude and latitude below. Geographic roads, water and buildings stream around the camera.\n\nSan Diego is the current operation theater. It keeps its simulation state while you explore. Its units and installations are hidden outside the theater. Click the minimap, an objective or Return to current theater to resume the operation view.\n\nNew areas require a connection; recently visited tiles remain cached."
 	elif drawer_tab == "Settings":
@@ -376,7 +493,16 @@ func _refresh_drawer() -> void:
 					var objective: Dictionary = world.core.objectives[id]
 					if objective["owner"] == side: text += "OBJ %s · %s\n" % [id,", ".join(objective["facilities"].keys()) if not objective["facilities"].is_empty() else "no forward facilities"]+"FUEL %d · AMMO %d · REPAIR %d\n" % [objective["stock"]["fuel"],objective["stock"]["ammo"],objective["stock"]["repair"]]
 			else:
-				for report in world.core.staff_reports(side): text += "[b]%s[/b] · %s\n%s\n\n" % [report["name"],report["status"],report["detail"]]
+				var council: Dictionary = world.commander_director.council_for(side) if world.commander_director != null else {}
+				var reports: Dictionary = council.get("reports",{})
+				if reports.is_empty():
+					for report in world.core.staff_reports(side): text += "[b]%s[/b] · %s\n%s\n\n" % [report["name"],report["status"],report["detail"]]
+				else:
+					text += "%s · OBJECTIVE %s · REV %d\n\n" % [council.get("action","ASSESS"),council.get("target","—"),council.get("revision",0)]
+					for id in ["TROOPS","FUEL","MOTORCADE","AIR","LOGISTICS","FIRES"]:
+						var report: Dictionary = reports.get(id,{})
+						if report.is_empty(): continue
+						text += "[b]%s[/b] · %s\n%s · %s\n\n" % [report.get("name",id),report.get("status","HOLD"),report.get("reason","No report."),"decision authority" if report.get("required",false) else "advisory"]
 			text += "\n"
 	drawer_text.text = text
 
@@ -405,9 +531,10 @@ func _process(delta: float) -> void:
 	var feed := ""
 	var filter := radio_filter.get_item_text(radio_filter.selected).to_lower()
 	var events: Array = world.core.radio
-	for index in range(maxi(0,events.size()-25),events.size()):
+	for index in range(events.size()-1,maxi(-1,events.size()-26),-1):
 		var event: Dictionary = events[index]
-		if filter != "all" and event.get("type","") != filter: continue
+		var event_type := str(event.get("type",""))
+		if filter != "all" and not (filter == "contact" and event_type in ["contact","combat"]) and event_type != filter: continue
 		feed += "[color=#98a4ad]%02d:%02d  %s[/color]\n%s\n\n" % [int(event["time"])/60,int(event["time"])%60,event["side"],event["text"]]
 	radio_text.text = feed
 	if ids != rail_ids:
@@ -421,21 +548,42 @@ func _process(delta: float) -> void:
 	for id in rail_buttons:
 		var unit: CombatUnit = world.visual_core_units.get(id)
 		if unit != null:
-			rail_buttons[id].text = "%s\n%s\nHP %d%%" % [unit.call_sign,unit.order,unit.health]
+			var record: Dictionary = unit.core_record
+			rail_buttons[id].text = "%s\n%s · %d/%d\nCONDITION %d%%" % [unit.call_sign,unit.role.replace("_"," ").to_lower(),record.get("members",0),SimulationCore.CATALOG.get(unit.role,[record.get("members",0)])[0],unit.health]
 			rail_buttons[id].modulate = (BLUE if unit.team == 0 else RED) if unit.selected else INK
+	rail_label.text = "%s ELEMENTS · %d     %d LOST" % [side,groups,int(f.get("casualties",0))]
 	for id in objective_buttons:
 		var owner: String = world.objective_owner[id]
 		objective_buttons[id].modulate = BLUE if owner == "BLU" else RED if owner == "RED" else MUTED
 	inspector.visible = not world.selected_units.is_empty()
+	if not inspector.visible: inspector_action_signature = ""
 	if inspector.visible:
 		var unit: CombatUnit = world.selected_units[0]
 		var record: Dictionary = unit.core_record
 		inspector_title.text = ("BLU" if unit.team == 0 else "RED")+" / "+unit.role+"\n"+unit.call_sign
-		inspector_phase.text = unit.order
+		inspector_phase.text = ("ELEMENT LOST" if not unit.is_alive else unit.order)+" · "+str(record.get("target",f["target"]))
 		inspector_metrics[0].text = "%d%%" % unit.health
 		inspector_metrics[1].text = "%d%%" % record.get("ammo",100)
-		inspector_metrics[2].text = "%d%%" % record.get("fuel",100)
-		inspector_text.text = "Members                  %d\nService                    %s\nSpeed                      %.1f m/s\nWeapon range          %d m\nPosition                  %d E / %d N\nTransport                 %s\n" % [record.get("members",0),record.get("service","READY"),float(unit.stats["speed"])*100,int(float(unit.stats["range"])*100),int(unit.position.x*100),int(-unit.position.z*100),record.get("transport",{}).get("phase","dismounted")]
+		inspector_metrics[2].text = "%d / %d" % [record.get("members",0),SimulationCore.CATALOG.get(unit.role,[record.get("members",0)])[0]]
+		var details := ""
+		if SimulationCore.is_vehicle(unit.role):
+			details += "Fuel                         %d%% · %s\n" % [record.get("fuel",100),"engine running" if record.get("moving",false) else "engine off"]
+			details += "Servicing                  %s\n" % record.get("service","READY")
+		var carrier := _carrier_for(record)
+		if not carrier.is_empty(): details += "Embarked                  %s\n" % carrier.get("id","carrier")
+		var passengers := _passengers(record)
+		if not passengers.is_empty():
+			var names: Array[String] = []
+			var occupied := 0
+			for passenger in passengers:
+				names.append(str(passenger.get("id","squad")))
+				occupied += int(passenger.get("members",0))
+			details += "Manifest                   %s\n" % ", ".join(names)
+			details += "Seats                        %d / %d\n" % [occupied,int(SimulationCore.TRANSPORT_CAPACITY.get(unit.role,0))]
+		if not record.get("transport",{}).is_empty(): details += "Status                       %s\n" % str(record.get("transport",{}).get("phase","available")).replace("-"," ")
+		details += "Speed                       %.1f m/s\nWeapon range          %d m\nPosition                   %d E / %d N\n" % [float(unit.stats["speed"])*100,int(float(unit.stats["range"])*100),int(unit.position.x*100),int(-unit.position.z*100)]
+		inspector_text.text = details
+		_rebuild_inspector_actions(unit,record)
 
 		carrier_actions.visible = unit.role == "AIRCRAFT_CARRIER"
 		if carrier_actions.visible:
@@ -444,7 +592,20 @@ func _process(delta: float) -> void:
 			launch_button.disabled = not world.core.carrier_can_launch("BLU" if unit.team == 0 else "RED",str(record["id"]))
 	toast.text = world.message if world.message_time > 0 else ""
 	diagnostics.text = "%d FPS · %d ELEMENTS · NATIVE" % [Engine.get_frames_per_second(),world.units.size()]
-	if drawer.visible: _refresh_drawer()
+	var complete: bool = str(world.mission_state) != "ACTIVE"
+	victory_panel.visible = complete
+	if complete:
+		victory_title.text = "MUTUAL COMMAND LOSS" if world.mission_state == "DRAW" else world.mission_state.replace(" VICTORY","")+" FORCE VICTORIOUS"
+		victory_detail.text = "Operation ended at %02d:%02d." % [int(world.elapsed)/60,int(world.elapsed)%60]
+	if drawer.visible:
+		if drawer_tab == "Forces":
+			var roster_ids: String = str(world.active_side)
+			for record in world.core.units.get(world.active_side,[]):
+				if float(record.get("hp",100.0)) > 0.0: roster_ids += "|"+str(record.get("id",""))
+			if roster_ids != drawer_roster_ids:
+				call_deferred("open_drawer","Forces")
+				return
+		_refresh_drawer()
 
 func _draw() -> void:
 	if world == null or world.camera == null or not world.operation_view_active: return

@@ -12,6 +12,7 @@ const MODEL_LENGTH := {"command":0.025,"soldier":0.018,"tank":0.095,"apc":0.07,"
 var kind := "tank"
 var role := "TANK"
 var core_record: Dictionary = {}
+var simulation_core
 var team := 0
 var call_sign := "ALPHA 01"
 var map: TacticalMap
@@ -39,10 +40,14 @@ var anim_move := ""
 var phase := 0.0
 var imported_model := false
 var personnel := 0
+var presentation_offset := Vector3.ZERO
+var presentation_yaw_offset := 0.0
 
 func _ready() -> void:
+	add_to_group("combat_units")
 	var catalog: Array = SimulationCore.CATALOG.get(role,SimulationCore.CATALOG["RIFLE"])
-	stats = {"name":role.replace("_"," "),"size":MODEL_LENGTH.get(kind,0.07),"speed":float(catalog[1])/100.0,"health":100.0,"range":float(catalog[2])/100.0,"damage":float(catalog[3]),"rate":2.0}
+	var weapon: Dictionary = SimulationCore.weapon_for(role)
+	stats = {"name":role.replace("_"," "),"size":MODEL_LENGTH.get(kind,0.07),"speed":float(catalog[1])/100.0,"health":100.0,"range":float(weapon.get("range",catalog[2]))/100.0,"damage":float(weapon.get("damage",catalog[3])),"rate":float(weapon.get("cooldown",2.0))}
 	max_health = 100.0
 	health = float(core_record.get("hp",max_health))
 	airborne = role in SimulationCore.AIR
@@ -57,6 +62,30 @@ func _ready() -> void:
 	_create_markers()
 	if kind == "fighter":
 		_create_exhaust()
+
+func _process(delta: float) -> void:
+	# Simulation records advance at 20 Hz. Retain the previous rendered transform
+	# and consume that offset during the next fixed interval, matching the
+	# browser's DisplayPoses interpolation instead of visibly stepping units.
+	var weight := minf(1.0,delta/0.05)
+	presentation_offset = presentation_offset.lerp(Vector3.ZERO,weight)
+	presentation_yaw_offset = lerp_angle(presentation_yaw_offset,0.0,weight)
+	if is_instance_valid(visual):
+		visual.position.x = presentation_offset.x
+		visual.position.z = presentation_offset.z
+		visual.rotation.y = presentation_yaw_offset
+	if is_instance_valid(selection_ring):
+		selection_ring.position.x = presentation_offset.x
+		selection_ring.position.z = presentation_offset.z
+	if is_instance_valid(team_marker):
+		team_marker.position.x = presentation_offset.x
+		team_marker.position.z = presentation_offset.z
+
+func presentation_position() -> Vector3:
+	return global_position+Vector3(presentation_offset.x,altitude+0.0014,presentation_offset.z)
+
+func presentation_heading() -> float:
+	return rotation.y+presentation_yaw_offset
 
 func _create_model() -> void:
 	var path := "res://assets/models/" + kind + ".glb"
@@ -295,6 +324,14 @@ func hold() -> void:
 func tick(delta: float, units: Array[CombatUnit], elapsed: float) -> void:
 	if not is_alive:
 		return
+	if not core_record.is_empty():
+		var authoritative_hp := float(core_record.get("hp", health))
+		if authoritative_hp < health:
+			take_damage(health-authoritative_hp)
+		elif authoritative_hp > health:
+			health = authoritative_hp
+		if not is_alive:
+			return
 	var transport: Dictionary = core_record.get("transport",{})
 	var mounted: bool = transport.get("phase","") in ["mounting","seated","dismounting"]
 	visual.visible = not mounted
@@ -309,21 +346,30 @@ func tick(delta: float, units: Array[CombatUnit], elapsed: float) -> void:
 		selection_ring.scale = Vector3.ONE*(1.0+0.02*sin(elapsed*3.0)) if deck_phase != "moving" else Vector3.ONE
 		var deck_mat: StandardMaterial3D = selection_ring.material_override
 		deck_mat.albedo_color = Color("9ad7a6") if deck_phase == "deployed" else Color("f7bd6b")
-	cooldown = maxf(0.0, cooldown - delta)
+	cooldown = maxf(0.0, float(core_record.get("combat_ready_at",0.0))-float(simulation_core.time)) if simulation_core != null else maxf(0.0, cooldown - delta)
 	next_scan -= delta
 	if next_scan <= 0.0:
 		next_scan = 0.28
 		_find_target(units)
 	var engaged := is_instance_valid(attack_target) and attack_target.is_alive
 	if can_operate and engaged and float(core_record.get("ammo",100)) > 0 and global_position.distance_to(attack_target.global_position) <= float(stats["range"]):
-		if cooldown <= 0.0:
-			cooldown = float(stats["rate"])
-			if not core_record.is_empty(): core_record["ammo"] = maxf(0.0,float(core_record["ammo"])-1.0)
-			fired.emit(self, attack_target)
-			attack_target.take_damage(float(stats["damage"]))
+		if simulation_core != null:
+			var outcome: Dictionary = simulation_core.resolve_attack("BLU" if team == 0 else "RED",str(core_record.get("id","")),str(attack_target.core_record.get("id","")),global_position.distance_to(attack_target.global_position))
+			if bool(outcome.get("fired",false)):
+				fired.emit(self, attack_target)
+				var target_hp := float(attack_target.core_record.get("hp",attack_target.health))
+				if target_hp < attack_target.health:
+					attack_target.take_damage(attack_target.health-target_hp)
+		else:
+			if cooldown <= 0.0:
+				cooldown = float(stats["rate"])
+				if not core_record.is_empty(): core_record["ammo"] = maxf(0.0,float(core_record["ammo"])-1.0)
+				fired.emit(self, attack_target)
+				attack_target.take_damage(float(stats["damage"]))
 		if route.is_empty():
 			_face(attack_target.position - position, delta)
 	if can_move and not route.is_empty() and not (engaged and order == "ADVANCE" and not airborne):
+		var previous_position := position
 		var to_point := route[0] - position
 		to_point.y = 0.0
 		var step := float(stats["speed"]) * delta
@@ -333,12 +379,16 @@ func tick(delta: float, units: Array[CombatUnit], elapsed: float) -> void:
 		else:
 			position += to_point.normalized() * step
 			_face(to_point, delta)
+		# Moving the authoritative node would otherwise teleport every visible
+		# child. Compensate in local space and interpolate that error to zero.
+		presentation_offset += previous_position-position
 		if route.is_empty():
 			order = "READY"
 	if not core_record.is_empty():
 		core_record["position"] = position
 		core_record["moving"] = can_move and not route.is_empty()
-		core_record["hp"] = health
+		# SimulationCore owns HP, ammunition, casualties and delayed impacts.
+		if simulation_core == null: core_record["hp"] = health
 	if airborne:
 		var target_altitude := 0.0 if not can_operate else (1.8 if role in ["JET","CAS_FIGHTER","CARGO_PLANE"] else 0.8)
 		altitude = move_toward(altitude,target_altitude,delta*0.08)
@@ -352,21 +402,23 @@ func tick(delta: float, units: Array[CombatUnit], elapsed: float) -> void:
 
 func _face(direction: Vector3, delta: float) -> void:
 	if direction.length_squared() > 0.001:
+		var previous_yaw := rotation.y
 		rotation.y = lerp_angle(rotation.y, atan2(-direction.x, -direction.z), minf(delta * 5.0, 1.0))
+		presentation_yaw_offset = wrapf(presentation_yaw_offset+previous_yaw-rotation.y,-PI,PI)
 
 func _find_target(units: Array[CombatUnit]) -> void:
+	var weapon: Dictionary = SimulationCore.weapon_for(role)
 	if is_instance_valid(attack_target) and attack_target.is_alive and attack_target.team != team:
-		if global_position.distance_to(attack_target.global_position) <= float(stats["range"]):
+		if SimulationCore.weapon_can_target(weapon,attack_target.role) and global_position.distance_to(attack_target.global_position) <= float(stats["range"]):
 			return
 	attack_target = null
-	if float(stats["damage"]) <= 0: return
+	if weapon.is_empty(): return
 	var nearest := float(stats["range"])
 	for unit in units:
 		if unit == self or not unit.is_alive or unit.team == team:
 			continue
 		if not str(unit.core_record.get("transport",{}).get("carrier","")).is_empty(): continue
-		if unit.airborne and role not in ["JET","AA_TEAM","FRIGATE","AIRCRAFT_CARRIER"]: continue
-		if role in ["JET","AA_TEAM"] and not unit.airborne: continue
+		if not SimulationCore.weapon_can_target(weapon,unit.role): continue
 		var gap := global_position.distance_to(unit.global_position)
 		if gap < nearest:
 			nearest = gap

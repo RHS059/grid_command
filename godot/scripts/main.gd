@@ -5,6 +5,7 @@ const CameraScript = preload("res://scripts/rts_camera.gd")
 const UnitScript = preload("res://scripts/combat_unit.gd")
 const HudScript = preload("res://scripts/tactical_hud.gd")
 const CoreScript = preload("res://scripts/simulation_core.gd")
+const CommanderDirectorScript = preload("res://scripts/commander_director.gd")
 const GeographyScript = preload("res://scripts/geographic_streamer.gd")
 
 var map: TacticalMap
@@ -25,7 +26,7 @@ var hold_time := 0.0
 var ai_time := 4.0
 var mission_state := "ACTIVE"
 var command_mode := "ADVANCE"
-var message := "Select either force to inspect. Right-click to give an observer order."
+var message := "Select either force to inspect. Commanders issue missions automatically."
 var message_time := 8.0
 var drag_start := Vector2.ZERO
 var drag_end := Vector2.ZERO
@@ -37,6 +38,7 @@ var marker_time := 0.0
 var shadow_enabled := true
 var fresnel_enabled := true
 var core
+var commander_director
 var visual_core_units: Dictionary = {}
 var supply_points := 2000
 var manpower := 120
@@ -72,6 +74,9 @@ func _ready() -> void:
 	operation_root.add_child(map)
 	core = CoreScript.new()
 	core.setup(map.get_objectives())
+	core.external_command_planner = true
+	commander_director = CommanderDirectorScript.new()
+	commander_director.setup(3701)
 	camera = CameraScript.new()
 	camera.name = "CommandCamera"
 	add_child(camera)
@@ -215,6 +220,7 @@ func _spawn(kind: String, team: int, call_sign: String, pos: Vector3, role: Stri
 	unit.kind = kind
 	unit.role = role
 	unit.core_record = record
+	unit.simulation_core = core
 	unit.team = team
 	unit.call_sign = call_sign
 	unit.position = pos
@@ -241,6 +247,7 @@ func _process(delta: float) -> void:
 func _tick_simulation(step: float) -> void:
 	elapsed += step
 	core.tick(step)
+	commander_director.tick(core)
 	_sync_core_summary()
 	_sync_core_visuals()
 	for unit in units:
@@ -259,7 +266,7 @@ func _tick_simulation(step: float) -> void:
 	if ai_time <= 0.0:
 		ai_time = 3.0
 		_update_command_orders()
-	_update_capture(step)
+	_sync_objective_display()
 
 func _sync_core_summary() -> void:
 	var blu: Dictionary = core.forces["BLU"]
@@ -339,9 +346,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			else:
 				if not mouse_down:
 					return
-				if selection_drag:
-					_select_box(event.shift_pressed)
-				else:
+				if not selection_drag:
 					var hit := _pick_unit(event.position)
 					if hit != null:
 						select_unit(hit, event.shift_pressed)
@@ -349,10 +354,8 @@ func _unhandled_input(event: InputEvent) -> void:
 						clear_selection()
 				mouse_down = false
 				selection_drag = false
-		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-			var ground: Variant = camera.ground_point(event.position)
-			if ground is Vector3:
-				issue_order(ground, _pick_unit(event.position))
+		# Secondary drag belongs to the orbit camera, matching the browser.
+		# The current game is AI versus AI; observer clicks do not inject orders.
 	if event is InputEventMouseMotion and mouse_down:
 		drag_end = event.position
 		selection_drag = drag_start.distance_to(drag_end) > 7.0
@@ -506,7 +509,7 @@ func _update_command_orders() -> void:
 		var force: Dictionary = core.forces[side]
 		var target: Vector3 = core.objectives[str(force["target"])]["position"]
 		for unit in units:
-			if unit.team != team or not unit.is_alive or unit.role == "COMMAND" or float(unit.core_record.get("manual_until",0)) > elapsed: continue
+			if unit.team != team or not unit.is_alive or unit.role == "COMMAND": continue
 			var record: Dictionary = unit.core_record
 			if force["hold"]: unit.hold(); continue
 			if record["service"] != "READY": unit.order = record["service"]; continue
@@ -537,12 +540,25 @@ func _update_command_orders() -> void:
 						elif unit.route.is_empty(): unit.move_to(pickup.position,false)
 				continue
 			if unit.role in SimulationCore.NAVAL: continue
+			var mission: Dictionary = record.get("command_mission", {})
+			if mission.is_empty():
+				unit.hold()
+				unit.order = "AWAITING COMMAND"
+				continue
+			var task := str(mission.get("task", "RESERVE"))
+			if task == "RESERVE":
+				unit.hold()
+				unit.order = "RESERVE"
+				continue
+			var ordered: Variant = mission.get("destination", Vector2(target.x, target.z))
+			var mission_target := Vector3(float(ordered.x), 0.0, float(ordered.y)) if ordered is Vector2 else target
 			if unit.personnel > 0 and unit.position.distance_to(target) > 5.0:
 				if not record.has("transport_wait"): record["transport_wait"] = elapsed
 				if elapsed-float(record["transport_wait"]) < 60.0:
 					unit.hold(); unit.order = "WAITING FOR TRANSPORT"; continue
-			if unit.route.is_empty() and unit.position.distance_to(target) > 0.6:
-				unit.move_to(target+Vector3(float(unit.get_index()%3-1)*0.12,0,0))
+			if unit.route.is_empty() and unit.position.distance_to(mission_target) > 0.12:
+				unit.move_to(mission_target, task == "ASSAULT")
+			unit.order = "%s · OBJ %s" % [task, str(mission.get("target", force["target"]))]
 
 func carrier_action(action: String) -> void:
 	if selected_units.is_empty(): return
@@ -570,48 +586,28 @@ func dismount_selection() -> void:
 		core.dismount("BLU" if unit.team == 0 else "RED",str(unit.core_record.get("id","")))
 
 func _update_capture(delta: float) -> void:
-	for objective in map.get_objectives():
-		var id := str(objective["id"])
-		var point: Vector3 = objective["pos"]
-		var blue_count := 0
-		var red_count := 0
-		for unit in units:
-			if not unit.is_alive or unit.airborne:
-				continue
-			if unit.personnel <= 0 or not unit.core_record.get("transport",{}).is_empty() or unit.position.distance_to(point) > 1.0:
-				continue
-			if unit.team == 0: blue_count += unit.personnel
-			else: red_count += unit.personnel
-		core.objectives[id]["contested"] = blue_count > 0 and red_count > 0
-		var desired := "BLU" if blue_count >= 6 and red_count == 0 else "RED" if red_count >= 6 and blue_count == 0 else ""
-		var progress := float(objective_progress[id])
-		if desired.is_empty():
-			progress = 0.0
-			objective_capture_side[id] = ""
-		elif objective_capture_side[id] != desired:
-			progress = delta
-			objective_capture_side[id] = desired
-		else:
-			progress += delta
-			if progress >= 8.0:
-				objective_owner[id] = desired
-				core.objectives[id]["owner"] = desired
-				objective_capture_side[id] = ""
-				progress = 0.0
-		objective_progress[id] = progress
+	# Test and adapter hook: copy presentation positions before advancing the
+	# authoritative browser-parity capture/victory rules.
+	for unit in units:
+		unit.core_record["position"] = unit.position
+	core.update_objective_control(delta)
+	core._update_victory(delta)
+	_sync_objective_display()
+
+func _sync_objective_display() -> void:
+	for id in core.objectives:
+		var objective: Dictionary = core.objectives[id]
+		objective_owner[id] = str(objective.get("owner",""))
+		objective_capture_side[id] = str(objective.get("capturing",""))
+		objective_progress[id] = float(objective.get("progress",0.0))*8.0
 		var owner := str(objective_owner[id])
-		map.set_objective_control(id, 100.0 if owner == "BLU" else -100.0 if owner == "RED" else 0.0)
-	capture = 100.0 if objective_owner["G"] == "BLU" else -100.0 if objective_owner["G"] == "RED" else 0.0
-	var all_side := str(objective_owner.values()[0])
-	for id in objective_owner:
-		if objective_owner[id] != all_side: all_side = ""; break
-	if all_side != winner_side: victory_hold = 0.0
-	winner_side = all_side
-	victory_hold = victory_hold+delta if not all_side.is_empty() else 0.0
+		map.set_objective_control(id,100.0 if owner == "BLU" else -100.0 if owner == "RED" else 0.0)
+	capture = 100.0 if objective_owner.get("G","") == "BLU" else -100.0 if objective_owner.get("G","") == "RED" else 0.0
+	winner_side = str(core.winner)
+	victory_hold = maxf(float(core.territory_hold.get("BLU",0.0)),float(core.territory_hold.get("RED",0.0)))
 	hold_time = victory_hold
-	if victory_hold >= 60.0:
-		mission_state = all_side + " VICTORY"
-		notify(all_side + " held every objective for 60 seconds.")
+	if not winner_side.is_empty():
+		mission_state = "MUTUAL COMMAND LOSS" if winner_side == "DRAW" else winner_side+" VICTORY"
 
 func request_reinforcement(role: String = "RIFLE") -> void:
 	notify("Requisition queued: " + role if core.procure(active_side,role) else "Requisition unavailable: check SP reserve, personnel and queue capacity.")
@@ -672,7 +668,6 @@ func _on_unit_destroyed(unit: CombatUnit) -> void:
 	if selected_units.has(unit):
 		selected_units.erase(unit)
 	var side := "BLU" if unit.team == 0 else "RED"
-	core.forces[side]["casualties"] += int(unit.core_record.get("members",0))
 	core.log_event(side,unit.call_sign + " is lost.","contact")
 	notify(unit.call_sign + " is lost.")
 
@@ -735,6 +730,12 @@ func _run_smoke_test() -> void:
 	assert(core.depots["BLU"]["airfield"]["fuel"] == 0,"Inbound supply is not instantly spendable.")
 	core.time = 100.0; core.tick(0.05); _sync_core_visuals()
 	assert(units.size() >= 4)
+	commander_director.next_plan = core.time
+	commander_director.tick(core)
+	core.time += 1.0; commander_director.tick(core)
+	assert(not commander_director.plan_for("BLU").is_empty() and not commander_director.plan_for("RED").is_empty())
+	assert(not core.units["BLU"][1].get("command_mission",{}).is_empty() and not core.units["RED"][1].get("command_mission",{}).is_empty(),"Both commanders must deliver per-unit missions through the live core records.")
+	_update_command_orders()
 	var rifle: CombatUnit = visual_core_units[core.units["BLU"][1]["id"]]
 	assert(is_equal_approx(float(rifle.stats["speed"]),0.038),"Native infantry speed is browser m/s divided by 100.")
 	var initial := rifle.position
@@ -770,7 +771,7 @@ func _run_smoke_test() -> void:
 	core.time += SimulationCore.CARRIER_UNDEPLOY_SECONDS; core._tick_units(0.0)
 	assert(carrier["maritime"]["phase"] == "moving")
 	for unit in units: unit.position = Vector3(90,0,0)
-	for id in objective_owner: objective_owner[id] = "RED"
+	for id in core.objectives: core.objectives[id]["owner"] = "RED"
 	_update_capture(0.05); _update_capture(60.0)
 	assert(mission_state == "RED VICTORY","Victory works symmetrically.")
 	assert(core.staff_reports("RED").size() == 6)
@@ -798,7 +799,7 @@ func _run_smoke_test() -> void:
 	assert(map.bases["BLU"].z > map.bases["RED"].z and map.bases["RED"].x > map.bases["BLU"].x,"Scene adapter preserves north/south and east/west geography.")
 
 	assert(UpdateService.run_smoke_tests())
-	print("GRID_COMMAND_SMOKE_OK: catalog, scale, queues, phased supplies, shared unit state, capture, RED victory, pause/step, session restore, carrier legal transitions and launch gates")
+	print("GRID_COMMAND_SMOKE_OK: catalog, scale, queues, phased supplies, commander missions, authoritative combat/capture, RED victory, pause/step, session restore, carrier legal transitions and launch gates")
 	get_tree().quit(0)
 
 func export_session_state() -> Dictionary:
@@ -807,7 +808,7 @@ func export_session_state() -> Dictionary:
 	for unit in units:
 		records.append({"id":unit.core_record.get("id",""),"position":unit.position,"rotation":unit.rotation,"health":unit.health,"is_alive":unit.is_alive,"route":unit.route.duplicate(),"order":unit.order,"cooldown":unit.cooldown,"target":unit.attack_target.core_record.get("id","") if is_instance_valid(unit.attack_target) else ""})
 	for unit in selected_units: selected.append(unit.core_record.get("id",""))
-	return {"schema":2,"elapsed":elapsed,"ai_time":ai_time,"mission_state":mission_state,"paused":paused,"speed":speed,"active_side":active_side,"objective_progress":objective_progress.duplicate(true),"objective_owner":objective_owner.duplicate(true),"objective_capture_side":objective_capture_side.duplicate(true),"victory_hold":victory_hold,"winner_side":winner_side,"shadow_enabled":shadow_enabled,"fresnel_enabled":fresnel_enabled,"core":core.snapshot(),"units":records,"selected":selected,"camera":_camera_state(),"geographic_view":{"origin":geography.get("origin").duplicate() if geography_active else [],"operation":operation_view_active,"theater_camera":theater_camera_state.duplicate(true)}}
+	return {"schema":2,"elapsed":elapsed,"ai_time":ai_time,"mission_state":mission_state,"paused":paused,"speed":speed,"active_side":active_side,"objective_progress":objective_progress.duplicate(true),"objective_owner":objective_owner.duplicate(true),"objective_capture_side":objective_capture_side.duplicate(true),"victory_hold":victory_hold,"winner_side":winner_side,"shadow_enabled":shadow_enabled,"fresnel_enabled":fresnel_enabled,"core":core.snapshot(),"commander_director":commander_director.snapshot(),"units":records,"selected":selected,"camera":_camera_state(),"geographic_view":{"origin":geography.get("origin").duplicate() if geography_active else [],"operation":operation_view_active,"theater_camera":theater_camera_state.duplicate(true)}}
 
 func restore_session_state(snapshot: Dictionary) -> void:
 	if int(snapshot.get("schema",0)) != 2:
@@ -817,6 +818,10 @@ func restore_session_state(snapshot: Dictionary) -> void:
 	for unit in units: unit.queue_free()
 	units.clear(); visual_core_units.clear()
 	core.restore(snapshot["core"])
+	if snapshot.has("commander_director"):
+		commander_director.restore(snapshot["commander_director"])
+	else:
+		commander_director.setup(3701)
 	for key in ["elapsed","ai_time","mission_state","active_side","objective_progress","objective_owner","objective_capture_side","victory_hold","winner_side"]:
 		if snapshot.has(key): set(key,snapshot[key])
 	_sync_core_visuals(); _sync_core_summary()

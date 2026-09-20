@@ -4,19 +4,19 @@ This Godot 4.7.2 build presents the browser game's current San Diego command the
 
 The operation starts with two command elements, neutral objectives A–J, tier-1 MOBs and airfields, 2,000 supply points, and the first supply flight at 00:30. Both commanders assemble forces automatically. Inspect either force with the BLU/RED switch; open **GRID COMMAND → Command center** for Forces, Logistics and Staff. Observer requisitions are available in Logistics.
 
-The fixed 0.05-second simulation supports selection, group orders, combat, readiness and supply updates, requisitions, A–J capture, and all-objective victory. Version 0.2.0 preserves the updater, session restoration, export setup, and shared production assets.
+The fixed 0.05-second simulation supports delayed contact reports, simultaneous commander planning, formation missions, browser weapon profiles, combat, suppression, casualties, transport, logistics, requisitions, A–J capture, command-collapse victory, and all-objective victory. Version 0.2.1 preserves the updater, session restoration, export setup, and shared production assets.
 
 ## Controls
 
-- Left-click: select a unit.
-- Right-click: issue a move order.
-- WASD/arrows or Shift + middle-drag: pan.
-- Middle-drag: orbit.
+- Left-click: inspect a unit.
+- Left-drag or WASD/arrows: pan.
+- Right-drag or middle-drag: orbit.
+- Shift + middle-drag: pan.
 - Mouse wheel: zoom.
 - Space: pause or resume.
 - 1, 2, 4, 8: set simulation speed; the HUD also offers 16×.
 - Step: pause and advance one 0.05-second tick.
-- O: overview. F: focus selection. Tab: next unit.
+- O: overview.
 - G: grid. F9: routes. Ctrl + R: new operation.
 - Escape: clear selection.
 
