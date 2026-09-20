@@ -162,6 +162,8 @@ jobs:
           grep -F "GRID_COMMAND_GAMEPLAY_CORE_SMOKE_OK" "$RUNNER_TEMP/gameplay-core-smoke.log"
           "$GODOT" --headless --path "$PROJECT_DIR" --script res://tests/commander_director_smoke.gd 2>&1 | tee "$RUNNER_TEMP/commander-director-smoke.log"
           grep -F "GRID_COMMAND_COMMANDER_DIRECTOR_SMOKE_OK" "$RUNNER_TEMP/commander-director-smoke.log"
+          "$GODOT" --headless --path "$PROJECT_DIR" --script res://tests/commander_progression_smoke.gd 2>&1 | tee "$RUNNER_TEMP/commander-progression-smoke.log"
+          grep -F "GRID_COMMAND_COMMANDER_PROGRESSION_SMOKE_OK" "$RUNNER_TEMP/commander-progression-smoke.log"
           "$GODOT" --headless --path "$PROJECT_DIR" --script res://tests/camera_follow_smoke.gd 2>&1 | tee "$RUNNER_TEMP/camera-follow-smoke.log"
           grep -F "GRID_COMMAND_CAMERA_FOLLOW_SMOKE_OK" "$RUNNER_TEMP/camera-follow-smoke.log"
           "$GODOT" --headless --path "$PROJECT_DIR" --script res://tests/tactical_hud_smoke.gd 2>&1 | tee "$RUNNER_TEMP/tactical-hud-smoke.log"

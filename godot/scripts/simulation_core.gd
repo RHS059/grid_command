@@ -570,15 +570,13 @@ func _update_victory(delta: float) -> void:
 	var defeated: Array[String] = []
 	for side in ["BLU","RED"]:
 		var command_lost := false
-		var successor := false
 		for unit in units[side]:
 			if unit["role"] == "COMMAND" and float(unit.get("hp",100.0)) <= 0.0: command_lost = true
-			if float(unit.get("hp",0.0)) > 0.0 and not unit.get("surrendered",false) and not unit.get("crew_bailed",false) and not unit["role"] in MISSION_ASSETS and not unit["role"] in ["COMMAND","PILOT","LOGISTICS"]: successor = true
-		if command_lost and not successor: defeated.append(side)
+		if command_lost: defeated.append(side)
 	if defeated.size() == 2: winner = "DRAW"
 	elif defeated.size() == 1: winner = "RED" if defeated[0] == "BLU" else "BLU"
 	if not winner.is_empty():
-		log_event("SYS","Mutual command loss." if winner == "DRAW" else winner+" wins after opposing command collapse.","system")
+		log_event("SYS","Both commanders killed." if winner == "DRAW" else winner+" wins: enemy commander killed.","system")
 		return
 	for side in ["BLU","RED"]:
 		var secured := not objectives.is_empty()

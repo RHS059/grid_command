@@ -66,18 +66,36 @@ func _run() -> void:
 	core.update_objective_control(0.05)
 	check(not core.objectives["A"]["contested"],"Surrendered infantry counted toward capture.")
 	for objective in core.objectives.values(): objective["owner"] = "BLU"; objective["contested"] = false
-	core._update_victory(60.0)
+	core._update_victory(59.0)
+	check(core.winner.is_empty(),"Territorial victory fired before sixty continuous seconds.")
+	core.objectives["B"]["contested"] = true
+	core._update_victory(0.05)
+	check(core.territory_hold["BLU"] == 0.0,"Contesting any objective did not reset the hold timer.")
+	core.objectives["B"]["contested"] = false
+	core._update_victory(59.0)
+	core.objectives["B"]["owner"] = "RED"
+	core._update_victory(0.05)
+	check(core.territory_hold["BLU"] == 0.0 and core.winner.is_empty(),"Losing any objective did not reset the hold timer.")
+	core.objectives["B"]["owner"] = "BLU"
+	core._update_victory(59.0)
+	check(core.winner.is_empty(),"An interrupted territorial hold carried over into the next attempt.")
+	core._update_victory(1.0)
 	check(core.winner == "BLU","Sixty-second all-objective hold did not award territorial victory.")
 
-	# Command loss allows succession while a maneuver element survives.
+	# Killing command wins immediately even while its maneuver force survives.
 	core.winner = ""; core.territory_hold = {"BLU":0.0,"RED":0.0}
 	core._unit("BLU","BLU-command")["hp"] = 0.0
 	core._update_victory(0.05)
-	check(core.winner.is_empty(),"Command loss incorrectly defeated a side with a surviving successor.")
-	for unit in core.units["BLU"]:
-		if unit["role"] != "COMMAND": unit["hp"] = 0.0
+	check(core.winner == "RED","Killing BLU command did not immediately award RED victory while BLU troops survived.")
+	core = fixture()
+	ready(core,"RED","RIFLE","red-survivor")
+	core._unit("RED","RED-command")["hp"] = 0.0
 	core._update_victory(0.05)
-	check(core.winner == "RED","Complete command collapse did not award victory.")
+	check(core.winner == "BLU","Killing RED command did not immediately award BLU victory while RED troops survived.")
+	core = fixture()
+	for side in ["BLU","RED"]: core._unit(side,side+"-command")["hp"] = 0.0
+	core._update_victory(0.05)
+	check(core.winner == "DRAW","Simultaneous commander deaths must resolve as a draw.")
 
 	# Air and naval carrier losses kill occupants; ground carriers use the browser survival check.
 	core = fixture()

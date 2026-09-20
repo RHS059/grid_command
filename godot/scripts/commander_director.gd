@@ -274,18 +274,21 @@ func _plan_side(core, side: String, now: float) -> Dictionary:
 		if str(command.get("plan", {}).get("target", "")) == str(id):
 			score += 12.0 * float(personality["consistency"])
 		scores[str(id)] = score
+	# Match the browser fronts' eligibility rule. A finite ownership penalty
+	# cannot exclude secured objectives on a theater wider than that penalty.
+	# Keep the score ledger, but expand only toward unowned/contested reports.
+	var targets: Array = scores.keys().filter(func(id: String) -> bool: return command["objectives"][id]["owner"] != side or command["objectives"][id]["contested"])
+	var all_secured := targets.is_empty() and not scores.is_empty()
+	if all_secured:
+		targets = scores.keys()
 	var target := ""
-	for id in scores.keys():
+	for id in targets:
 		if target.is_empty() or float(scores[id]) > float(scores[target]) or (is_equal_approx(float(scores[id]), float(scores[target])) and str(id) < target):
 			target = str(id)
 	var base_threat := contacts.any(func(contact: Dictionary) -> bool: return float(contact["confidence"]) > 0.3 and _vector2(contact["position"]).distance_to(command_position) < 4.0)
-	var posture := "RECOVER" if readiness < 0.4 else "DEFEND" if base_threat or readiness < 0.58 - float(personality["risk"]) * 0.15 else "ADVANCE"
-	var action := "RESUPPLY" if posture == "RECOVER" else "ASSEMBLE" if posture == "DEFEND" else "MASS" if contacts.is_empty() else "FLANK" if float(personality["initiative"]) > 0.6 and float(personality["risk"]) > 0.45 else "SEIZE"
-	var maneuver := own.filter(func(unit: Dictionary) -> bool: return str(unit["role"]) in ["RIFLE", "AT", "TANK", "APC", "CANNON_APC", "IFV", "AMPHIBIOUS_APC"])
-	var reserve_count := 0 if base_threat or maneuver.size() < 4 else maxi(1, floori(float(maneuver.size()) * minf(0.5, 0.2 * (0.5 + float(personality["reserve"])))))
-	var reserve_ids: Array[String] = []
-	for index in range(maxi(0, maneuver.size() - reserve_count), maneuver.size()):
-		reserve_ids.append(str(maneuver[index]["id"]))
+	var posture := "HOLD" if all_secured else "RECOVER" if readiness < 0.4 else "DEFEND" if readiness < 0.58 - float(personality["risk"]) * 0.15 else "ADVANCE"
+	var action := "HOLD" if posture == "HOLD" else "RESUPPLY" if posture == "RECOVER" else "ASSEMBLE" if posture == "DEFEND" else "MASS" if contacts.is_empty() else "FLANK" if float(personality["initiative"]) > 0.6 and float(personality["risk"]) > 0.45 else "SEIZE"
+	var reserve_ids := _base_defenders(core, side, own, contacts, personality)
 	return {
 		"revision": int(command["revision"]) + 1,
 		"target": target,
@@ -299,6 +302,32 @@ func _plan_side(core, side: String, now: float) -> Dictionary:
 		"contact_count": contacts.size(),
 		"base_threat": base_threat,
 	}
+
+func _base_defenders(core, side: String, own: Array, contacts: Array, personality: Dictionary) -> Array[String]:
+	var base := _command_position(core, side)
+	var ready := own.filter(func(unit: Dictionary) -> bool: return str(unit["role"]) in ["RIFLE", "MG", "AT", "TANK", "APC", "CANNON_APC", "IFV"] and unit.get("service", "READY") == "READY" and float(unit.get("hp", 0.0)) >= 25.0 and float(unit.get("ammo", 0.0)) >= 12.0 and not unit.get("transport", {}).has("carrier"))
+	ready.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var a_distance := _position(a).distance_squared_to(base)
+		var b_distance := _position(b).distance_squared_to(base)
+		return str(a["id"]) < str(b["id"]) if is_equal_approx(a_distance, b_distance) else a_distance < b_distance)
+	var capture_bodies := 0
+	for unit in own:
+		if str(unit["role"]) in ["RIFLE", "AT"] and float(unit.get("hp", 0.0)) >= 25.0 and float(unit.get("ammo", 0.0)) >= 12.0:
+			capture_bodies += int(unit.get("members", 0))
+	var threats := contacts.filter(func(contact: Dictionary) -> bool: return float(contact["confidence"]) > 0.3 and _vector2(contact["position"]).distance_to(base) < 4.0).size()
+	var desired := maxi(1, maxi(threats, ceili(float(ready.size()) * 0.2 * (0.5 + float(personality["reserve"])))))
+	var defenders: Array[String] = []
+	for unit in ready:
+		var bodies := int(unit.get("members", 0)) if str(unit["role"]) in ["RIFLE", "AT"] else 0
+		# Keep a capture-capable force advancing while a supplied local guard
+		# protects command. A base contact reinforces that guard, not a global retreat.
+		if bodies > 0 and capture_bodies >= core.CAPTURE_MIN_BODIES and capture_bodies - bodies < core.CAPTURE_MIN_BODIES:
+			continue
+		if defenders.size() >= desired:
+			break
+		defenders.append(str(unit["id"]))
+		capture_bodies -= bodies
+	return defenders
 
 func _apply_plan(core, side: String, plan: Dictionary, now: float) -> void:
 	var command: Dictionary = sides[side]
@@ -396,8 +425,10 @@ func _report(name: String, approved: bool, metrics: String, now: float) -> Dicti
 
 func _task_for(unit: Dictionary, plan: Dictionary) -> String:
 	var role := str(unit["role"])
+	if str(plan["posture"]) == "HOLD":
+		return "HOLD"
 	if str(unit["id"]) in plan["reserve_ids"]:
-		return "RESERVE"
+		return "DEFEND_BASE"
 	if str(plan["posture"]) == "RECOVER" or float(unit.get("ammo", 100.0)) < 12.0 or float(unit.get("hp", 100.0)) < 25.0:
 		return "RESUPPLY"
 	if str(plan["posture"]) == "DEFEND":
@@ -409,6 +440,10 @@ func _task_for(unit: Dictionary, plan: Dictionary) -> String:
 	return "ASSAULT"
 
 func _destination_for(core, side: String, unit: Dictionary, target: Vector2, task: String, slot: int) -> Vector2:
+	if task == "HOLD":
+		return _position(unit)
+	if task == "DEFEND_BASE":
+		return _command_position(core, side) + Vector2(float(slot - 1) * 0.3, -0.4 if side == "BLU" else 0.4)
 	if task in ["RESUPPLY", "WITHDRAW", "RESERVE"]:
 		return _command_position(core, side)
 	var sign := -1.0 if side == "BLU" else 1.0
@@ -434,7 +469,7 @@ func _can_be_seen(unit: Dictionary) -> bool:
 	return _can_observe(unit)
 
 func _commandable(unit: Dictionary) -> bool:
-	return float(unit.get("hp", 0.0)) > 0.0 and str(unit.get("role", "")) not in ["COMMAND", "PILOT", "LOGISTICS", "FORKLIFT", "CARGO_PLANE", "UAV_JAMMER", "TRUCK", "TROOP_TRUCK", "TRANSPORT_HELI", "HEAVY_LIFT_HELI"]
+	return float(unit.get("hp", 0.0)) > 0.0 and not unit.get("surrendered", false) and not unit.get("crew_bailed", false) and not unit.get("external", false) and str(unit.get("role", "")) not in ["COMMAND", "PILOT", "LOGISTICS", "FORKLIFT", "CARGO_PLANE", "UAV_JAMMER", "TRUCK", "TROOP_TRUCK", "TRANSPORT_HELI", "HEAVY_LIFT_HELI"]
 
 func _is_vehicle(role: String) -> bool:
 	return role not in ["RIFLE", "SCOUT", "MG", "AT", "MORTAR", "ENGINEER", "MEDIC", "LOGISTICS", "PILOT", "COMMAND", "AA_TEAM"]

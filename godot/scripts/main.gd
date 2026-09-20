@@ -563,7 +563,7 @@ func _update_command_orders() -> void:
 		for unit in units:
 			if unit.team != team or not unit.is_alive or unit.role == "COMMAND": continue
 			var record: Dictionary = unit.core_record
-			if force["hold"]: unit.hold(); continue
+			if force["hold"] or force["action"] == "HOLD": unit.hold(); continue
 			if record["service"] != "READY": unit.order = record["service"]; continue
 			if record["transport"].has("carrier"): continue
 			if unit.role in ["TROOP_TRUCK","TRANSPORT_HELI"]:
@@ -576,12 +576,13 @@ func _update_command_orders() -> void:
 					if unit.position.distance_to(target) < 0.7:
 						unit.hold(); record["moving"] = false
 						for id in passengers.duplicate(): core.dismount(side,id)
-					elif unit.route.is_empty(): unit.move_to(target,false)
+					elif unit.route.is_empty() or unit.route[-1].distance_to(target) > 0.12: unit.move_to(target,false)
 				else:
 					var pickup: CombatUnit
 					var nearest := INF
 					for squad in units:
 						if squad.team != team or not squad.is_alive or squad.personnel == 0 or not squad.core_record["transport"].is_empty() or squad.position.distance_to(target) < 1.0: continue
+						if squad.core_record.get("command_mission", {}).get("task", "") in ["DEFEND_BASE", "RESUPPLY", "WITHDRAW", "RESERVE", "HOLD"]: continue
 						var gap := squad.position.distance_to(unit.position)
 						if gap < nearest: pickup = squad; nearest = gap
 					if pickup != null:
@@ -610,11 +611,11 @@ func _update_command_orders() -> void:
 						core.set_maritime_order(side,str(record["id"]),Vector2(maritime_target.x,maritime_target.z))
 				unit.order = "%s · OFFSHORE OBJ %s" % [task,str(mission.get("target",force["target"]))]
 				continue
-			if unit.personnel > 0 and unit.position.distance_to(target) > 5.0:
+			if task in ["ASSAULT", "RECON", "SUPPORT"] and unit.personnel > 0 and unit.position.distance_to(mission_target) > 5.0:
 				if not record.has("transport_wait"): record["transport_wait"] = elapsed
 				if elapsed-float(record["transport_wait"]) < 60.0:
 					unit.hold(); unit.order = "WAITING FOR TRANSPORT"; continue
-			if unit.route.is_empty() and unit.position.distance_to(mission_target) > 0.12:
+			if (unit.route.is_empty() or unit.route[-1].distance_to(mission_target) > 0.12) and unit.position.distance_to(mission_target) > 0.12:
 				unit.move_to(mission_target, task == "ASSAULT")
 			unit.order = "%s · OBJ %s" % [task, str(mission.get("target", force["target"]))]
 
