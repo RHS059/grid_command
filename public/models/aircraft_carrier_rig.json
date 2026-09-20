@@ -1,0 +1,91 @@
+{
+  "variant": "Ford-inspired aircraft carrier",
+  "nodes": {
+    "hull": {
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "kind": "fixed"
+    },
+    "deck": {
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "kind": "fixed"
+    },
+    "elevators": {
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "kind": "fixed"
+    },
+    "island": {
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "kind": "fixed"
+    },
+    "mast": {
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "kind": "fixed"
+    },
+    "fittings": {
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "kind": "fixed"
+    },
+    "defense": {
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "kind": "fixed"
+    },
+    "aircraft": {
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "kind": "fixed"
+    },
+    "deck_equipment": {
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "kind": "fixed"
+    }
+  },
+  "clips": [
+    {
+      "id": "idle",
+      "label": "At rest",
+      "duration": 2,
+      "loop": true
+    },
+    {
+      "id": "drive",
+      "label": "Underway",
+      "duration": 2,
+      "loop": true
+    }
+  ]
+}

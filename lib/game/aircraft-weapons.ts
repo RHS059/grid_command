@@ -2,6 +2,7 @@ import * as T from './scene-data'
 import { assetPath } from '../asset-path'
 import type { Role } from './types'
 import weapons from './generated/aircraft_weapons.json'
+import fuelTank from './generated/aircraft_fuel_tank.json'
 import { AIRCRAFT_HARDPOINTS, rocketTube, type AircraftLoadoutState } from './aircraft-loadout'
 
 type WeaponPart = typeof weapons.bomb
@@ -11,11 +12,23 @@ type Decoder = (parts: WeaponPart[]) => T.BufferGeometry
 export function attachAircraftWeapons(root: T.Object3D, role: Role, decode: Decoder) {
   const points = AIRCRAFT_HARDPOINTS[role]
   if (!points) return
+  if (points.every(point => point.asset === 'fuel_tank')) {
+    const material = new T.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: .78, map: assetPath('/models/aircraft_fuel_tank_albedo.png') })
+    root.userData.materials.push(material)
+    const geometry = decode([fuelTank.fuel_tank])
+    for (const point of points) {
+      const attachment = new T.Group(); attachment.name = point.id; attachment.position.set(...point.position)
+      attachment.userData.weaponAttachment = true; attachment.userData.hardpoint = point.id; attachment.userData.fixedStore = true
+      const mesh = new T.Mesh(geometry, material); mesh.name = point.id + '_weapon_mesh'; mesh.userData.weaponAttachment = true; attachment.add(mesh); root.add(attachment)
+    }
+    return
+  }
   const material = new T.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: .78, map: assetPath('/models/aircraft_weapons_albedo.png') })
   root.userData.materials.push(material)
   const geometries = { bomb: decode([weapons.bomb]), rocket_pod: decode([weapons.rocket_pod]), rocket: decode([weapons.rocket]) }
   root.userData.createWeaponProjectile = (kind: 'bomb' | 'rocket') => new T.Mesh(geometries[kind], material)
   for (const point of points) {
+    if (point.asset === 'fuel_tank') continue
     const attachment = new T.Group(); attachment.name = point.id; attachment.position.set(...point.position)
     attachment.userData.weaponAttachment = true; attachment.userData.hardpoint = point.id
     const mesh = new T.Mesh(geometries[point.asset], material); mesh.name = point.id + '_weapon_mesh'; mesh.userData.weaponAttachment = true; attachment.add(mesh)
@@ -44,7 +57,7 @@ export function poseAircraftWeapons(root: T.Object3D, clip: string, time: number
     if (point.asset === 'bomb') {
       const age = time - (.4 + bomb++ * 1.2)
       if (clip === 'bombs' && age >= 0) { object.position.y += age * .6; object.position.z -= 4.9 * age * age; object.visible = age < 1.1 }
-    } else {
+    } else if (point.asset === 'rocket_pod') {
       for (let round = 0; round < point.capacity; round++) {
         const rocket = root.getObjectByName(`${point.id}_round_${round}`)!; const [x, y, z] = rocketTube(round)
         rocket.position.set(x, y - .18, z); rocket.visible = true
@@ -63,7 +76,7 @@ export function syncAircraftWeapons(root: T.Object3D, state?: AircraftLoadoutSta
     const object = root.getObjectByName(point.id); if (!object) continue
     object.position.set(...point.position)
     const remaining = state.remaining[point.id] || 0
-    object.visible = point.asset === 'rocket_pod' || remaining > 0
+    object.visible = point.asset === 'fuel_tank' || point.asset === 'rocket_pod' || remaining > 0
     if (point.asset === 'rocket_pod') for (let round = 0; round < point.capacity; round++) {
       const rocket = root.getObjectByName(`${point.id}_round_${round}`)!
       const [x, y, z] = rocketTube(round); rocket.position.set(x, y - .18, z); rocket.visible = round >= point.capacity - remaining

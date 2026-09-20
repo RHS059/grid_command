@@ -19,7 +19,7 @@ export interface Depot { airfield: Stock; pending: Stock; mob: Stock }
 export interface Missile { id: number; source: string; target: string; due: number; damage: number }
 export interface Casualty { id: string; side: Side; role: Role; soldier?: Soldier; aircraftLoadout?: import('./aircraft-loadout').AircraftLoadoutState; x: number; y: number; heading: number; time: number; observed: Side[]; altitude: number }
 export type Perspective = Side | 'OBS'
-export type Role = 'PATROL_BOAT' | 'FRIGATE' | 'LANDING_CRAFT' | 'AMPHIBIOUS_APC' | 'RIFLE' | 'SCOUT' | 'MG' | 'AT' | 'MORTAR' | 'ENGINEER' | 'MEDIC' | 'LOGISTICS' | 'TANK' | 'PILOT' | 'COMMAND' | 'TRUCK' | 'RECON_UAV' | 'APC' | 'CANNON_APC' | 'IFV' | 'CAS_FIGHTER' | 'JET' | 'ATTACK_HELI' | 'FORKLIFT' | 'CARGO_PLANE' | 'UAV_JAMMER' | 'AA_TEAM' | 'TRANSPORT_HELI' | 'HEAVY_LIFT_HELI' | 'TROOP_TRUCK'
+export type Role = 'PATROL_BOAT' | 'FRIGATE' | 'AIRCRAFT_CARRIER' | 'LANDING_CRAFT' | 'AMPHIBIOUS_APC' | 'RIFLE' | 'SCOUT' | 'MG' | 'AT' | 'MORTAR' | 'ENGINEER' | 'MEDIC' | 'LOGISTICS' | 'TANK' | 'PILOT' | 'COMMAND' | 'TRUCK' | 'RECON_UAV' | 'APC' | 'CANNON_APC' | 'IFV' | 'CAS_FIGHTER' | 'JET' | 'ATTACK_HELI' | 'FORKLIFT' | 'CARGO_PLANE' | 'UAV_JAMMER' | 'AA_TEAM' | 'TRANSPORT_HELI' | 'HEAVY_LIFT_HELI' | 'TROOP_TRUCK'
 export type Point = { x: number; y: number }
 export type Vec3 = Point & { z: number }
 export type Stance = 'stand' | 'crouch' | 'prone'
@@ -43,9 +43,9 @@ export interface GeometryPacket { sector?: string; evict?: string; features: Geo
 export interface ShotEvent { hardpoint?: string; round?: number; id: number; time: number; unit: string; soldier?: string; side: Side; weapon: string; start: Vec3; end: Vec3; speed: number; size: number; blast: number; sound: string; spotted: boolean }
 export interface Smoke extends Vec3 { id: number; side: Side; time: number; expires: number; from: Vec3 }
 export const isAir = (r: Role) => ['RECON_UAV', 'CAS_FIGHTER', 'JET', 'ATTACK_HELI', 'CARGO_PLANE', 'TRANSPORT_HELI', 'HEAVY_LIFT_HELI'].includes(r)
-export const isNaval = (r: Role) => ['PATROL_BOAT','FRIGATE','LANDING_CRAFT','AMPHIBIOUS_APC'].includes(r)
+export const isNaval = (r: Role) => ['PATROL_BOAT','FRIGATE','AIRCRAFT_CARRIER','LANDING_CRAFT','AMPHIBIOUS_APC'].includes(r)
 export const isVehicle = (r: Role) => ['TANK', 'APC', 'CANNON_APC', 'IFV', 'TRUCK', 'TROOP_TRUCK', 'FORKLIFT', 'UAV_JAMMER'].includes(r) || isAir(r) || isNaval(r)
-export const isArmored = (r: Role) => ['TANK', 'APC', 'CANNON_APC', 'IFV','FRIGATE','AMPHIBIOUS_APC'].includes(r)
+export const isArmored = (r: Role) => ['TANK', 'APC', 'CANNON_APC', 'IFV','FRIGATE','AIRCRAFT_CARRIER','AMPHIBIOUS_APC'].includes(r)
 export const troopSeats = (r: Role) => r === 'TRANSPORT_HELI' ? 24 : r === 'APC' ? 8 : r === 'TROOP_TRUCK' ? 7 : ['CANNON_APC', 'IFV'].includes(r) ? 6 : 0
 export const missionAsset = (r: Role) => ['FORKLIFT','CARGO_PLANE','UAV_JAMMER','TRANSPORT_HELI','HEAVY_LIFT_HELI','TROOP_TRUCK','TRUCK'].includes(r)
 export interface Unit extends Point {
@@ -78,6 +78,7 @@ export const AIRBASES = CITY_AIRBASES
 export const CATALOG: Record<Role, { members: number; speed: number; range: number; power: number; cost: number }> = {
   PATROL_BOAT: { members: 4, speed: 14, range: 1200, power: 12, cost: 1800 },
   FRIGATE: { members: 32, speed: 12, range: 2400, power: 40, cost: 14000 },
+  AIRCRAFT_CARRIER: { members: 48, speed: 10, range: 2400, power: 28, cost: 24000 },
   LANDING_CRAFT: { members: 3, speed: 8, range: 0, power: 0, cost: 2000 },
   AMPHIBIOUS_APC: { members: 3, speed: 7, range: 1200, power: 12, cost: 5500 },
   FORKLIFT: { members: 1, speed: 3, range: 0, power: 0, cost: 150 },

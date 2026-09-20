@@ -86,6 +86,19 @@ function legacySections(source: T.Object3D, role: Role): Template {
   }
   const interior = new T.MeshStandardMaterial({ color: '#26231e', roughness: 1, metalness: .25 })
   for (const group of groups) {
+    // A section is one rigid body. Keep material boundaries, but do not retain
+    // every source track link/trim object as another draw mesh on that body.
+    const byMaterial = new Map<T.Material, T.Mesh[]>()
+    for (const child of group.root.children) if (child instanceof T.Mesh) {
+      const material = child.material as T.Material, parts = byMaterial.get(material) || []
+      parts.push(child); byMaterial.set(material, parts)
+    }
+    for (const [material, parts] of byMaterial) if (parts.length > 1) {
+      const geometry = T.mergeGeometries(parts.map(part => part.geometry))
+      group.root.remove(...parts)
+      for (const part of parts) part.geometry.dispose()
+      group.root.add(new T.Mesh(geometry, material))
+    }
     const pivot = group.bounds.isEmpty() ? group.center : group.bounds.getCenter(new T.Vector3())
     const half = group.bounds.isEmpty() ? new T.Vector3(.1, .1, .1) : group.bounds.getSize(new T.Vector3()).multiplyScalar(.5)
     group.root.traverse(node => { if (node instanceof T.Mesh) node.geometry.translate(-pivot.x, -pivot.y, -pivot.z) })

@@ -7,20 +7,30 @@ import { createInteriorWindowMaterial } from './interior-window-material'
 import tank from './generated/tank.json'
 import troop from './generated/troop_transport.json'
 import apc from './generated/apc.json'
+import cannonApc from './generated/cannon_apc.json'
+import amphibiousApc from './generated/amphibious_apc.json'
 import cargo from './generated/vtol_cargo.json'
 import attack from './generated/vtol_attack.json'
 import { vehicleRig, poseVehicleClip } from './vehicle-animation'
 import cas from './generated/cas.json'
+import reconUav from './generated/recon_uav.json'
 import fighter from './generated/fighter.json'
+import patrolBoat from './generated/patrol_boat.json'
+import landingCraft from './generated/landing_craft.json'
+import aircraftCarrier from './generated/aircraft_carrier.json'
+import missileCruiser from './generated/missile_cruiser.json'
 import { attachVehicleEffects } from './vehicle-effects'
 
-type Part = { q: string; n: number; s: number; i: string; palette: number[][]; indices?: number[]; uv?: number[]; normals?: number[]; texture?: string }
+type Part = { q: string; n: number; s: number; i: string; palette: number[][]; indices?: number[]; uv?: number[]; normals?: number[]; texture?: string; factionVertices?: number[] }
 export type PackedVehiclePart = Part
 export { geometry as decodeVehicleGeometry }
 type Asset = Record<string, Part>
+// Both roles use the same canonical chassis records and atlas. Only the roof weapon differs.
+const strykerDragoon: Asset = { ...apc, turret: cannonApc.turret, cannon: cannonApc.cannon }
 const assets: Partial<Record<Role, Asset>> = {
-  TANK: tank, TROOP_TRUCK: troop, APC: apc, HEAVY_LIFT_HELI: cargo,
-  ATTACK_HELI: attack, CAS_FIGHTER: cas, JET: fighter,
+  TANK: tank, TROOP_TRUCK: troop, APC: apc, CANNON_APC: strykerDragoon, AMPHIBIOUS_APC: amphibiousApc, HEAVY_LIFT_HELI: cargo,
+  ATTACK_HELI: attack, CAS_FIGHTER: cas, RECON_UAV: reconUav, JET: fighter,
+  PATROL_BOAT: patrolBoat, LANDING_CRAFT: landingCraft, FRIGATE: missileCruiser, AIRCRAFT_CARRIER: aircraftCarrier,
 }
 export const hasBlenderVehicle = (role: Role) => !!assets[role]
 
@@ -30,7 +40,7 @@ function bytes(value: string) {
   return result
 }
 
-function geometry(parts: Part[]) {
+function geometry(parts: Part[], side?: Side) {
   const g = new T.BufferGeometry()
   const positions: number[] = [], colors: number[] = [], normals: number[] = [], uvs: number[] = [], triangles: number[] = []
   const indexed = parts.some(part => !!part.indices), textured = parts.some(part => !!part.uv)
@@ -57,7 +67,9 @@ function geometry(parts: Part[]) {
     positions.push(...partPositions)
     for (let i = 0; i < partNormals.count; i++) normals.push(partNormals.getX(i), partNormals.getY(i), partNormals.getZ(i))
     const indices = bytes(part.i), vertices = part.n / 3
-    for (let vertex = 0; vertex < vertices; vertex++) colors.push(...part.palette[(indices[vertex >> 1] >> ((vertex & 1) * 4)) & 15])
+    const faction = side && part.factionVertices ? new Set(part.factionVertices) : undefined
+    const factionColor = side ? new T.Color(SIDE_COLOR[side]).toArray() : undefined
+    for (let vertex = 0; vertex < vertices; vertex++) colors.push(...(faction?.has(vertex) ? factionColor! : part.palette[(indices[vertex >> 1] >> ((vertex & 1) * 4)) & 15]))
     source.dispose()
   }
   g.setAttribute('position', new T.Float32BufferAttribute(positions, 3))
@@ -72,10 +84,10 @@ function geometry(parts: Part[]) {
 export function blenderVehicleGeometry(role: Role, side: Side, attachment = false) {
   const asset = assets[role]!
   const rig=vehicleRig(role)!
-  const turretPart=(name:string)=>name==='turret'||rig.nodes[name]?.parent==='turret'
+  const turretPart=(name:string)=>rig.nodes[name]?.kind==='turret'||rig.nodes[rig.nodes[name]?.parent||'']?.kind==='turret'
   const parts = Object.entries(asset).filter(([name]) => rig.nodes[name]?.kind!=='muzzle_flash'&&(attachment ? turretPart(name) : !turretPart(name))).map(([, part]) => part)
-  const g = geometry(parts)
-  if (!attachment && role !== 'JET' && g.getAttribute('position').count) {
+  const g = geometry(parts, side)
+  if (!attachment && !['JET','CAS_FIGHTER','RECON_UAV','AMPHIBIOUS_APC','APC','CANNON_APC','PATROL_BOAT','LANDING_CRAFT','FRIGATE','AIRCRAFT_CARRIER'].includes(role) && g.getAttribute('position').count) {
     const mark = new T.BoxGeometry(role === 'TROOP_TRUCK' ? .45 : .7, .035, .1).toNonIndexed()
     mark.translate(0, role === 'TROOP_TRUCK' ? 2.09 : role === 'APC' ? 3.37 : 3.57, role === 'TROOP_TRUCK' ? .88 : 1.15)
     const c = new T.Color(SIDE_COLOR[side]), values = new Float32Array(mark.getAttribute('position').count * 3)
@@ -97,20 +109,21 @@ export function createBlenderVehicle(role: Role, side: Side) {
   const rig=vehicleRig(role)!, groups:Record<string,T.Group>={}
   for(const [name,node] of Object.entries(rig.nodes)){const g=new T.Group();g.name=name;groups[name]=g;g.position.set(...node.pivot as [number,number,number])}
   for(const [name,node] of Object.entries(rig.nodes)){const g=groups[name];if(node.parent){const p=rig.nodes[node.parent].pivot;g.position.set(node.pivot[0]-p[0],node.pivot[1]-p[1],node.pivot[2]-p[2]);groups[node.parent].add(g)}else root.add(g)}
-  for(const [part,data] of Object.entries(assets[role]!)){const g=geometry([data]),p=rig.nodes[part]?.pivot||[0,0,0];g.translate(-p[0],-p[1],-p[2]);const mesh=new T.Mesh(g,rig.nodes[part]?.kind==='muzzle_flash'?flashMaterial:material);mesh.name=part+'_mesh';(groups[part]||root).add(mesh)}
+  for(const [part,data] of Object.entries(assets[role]!)){const g=geometry([data],side),p=rig.nodes[part]?.pivot||[0,0,0];g.translate(-p[0],-p[1],-p[2]);const mesh=new T.Mesh(g,rig.nodes[part]?.kind==='muzzle_flash'?flashMaterial:material);mesh.name=part+'_mesh';(groups[part]||root).add(mesh)}
   poseVehicleClip(root,'idle',0)
   for(const seat of rig.seats||[]){const marker=new T.Group();marker.name=seat.name;marker.position.set(...seat.position as [number,number,number]);marker.rotation.z=seat.yaw;marker.userData={...seat};root.add(marker)}
   root.userData.blenderVehicle = true
   root.userData.side = side
-  if (['APC','HEAVY_LIFT_HELI'].includes(role)) {
+  if (['APC','CANNON_APC','HEAVY_LIFT_HELI'].includes(role)) {
     const interior = createInteriorWindowMaterial('#4b5143', false, {type:6,span:1,offset:0,seed:.47})
-    const g = new T.PlaneGeometry(role==='APC'?1.54:2.438,role==='APC'?1.3:.954);g.rotateX(Math.PI/2)
+    const stryker=role==='APC'||role==='CANNON_APC'
+    const g = new T.PlaneGeometry(stryker?1.54:2.438,stryker?1.3:.954);g.rotateX(Math.PI/2)
     const panel = new T.Mesh(g,interior);panel.name='vehicle-parallax-interior'
-    if(role==='APC')panel.position.set(0,-3.38,1.55)
+    if(stryker)panel.position.set(0,-3.49,1.49)
     else {panel.position.set(1.08,-.115,1.395);panel.rotation.z=Math.PI/2}
     root.add(panel);root.userData.materials.push(interior)
   }
-  if (['CAS_FIGHTER','ATTACK_HELI','HEAVY_LIFT_HELI'].includes(role)) {
+  if (['ATTACK_HELI','HEAVY_LIFT_HELI'].includes(role)) {
     const paint = new T.MeshStandardMaterial({ color: SIDE_COLOR[side], roughness: .85 })
     root.userData.materials.push(paint)
     for (const sign of [-1,1]) {
@@ -119,10 +132,11 @@ export function createBlenderVehicle(role: Role, side: Side) {
       mark.name='faction-band';root.add(mark)
     }
   }
-  if(['TANK','APC','TROOP_TRUCK'].includes(role)){
+  if(['TANK','APC','CANNON_APC','TROOP_TRUCK'].includes(role)){
     const paint=new T.MeshStandardMaterial({color:SIDE_COLOR[side],roughness:.85});root.userData.materials.push(paint)
     const mark=new T.Mesh(new T.BoxGeometry(role==='TROOP_TRUCK'?.45:.7,.035,.1),paint)
-    mark.name='faction-band';mark.position.set(0,role==='TROOP_TRUCK'?2.09:role==='APC'?3.37:3.57,role==='TROOP_TRUCK'?.88:1.15);root.add(mark)
+    const stryker=role==='APC'||role==='CANNON_APC'
+    mark.name='faction-band';mark.position.set(0,role==='TROOP_TRUCK'?2.09:stryker?3.545:3.57,role==='TROOP_TRUCK'?.88:stryker?1.42:1.15);root.add(mark)
   }
   attachVehicleEffects(root, role, side)
   attachAircraftWeapons(root, role, geometry)

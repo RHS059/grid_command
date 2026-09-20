@@ -33,7 +33,7 @@ export function allocateSupport(state:BattleState,command:CommandState):Mission[
     if(command.support.some(a=>a.requester===requester.id&&a.kind===request.kind&&(active(a)||state.time-a.assignedAt<10)))continue
     const asset=request.kind==='AMMO'?requester:ordered(Object.values(reports)).filter(r=>r.id!==requester.id&&r.available&&r.hp>=25&&r.ammo>=12&&
       state.time-r.observedAt<=command.doctrine.reportLifetime&&!command.plan!.reserveIds.includes(r.id)&&!occupied.has(r.id)&&
-      (request.kind==='MEDICAL'?r.role==='MEDIC':['MG','MORTAR','TANK','IFV','CAS_FIGHTER','ATTACK_HELI','FRIGATE','PATROL_BOAT','AMPHIBIOUS_APC'].includes(r.role)))
+      (request.kind==='MEDICAL'?r.role==='MEDIC':['MG','MORTAR','TANK','IFV','CAS_FIGHTER','ATTACK_HELI','FRIGATE','AIRCRAFT_CARRIER','PATROL_BOAT','AMPHIBIOUS_APC'].includes(r.role)))
       .sort((a,b)=>distance(a.position||BASES[command.side],requester.position||BASES[command.side])-distance(b.position||BASES[command.side],requester.position||BASES[command.side])||a.id.localeCompare(b.id))[0]
     const assetId=request.kind==='AMMO'?`depot:${command.side}`:asset?.id
     if(!asset||!assetId||occupied.has(assetId)||supportOwns(command,asset.id))continue

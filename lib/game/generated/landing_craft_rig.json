@@ -1,0 +1,140 @@
+{
+  "variant": "LCM-8 MOD 1",
+  "nodes": {
+    "hull": {
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "kind": "fixed"
+    },
+    "deck": {
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "kind": "fixed"
+    },
+    "superstructure": {
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "kind": "fixed"
+    },
+    "mast": {
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "kind": "fixed"
+    },
+    "fittings": {
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "kind": "fixed"
+    },
+    "propulsion": {
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "kind": "fixed"
+    },
+    "bow_ramp": {
+      "pivot": [
+        0,
+        10.74,
+        0.7
+      ],
+      "kind": "ramp",
+      "closed": 0,
+      "open": -1.42
+    },
+    "ramp_cable_L": {
+      "pivot": [
+        -2.99,
+        9.1,
+        2.45
+      ],
+      "kind": "ramp_cable",
+      "anchor": [
+        -2.99,
+        9.1,
+        2.45
+      ],
+      "rampPoint": [
+        -2.72,
+        11.16,
+        2.49
+      ],
+      "parentRamp": "bow_ramp"
+    },
+    "ramp_cable_R": {
+      "pivot": [
+        2.99,
+        9.1,
+        2.45
+      ],
+      "kind": "ramp_cable",
+      "anchor": [
+        2.99,
+        9.1,
+        2.45
+      ],
+      "rampPoint": [
+        2.72,
+        11.16,
+        2.49
+      ],
+      "parentRamp": "bow_ramp"
+    }
+  },
+  "clips": [
+    {
+      "id": "idle",
+      "label": "At rest",
+      "duration": 2,
+      "loop": true
+    },
+    {
+      "id": "drive",
+      "label": "Underway",
+      "duration": 2,
+      "loop": true
+    },
+    {
+      "id": "aim",
+      "label": "Gun traverse",
+      "duration": 4,
+      "loop": true
+    },
+    {
+      "id": "shoot",
+      "label": "Gun recoil",
+      "duration": 1.2,
+      "loop": false
+    },
+    {
+      "id": "open",
+      "label": "Lower bow ramp",
+      "duration": 3,
+      "loop": false
+    },
+    {
+      "id": "close",
+      "label": "Raise bow ramp",
+      "duration": 3,
+      "loop": false
+    }
+  ],
+  "coordinates": "+Y forward, +Z up, metres"
+}

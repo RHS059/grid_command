@@ -1,0 +1,158 @@
+{
+  "nodes": {
+    "hull": {
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "kind": "fixed"
+    },
+    "ramp": {
+      "pivot": [
+        0,
+        -3.555,
+        0.74
+      ],
+      "kind": "ramp",
+      "closed": 0,
+      "open": 1.64
+    },
+    "wheel_L_0": {
+      "pivot": [
+        -1.215,
+        -2.25,
+        0.565
+      ],
+      "kind": "wheel"
+    },
+    "wheel_L_1": {
+      "pivot": [
+        -1.215,
+        -0.93,
+        0.565
+      ],
+      "kind": "wheel"
+    },
+    "wheel_L_2": {
+      "pivot": [
+        -1.215,
+        0.69,
+        0.565
+      ],
+      "kind": "wheel"
+    },
+    "wheel_L_3": {
+      "pivot": [
+        -1.215,
+        2.03,
+        0.565
+      ],
+      "kind": "wheel"
+    },
+    "wheel_R_0": {
+      "pivot": [
+        1.215,
+        -2.25,
+        0.565
+      ],
+      "kind": "wheel"
+    },
+    "wheel_R_1": {
+      "pivot": [
+        1.215,
+        -0.93,
+        0.565
+      ],
+      "kind": "wheel"
+    },
+    "wheel_R_2": {
+      "pivot": [
+        1.215,
+        0.69,
+        0.565
+      ],
+      "kind": "wheel"
+    },
+    "wheel_R_3": {
+      "pivot": [
+        1.215,
+        2.03,
+        0.565
+      ],
+      "kind": "wheel"
+    },
+    "turret": {
+      "pivot": [
+        0,
+        0.08,
+        2.35
+      ],
+      "kind": "turret"
+    },
+    "cannon": {
+      "pivot": [
+        0,
+        0.61,
+        2.92
+      ],
+      "kind": "recoil",
+      "parent": "turret"
+    }
+  },
+  "clips": [
+    {
+      "id": "idle",
+      "label": "Rest pose",
+      "duration": 2,
+      "loop": true
+    },
+    {
+      "id": "drive",
+      "label": "Driving",
+      "duration": 2,
+      "loop": true
+    },
+    {
+      "id": "aim",
+      "label": "Weapon traverse",
+      "duration": 4,
+      "loop": true
+    },
+    {
+      "id": "shoot",
+      "label": "Weapon recoil",
+      "duration": 1.2,
+      "loop": false
+    },
+    {
+      "id": "open",
+      "label": "Open rear ramp",
+      "duration": 2,
+      "loop": false
+    },
+    {
+      "id": "close",
+      "label": "Close rear ramp",
+      "duration": 2,
+      "loop": false
+    }
+  ],
+  "variant": "M1296 Stryker Dragoon",
+  "family": "stryker",
+  "rear_ramp": {
+    "node": "ramp",
+    "hinge": [
+      0,
+      -3.555,
+      0.74
+    ],
+    "opening_m": [
+      1.7,
+      1.48
+    ],
+    "closed_angle": 0,
+    "open_angle": 1.64,
+    "retained_gameplay_capacity": true
+  }
+}

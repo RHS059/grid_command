@@ -32,7 +32,14 @@ export function ModelViewport(props: Props) {
     if (id === 'MOB' || id === 'AIRFIELD') object = createBase(id, props.side)
     else if (isAir(id)) object = createAircraft(id, props.side)
     else if (isSupportModel(id)) object = createSupportModel(id, props.side)
-    else if (isVehicle(id)) { object = new T.Mesh(vehicleGeometry(id, props.side), material); if (id !== 'TRUCK') { const attachment = new T.Mesh(vehicleGeometry(id, props.side, true), material); attachment.name = 'turret'; object.add(attachment) } }
+    else if (isVehicle(id)) {
+      object = new T.Mesh(vehicleGeometry(id, props.side), material)
+      if (['TANK', 'APC', 'IFV', 'CANNON_APC', 'ATTACK_HELI'].includes(id)) {
+        const attachment = new T.Mesh(vehicleGeometry(id, props.side, true), material)
+        attachment.name = 'turret'
+        object.add(attachment)
+      }
+    }
     else batch = new SoldierBatch(scene, props.side, material)
     if (object) { if(id==='TROOP_TRUCK')addCarrierOccupants(object,props.side,true);scene.add(object) }
     // A studio scene honors each mesh's own cast/receive flags (unlike the battlefield

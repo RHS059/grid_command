@@ -3,7 +3,7 @@ import type { CommandState, Mission } from './model'
 /** Authored intent and received reports only; no enemy ID is resolved against live world truth. */
 export function navalMission(unit:Unit,command:CommandState,mission:Mission):Mission{
   if(!isNaval(unit.role))return mission
-  const directive: import('../maritime-navigation').NavalDirective=structuredClone(unit.navalDirective??{mode:unit.role==='FRIGATE'?'AIR_DEFENSE':'PATROL',waypoints:[{x:unit.x,y:unit.y}]})
+  const directive: import('../maritime-navigation').NavalDirective=structuredClone(unit.navalDirective??{mode:['FRIGATE','AIRCRAFT_CARRIER'].includes(unit.role)?'AIR_DEFENSE':'PATROL',waypoints:[{x:unit.x,y:unit.y}]})
   let destination=directive.waypoints?.[0]??{x:unit.x,y:unit.y}
   if(directive.mode==='ESCORT')destination=command.readiness[directive.escortId??'']?.position??destination
   if(directive.mode==='SURFACE_STRIKE'){

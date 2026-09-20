@@ -1,0 +1,57 @@
+{
+  "nodes": {
+    "fuel_tank": {
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "kind": "fixed"
+    }
+  },
+  "clips": [
+    {
+      "id": "idle",
+      "label": "Parked",
+      "duration": 4,
+      "loop": true
+    },
+    {
+      "id": "fly",
+      "label": "Fly",
+      "duration": 4,
+      "loop": true
+    },
+    {
+      "id": "rotors",
+      "label": "Propeller",
+      "duration": 4,
+      "loop": true
+    },
+    {
+      "id": "gear",
+      "label": "Retract gear",
+      "duration": 2,
+      "loop": false
+    },
+    {
+      "id": "gear_down",
+      "label": "Extend gear",
+      "duration": 2,
+      "loop": false
+    },
+    {
+      "id": "aim",
+      "label": "Sensor scan",
+      "duration": 4,
+      "loop": true
+    },
+    {
+      "id": "shoot",
+      "label": "Wing guns",
+      "duration": 2,
+      "loop": false
+    }
+  ],
+  "variant": "Standard reusable external fuel tank"
+}

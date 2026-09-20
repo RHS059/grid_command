@@ -1,0 +1,126 @@
+{
+  "variant": "Mark VI patrol boat",
+  "nodes": {
+    "hull": {
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "kind": "fixed"
+    },
+    "deck": {
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "kind": "fixed"
+    },
+    "superstructure": {
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "kind": "fixed"
+    },
+    "mast": {
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "kind": "fixed"
+    },
+    "fittings": {
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "kind": "fixed"
+    },
+    "propulsion": {
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "kind": "fixed"
+    },
+    "turret": {
+      "pivot": [
+        0,
+        7.1,
+        2.27
+      ],
+      "kind": "turret"
+    },
+    "cannon": {
+      "pivot": [
+        0,
+        7.35,
+        2.88
+      ],
+      "kind": "recoil",
+      "parent": "turret"
+    },
+    "aft_turret": {
+      "pivot": [
+        0,
+        -6.7,
+        1.87
+      ],
+      "kind": "turret"
+    },
+    "aft_cannon": {
+      "pivot": [
+        0,
+        -6.45,
+        2.48
+      ],
+      "kind": "recoil",
+      "parent": "aft_turret"
+    }
+  },
+  "clips": [
+    {
+      "id": "idle",
+      "label": "At rest",
+      "duration": 2,
+      "loop": true
+    },
+    {
+      "id": "drive",
+      "label": "Underway",
+      "duration": 2,
+      "loop": true
+    },
+    {
+      "id": "aim",
+      "label": "Gun traverse",
+      "duration": 4,
+      "loop": true
+    },
+    {
+      "id": "shoot",
+      "label": "Gun recoil",
+      "duration": 1.2,
+      "loop": false
+    },
+    {
+      "id": "open",
+      "label": "Lower bow ramp",
+      "duration": 3,
+      "loop": false
+    },
+    {
+      "id": "close",
+      "label": "Raise bow ramp",
+      "duration": 3,
+      "loop": false
+    }
+  ],
+  "coordinates": "+Y forward, +Z up, metres"
+}

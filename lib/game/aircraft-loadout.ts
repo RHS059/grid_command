@@ -1,12 +1,16 @@
 import type { Role } from './types'
 
 export type AircraftWeaponKind = 'rocket' | 'bomb'
-export interface AircraftHardpoint { id: string; asset: 'rocket_pod' | 'bomb'; position: [number, number, number]; capacity: number }
+export interface AircraftHardpoint { id: string; asset: 'rocket_pod' | 'bomb' | 'fuel_tank'; position: [number, number, number]; capacity: number }
 export interface AircraftLoadoutState { remaining: Record<string, number>; cursor: number }
 export interface AircraftRelease { hardpoint: string; kind: AircraftWeaponKind; round: number; position: [number, number, number] }
 
 /** Vehicle-local metres, +Y forward and +Z up. Weapons own their mesh and texture. */
 export const AIRCRAFT_HARDPOINTS: Partial<Record<Role, readonly AircraftHardpoint[]>> = {
+  CAS_FIGHTER: [
+    { id: 'fuel_tank_L', asset: 'fuel_tank', position: [-2.45, 0, 1.14], capacity: 0 },
+    { id: 'fuel_tank_R', asset: 'fuel_tank', position: [2.45, 0, 1.14], capacity: 0 },
+  ],
   JET: [
     { id: 'bomb_L_0', asset: 'bomb', position: [-1.815, -1.65, .59], capacity: 1 },
     { id: 'bomb_L_1', asset: 'bomb', position: [-1.445, -1.65, .59], capacity: 1 },
@@ -18,7 +22,7 @@ export function createAircraftLoadout(role: Role): AircraftLoadoutState {
   return { remaining: Object.fromEntries((AIRCRAFT_HARDPOINTS[role] || []).map(p => [p.id, p.capacity])), cursor: 0 }
 }
 export function aircraftRounds(role: Role, state: AircraftLoadoutState, kind?: AircraftWeaponKind) {
-  return (AIRCRAFT_HARDPOINTS[role] || []).filter(p => !kind || (p.asset === 'bomb' ? 'bomb' : 'rocket') === kind).reduce((sum, p) => sum + (state.remaining[p.id] || 0), 0)
+  return (AIRCRAFT_HARDPOINTS[role] || []).filter(p => p.asset !== 'fuel_tank' && (!kind || (p.asset === 'bomb' ? 'bomb' : 'rocket') === kind)).reduce((sum, p) => sum + (state.remaining[p.id] || 0), 0)
 }
 export function aircraftAmmoPercent(role: Role, state: AircraftLoadoutState) {
   const points = AIRCRAFT_HARDPOINTS[role] || [], weight = (p: AircraftHardpoint) => p.asset === 'bomb' ? 4.5 : 1
@@ -31,7 +35,7 @@ export function rocketTube(round: number): [number, number, number] {
 }
 /** A command consumes one round. A pod itself can never be released. */
 export function releaseAircraftWeapon(role: Role, state: AircraftLoadoutState, kind: AircraftWeaponKind): AircraftRelease | undefined {
-  const points = (AIRCRAFT_HARDPOINTS[role] || []).filter(p => (p.asset === 'bomb' ? 'bomb' : 'rocket') === kind)
+  const points = (AIRCRAFT_HARDPOINTS[role] || []).filter(p => p.asset !== 'fuel_tank' && (p.asset === 'bomb' ? 'bomb' : 'rocket') === kind)
   if (!points.length) return
   for (let n = 0; n < points.length; n++) {
     const index = (state.cursor + n) % points.length, point = points[index], remaining = state.remaining[point.id] || 0

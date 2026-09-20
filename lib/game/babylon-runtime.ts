@@ -31,7 +31,7 @@ import { applyVehiclePbrMaps, createDestroyedMaterial, FURY_PBR_MAPS, hasDestroy
 import type { Graphics } from './types'
 import { StartupDeadlineError, withStartupDeadline } from './startup-deadline'
 
-type DrawRecord={mesh:Mesh;geometry:D.BufferGeometry;version:string;instanceVersion:string;castShadow:boolean;sectors?:Map<string,number[]>;sectorVersion?:string;instanceCount?:number}
+type DrawRecord={mesh:Mesh;geometry:D.BufferGeometry;version:string;instanceVersion:string;castShadow:boolean;sectors?:Map<string,number[]>;sectorVersion?:string;instanceCount?:number;instanceBuffers?:Map<string,Float32Array>;instanceBoundsDirty?:boolean;world?:Matrix;worldValues?:number[]}
 const WEBGPU_STARTUP_TIMEOUT_MS=10000
 const disposeWebGPUCandidate=(candidate:WebGPUEngine)=>{
   try{candidate.dispose()}
@@ -71,6 +71,7 @@ export class BabylonRuntime {
   readonly effects:BattlefieldEffects
   private readonly draws=new Map<number,DrawRecord>()
   private readonly materials=new Map<D.Material,PBRMaterial>()
+  private readonly refreshedMaterials=new Set<D.Material>()
   private readonly textures=new Map<string,Texture>()
   private readonly destroyedMaterials=new Map<PBRMaterial,PBRMaterial>()
   private readonly nativeOriginalMaterials=new Map<Mesh,PBRMaterial>()
@@ -117,6 +118,9 @@ export class BabylonRuntime {
   }
   getViewProjection(){return this.camera.getViewMatrix().multiply(this.camera.getProjectionMatrix())}
   private getMaterial(source:D.Material){
+    const refreshed=this.materials.get(source)
+    if(refreshed&&this.refreshedMaterials.has(source))return refreshed
+    this.refreshedMaterials.add(source)
     let material=this.materials.get(source);if(!material){material=new PBRMaterial(source.name||`material-${source.id}`,this.scene);this.materials.set(source,material);if(source.name==='interior-window')new InteriorRoomPlugin(material);material.maxSimultaneousLights=4;material.backFaceCulling=source.side!==D.DoubleSide;material.twoSidedLighting=source.side===D.DoubleSide;material.unlit=source instanceof D.MeshBasicMaterial;material.wireframe=source.wireframe;material.disableDepthWrite=!source.depthWrite;material.depthFunction=source.depthTest?Engine.LEQUAL:Engine.ALWAYS;material.alphaMode=source.blending===D.AdditiveBlending?Engine.ALPHA_ADD:Engine.ALPHA_COMBINE;material.transparencyMode=source.transparent?PBRMaterial.PBRMATERIAL_ALPHABLEND:PBRMaterial.PBRMATERIAL_OPAQUE}
     if(source.map){let texture=this.textures.get(source.map);if(!texture){texture=new Texture(source.map,this.scene,false,false);texture.gammaSpace=true;this.textures.set(source.map,texture)}material.albedoTexture=texture}else material.albedoTexture=null
     material.disableDepthWrite=!source.depthWrite||!source.depthTest;material.depthFunction=source.depthTest?Engine.LEQUAL:Engine.ALWAYS
@@ -131,12 +135,24 @@ export class BabylonRuntime {
     if(!material){material=createDestroyedMaterial(source);this.destroyedMaterials.set(source,material)}
     return material
   }
+  private updateWorld(record:DrawRecord,object:D.Object3D){
+    const values=object.matrixWorld.elements,previous=record.worldValues
+    let changed=!previous
+    for(let index=0;!changed&&index<16;index++)if(values[index]!==previous![index])changed=true
+    if(!changed)return
+    record.worldValues??=new Array<number>(16)
+    for(let index=0;index<16;index++)record.worldValues[index]=values[index]
+    record.world??=Matrix.Identity()
+    Matrix.FromArrayToRef(values,0,record.world)
+    record.mesh.freezeWorldMatrix(record.world)
+  }
   private updateGeometry(record:DrawRecord,source:D.Mesh){
     // Key on buffer identity as well as its version: swapping in a freshly built normal
     // buffer (which starts back at version 0) must still upload.
     const geometry=source.geometry,version=Object.entries(geometry.attributes).filter(([n])=>['position','normal','uv','color'].includes(n)).map(([n,a])=>`${n}:${a.id}:${a.version}`).join(':')
     if(record.geometry===geometry&&record.version===version)return
     record.geometry=geometry;record.version=version
+    record.instanceBoundsDirty=true
     for(const [name,kind]of [['position',VertexBuffer.PositionKind],['normal',VertexBuffer.NormalKind],['uv',VertexBuffer.UVKind]]as const){const a=geometry.attributes[name];if(a)record.mesh.setVerticesData(kind,new Float32Array(a.array),true,a.itemSize)}
     const colors=geometry.attributes.color
     if(colors){const data=new Float32Array(colors.count*4);for(let i=0;i<colors.count;i++)linearTint(data,i*4,colors.getX(i),colors.getY(i),colors.getZ(i));record.mesh.setVerticesData(VertexBuffer.ColorKind,data,true,4)}
@@ -150,24 +166,43 @@ export class BabylonRuntime {
     const focus=material.uniforms.buildingFocus?.value as D.Vector2|undefined
     const colors=metadata.buildingColor||source.instanceColor
     const detailed=(material.uniforms.buildingDetailFade?.value??1)>.5
-    const version=`${source.count}:${source.instanceMatrix.version}:${colors?.version}:${focus?`${Math.round(focus.x/8)}:${Math.round(focus.y/8)}:${detailed}`:''}`
-    if(version===record.instanceVersion){if(record.instanceCount===0)record.mesh.setEnabled(false);return}
+    const roomData=metadata.roomData
+    const version=`${source.count}:${source.instanceMatrix.id}:${source.instanceMatrix.version}:${colors?.id}:${colors?.version}:${roomData?.id}:${roomData?.version}:${metadata.buildingOrigin?.id}:${metadata.buildingOrigin?.version}:${metadata.buildingLod?.id}:${metadata.buildingLod?.version}:${focus?`${Math.round(focus.x/8)}:${Math.round(focus.y/8)}:${detailed}`:''}`
+    if(version===record.instanceVersion&&!record.instanceBoundsDirty){if(record.instanceCount===0)record.mesh.setEnabled(false);return}
     record.instanceVersion=version
     let selected:number[]|undefined
     if(focus&&metadata.buildingOrigin){
-      const sectorVersion=`${source.count}:${metadata.buildingOrigin.version}`
+      const sectorVersion=`${source.count}:${metadata.buildingOrigin.id}:${metadata.buildingOrigin.version}`
       if(record.sectorVersion!==sectorVersion){const sectors=new Map<string,number[]>(),origins=metadata.buildingOrigin;for(let i=0;i<source.count;i++){const key=`${Math.floor(origins.getX(i)/200)}:${Math.floor(origins.getY(i)/200)}`,entries=sectors.get(key)||[];entries.push(i);sectors.set(key,entries)}record.sectors=sectors;record.sectorVersion=sectorVersion}
       selected=[];const x=Math.floor(focus.x/200),y=Math.floor(focus.y/200),origin=metadata.buildingOrigin,lod=metadata.buildingLod
       for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)for(const index of record.sectors!.get(`${x+dx}:${y+dy}`)||[]){const detail=lod?.getX(index)||0;if(detail>.5&&!detailed||detail<-.5&&detailed)continue;if(Math.hypot(origin.getX(index)-focus.x,origin.getY(index)-focus.y)<220)selected.push(index)}
     }
-    const count=selected?.length??source.count;record.instanceCount=count
+    const count=selected?.length??source.count,countChanged=record.instanceCount!==count;record.instanceCount=count
     if(count===0){record.mesh.thinInstanceCount=0;record.mesh.setEnabled(false);return}
-    const matrices=new Float32Array(count*16),tints=colors?new Float32Array(count*4):undefined
-    for(let i=0;i<count;i++){const index=selected?.[i]??i;matrices.set(source.instanceMatrix.array.subarray(index*16,index*16+16),i*16);if(tints&&colors)linearTint(tints,i*4,colors.getX(index),colors.getY(index),colors.getZ(index))}
-    record.mesh.thinInstanceSetBuffer('matrix',matrices,16,false)
-    if(tints)record.mesh.thinInstanceSetBuffer('color',tints,4,false)
-    if(metadata.roomData){const rooms=new Float32Array(count*4);for(let i=0;i<count;i++){const index=selected?.[i]??i;rooms.set(metadata.roomData.array.subarray(index*4,index*4+4),i*4)}record.mesh.thinInstanceSetBuffer('roomData',rooms,4,false)}
-    record.mesh.thinInstanceCount=count;record.mesh.thinInstanceRefreshBoundingInfo(true)
+    record.instanceBuffers??=new Map()
+    // Keep dynamic GPU buffers. Replacing one with thinInstanceSetBuffer disposes
+    // it and also performs an automatic bounds pass, even for color-only changes.
+    const upload=(kind:string,stride:number,value:(index:number,component:number)=>number)=>{
+      let buffer=record.instanceBuffers!.get(kind)
+      const resized=!buffer||buffer.length<count*stride
+      if(resized){buffer=new Float32Array(Math.max(count,buffer?buffer.length/stride*2:0)*stride);record.instanceBuffers!.set(kind,buffer)}
+      let changed=resized
+      for(let i=0;i<count;i++)for(let component=0;component<stride;component++){
+        const offset=i*stride+component,next=Math.fround(value(selected?.[i]??i,component))
+        if(buffer![offset]!==next){buffer![offset]=next;changed=true}
+      }
+      if(resized){const previous=record.mesh.doNotSyncBoundingInfo;record.mesh.doNotSyncBoundingInfo=true;record.mesh.thinInstanceSetBuffer(kind,buffer!,stride,false);record.mesh.doNotSyncBoundingInfo=previous}
+      else if(changed)record.mesh.thinInstanceBufferUpdated(kind)
+      return changed
+    }
+    const moved=upload('matrix',16,(index,component)=>source.instanceMatrix.array[index*16+component])
+    if(colors)upload('color',4,(index,component)=>component===3?1:srgbChannelToLinear(colors.array[index*colors.itemSize+component]))
+    else if(record.instanceBuffers.delete('color'))record.mesh.thinInstanceSetBuffer('color',null,4)
+    if(roomData)upload('roomData',4,(index,component)=>roomData.array[index*4+component])
+    else if(record.instanceBuffers.delete('roomData'))record.mesh.thinInstanceSetBuffer('roomData',null,4)
+    record.mesh.thinInstanceCount=count
+    if(moved||countChanged||record.instanceBoundsDirty)record.mesh.thinInstanceRefreshBoundingInfo(!!record.instanceBoundsDirty)
+    record.instanceBoundsDirty=false
   }
   private syncNative(source:D.Object3D){
     let record=this.native.get(source.id)
@@ -212,6 +247,7 @@ export class BabylonRuntime {
   sync(root:D.Scene){
     if(this.disposed)return
     this.profile=root.profile
+    this.refreshedMaterials.clear()
     root.updateMatrixWorld(true)
     const live=new Set<number>(),nativeLive=new Set<number>(),lightLive=new Set<number>()
     root.traverse(object=>{if(object instanceof D.HemisphereLight||object instanceof D.DirectionalLight||object instanceof D.PointLight)lightLive.add(object.id)})
@@ -223,7 +259,7 @@ export class BabylonRuntime {
         // Legacy/battlefield scenes keep every mesh casting+receiving, as before. Only a
         // 'studio' profile honors the mesh's own explicit castShadow/receiveShadow flags.
         record.mesh.receiveShadows=!object.userData.vehicleEffect&&(root.profile==='studio'?object.receiveShadow:true)
-        record.mesh.freezeWorldMatrix(Matrix.FromArray(object.matrixWorld.elements));if(object instanceof D.InstancedMesh)this.updateInstances(record,object)
+        this.updateWorld(record,object);if(object instanceof D.InstancedMesh)this.updateInstances(record,object)
         const wantsCaster=!object.userData.vehicleEffect&&!object.userData.disableShadow&&(root.profile==='studio'?object.castShadow:true)
         if(wantsCaster!==record.castShadow){record.castShadow=wantsCaster;if(this.shadows){if(wantsCaster&&!this.casters.has(object.id)){this.shadows.addShadowCaster(record.mesh);this.casters.add(object.id)}else if(!wantsCaster&&this.casters.has(object.id)){this.shadows.removeShadowCaster(record.mesh);this.casters.delete(object.id)}}}
       }}
@@ -257,6 +293,6 @@ export class BabylonRuntime {
     if(root.background){const background=color(root.background);this.scene.clearColor=new Color4(background.r,background.g,background.b,1)}
   }
   render(){if(this.disposed)return;this.engine.beginFrame();try{this.scene.render()}finally{this.engine.endFrame()}}
-  dispose(){if(this.disposed)return;this.disposed=true;this.effects.dispose();this.scene.dispose();this.engine.dispose();this.draws.clear();this.materials.clear();this.textures.clear();this.destroyedMaterials.clear();this.nativeOriginalMaterials.clear();this.native.clear();this.nativeNodes.clear();this.casters.clear()}
+  dispose(){if(this.disposed)return;this.disposed=true;this.effects.dispose();this.scene.dispose();this.engine.dispose();this.draws.clear();this.materials.clear();this.refreshedMaterials.clear();this.textures.clear();this.destroyedMaterials.clear();this.nativeOriginalMaterials.clear();this.native.clear();this.nativeNodes.clear();this.casters.clear()}
 }
 

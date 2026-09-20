@@ -1,0 +1,142 @@
+{
+  "nodes": {
+    "hull": {
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "kind": "fixed"
+    },
+    "ramp": {
+      "pivot": [
+        0,
+        -4.39,
+        1.02
+      ],
+      "kind": "ramp",
+      "closed": 0,
+      "open": 1.6
+    },
+    "turret": {
+      "pivot": [
+        0,
+        0.4,
+        2.98
+      ],
+      "kind": "turret"
+    },
+    "cannon": {
+      "pivot": [
+        0,
+        0.66,
+        3.42
+      ],
+      "kind": "recoil",
+      "parent": "turret"
+    },
+    "wheel_L_0": {
+      "pivot": [
+        -1.48,
+        -2.75,
+        0.72
+      ],
+      "kind": "wheel"
+    },
+    "wheel_L_1": {
+      "pivot": [
+        -1.48,
+        -1.04,
+        0.72
+      ],
+      "kind": "wheel"
+    },
+    "wheel_L_2": {
+      "pivot": [
+        -1.48,
+        0.67,
+        0.72
+      ],
+      "kind": "wheel"
+    },
+    "wheel_L_3": {
+      "pivot": [
+        -1.48,
+        2.38,
+        0.72
+      ],
+      "kind": "wheel"
+    },
+    "wheel_R_0": {
+      "pivot": [
+        1.48,
+        -2.75,
+        0.72
+      ],
+      "kind": "wheel"
+    },
+    "wheel_R_1": {
+      "pivot": [
+        1.48,
+        -1.04,
+        0.72
+      ],
+      "kind": "wheel"
+    },
+    "wheel_R_2": {
+      "pivot": [
+        1.48,
+        0.67,
+        0.72
+      ],
+      "kind": "wheel"
+    },
+    "wheel_R_3": {
+      "pivot": [
+        1.48,
+        2.38,
+        0.72
+      ],
+      "kind": "wheel"
+    }
+  },
+  "clips": [
+    {
+      "id": "idle",
+      "label": "Rest pose",
+      "duration": 2,
+      "loop": true
+    },
+    {
+      "id": "drive",
+      "label": "Driving",
+      "duration": 2,
+      "loop": true
+    },
+    {
+      "id": "aim",
+      "label": "Weapon station traverse",
+      "duration": 4,
+      "loop": true
+    },
+    {
+      "id": "shoot",
+      "label": "Weapon recoil",
+      "duration": 1.2,
+      "loop": false
+    },
+    {
+      "id": "open",
+      "label": "Open rear ramp",
+      "duration": 2,
+      "loop": false
+    },
+    {
+      "id": "close",
+      "label": "Close rear ramp",
+      "duration": 2,
+      "loop": false
+    }
+  ],
+  "variant": "amphibious_apc_acv"
+}

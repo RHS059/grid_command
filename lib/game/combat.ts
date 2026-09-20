@@ -13,7 +13,7 @@ export function resolveCombat(state:BattleState,v:Visibility,random:()=>number,n
   for(const u of living){u.firing=false;
     if(u.role==='JET')u.aircraftLoadout ||= createAircraftLoadout(u.role)
     const jetKind=u.role==='JET'?(u.aircraftWeapon||(aircraftRounds(u.role,u.aircraftLoadout!,'rocket')?'rocket':'bomb')):undefined
-    const w=jetKind?WEAPONS[jetKind]:u.role==='FRIGATE'&&u.navalDirective?.mode==='AIR_DEFENSE'?WEAPONS.aa:weaponFor(u.role);if(!w||u.surrendered||u.crewBailed||u.external||u.servicing||u.emergency||u.ammo<(w.id==='aa'?25:w.armor?2:.3)||u.airPhase==='return'||u.airPhase==='rearm')continue
+    const w=jetKind?WEAPONS[jetKind]:['FRIGATE','AIRCRAFT_CARRIER'].includes(u.role)&&u.navalDirective?.mode==='AIR_DEFENSE'?WEAPONS.aa:weaponFor(u.role);if(!w||u.surrendered||u.crewBailed||u.external||u.servicing||u.emergency||u.ammo<(w.id==='aa'?25:w.armor?2:.3)||u.airPhase==='return'||u.airPhase==='rearm')continue
     if(jetKind&&!aircraftRounds(u.role,u.aircraftLoadout!,jetKind))continue
     if((u.cooldown||0)>state.time&&u.role!=='ATTACK_HELI')continue
     const targets=(candidates?candidates(u,w.range):living).filter(e=>e.side!==u.side&&!e.surrendered&&e.hp>0&&!e.carrier&&eligible(w,e)&&Math.hypot(e.x-u.x,e.y-u.y)<=w.range&&canSee(u,e,v,state)).sort((a,b)=>Math.hypot(a.x-u.x,a.y-u.y)-Math.hypot(b.x-u.x,b.y-u.y)||a.id.localeCompare(b.id));const target=targets[0];if(!target){u.lock=undefined;continue}
