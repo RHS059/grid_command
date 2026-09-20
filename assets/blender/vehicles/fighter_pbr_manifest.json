@@ -1,6 +1,7 @@
 {
   "asset": "FQ-44 Fury",
   "source": "public/models/fighter_albedo.png",
+  "source_sha256": "61688c8bf1b34f069c14ff7a5bb7463639c40e29d3dce41a0f0b48ab04cd59f6",
   "resolution": [
     1024,
     1024
@@ -8,22 +9,22 @@
   "maps": {
     "normal": {
       "path": "public/models/fighter_normal.png",
-      "sha256": "fe79235d760e3b6e1f5f17199d2eba89112ae57108086d6902bf9b08821615f8",
+      "sha256": "bc580846b16b03896ea68251be3b214ae1c58b42c08b8f27c88813054f47a736",
       "color_space": "non-color"
     },
     "roughness": {
       "path": "public/models/fighter_roughness.png",
-      "sha256": "760498f4a102a742078fa05a4823f24f318cff294ba4b27d22b977432eec51c6",
+      "sha256": "3ea8a468e7bbc44ce737a4f4752be9c890684775e25ee64a8a72bcb888d91911",
       "color_space": "non-color"
     },
     "metalness": {
       "path": "public/models/fighter_metalness.png",
-      "sha256": "301d77d7e63d9d2bff4a695194c476c886ce47f486bb985e00de0632dd6ff38e",
+      "sha256": "574e21f8daea8397dee5bb0e8a90b15f84ddaabf9767336440208f2c764d066b",
       "color_space": "non-color"
     },
     "orm": {
       "path": "public/models/fighter_orm.png",
-      "sha256": "b3a842a0f82b4c031528120ccf9ea62cba90218a01c76540269eed64b19caaea",
+      "sha256": "1814fc85c9a12a5e3e8e6d641f0ce82c0af4e253bc09a5544d16a1080c3fe25f",
       "color_space": "non-color"
     }
   },
