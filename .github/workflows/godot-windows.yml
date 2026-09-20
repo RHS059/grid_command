@@ -6,7 +6,7 @@ on:
     branches: [main]
     paths:
       - "godot/**"
-      - ".github/workflows/build-windows.yml"
+      - ".github/workflows/godot-windows.yml"
 
 permissions:
   contents: read
@@ -64,14 +64,15 @@ jobs:
       - name: Package build
         shell: bash
         run: |
+          mkdir -p "$GITHUB_WORKSPACE/builds"
           cd "$PROJECT_DIR/build"
-          zip -9 -r GridCommand-Windows-x86_64.zip windows
+          zip -9 -r "$GITHUB_WORKSPACE/builds/GridCommand-Windows-x86_64.zip" windows
 
       - name: Upload playable build
         uses: actions/upload-artifact@v4
         with:
           name: GridCommand-Windows-x86_64
-          path: ${{ env.PROJECT_DIR }}/build/GridCommand-Windows-x86_64.zip
+          path: builds/GridCommand-Windows-x86_64.zip
           if-no-files-found: error
           retention-days: 14
 
