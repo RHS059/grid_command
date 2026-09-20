@@ -21,6 +21,12 @@ ASSETS = (
     "vtol_cargo.glb",
 )
 
+# These native assets contain the approved PS2 repaint. The browser copies
+# still contain the older flat atlas and must not overwrite them during CI.
+NATIVE_AUTHORED_ASSETS = frozenset({
+    "tank.glb", "tank_albedo.png", "tank_tank_albedo.png", "tank_albedo_ps2.png",
+})
+
 
 def digest(path: Path) -> str:
     result = hashlib.sha256()
@@ -39,6 +45,11 @@ def main() -> None:
     for name in sorted(set(ASSETS) | {p.name for p in args.source.iterdir() if p.is_file() and p.suffix.lower() in {".glb", ".gltf", ".bin", ".png", ".jpg", ".jpeg", ".webp", ".json"}}):
         source = args.source / name
         destination = args.destination / name
+        if name in NATIVE_AUTHORED_ASSETS:
+            if not destination.is_file():
+                raise SystemExit(f"Missing native-authored vehicle asset: {destination}")
+            print(f"NATIVE_ASSET_PRESERVED {name} {digest(destination)}")
+            continue
         if not source.is_file():
             raise SystemExit(f"Missing shared vehicle asset: {source}")
         if not destination.is_file() or digest(source) != digest(destination):
