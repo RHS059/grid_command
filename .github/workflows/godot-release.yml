@@ -143,6 +143,11 @@ jobs:
           python3 "$PROJECT_DIR/tools/prepare_release.py" "${args[@]}"
           cat "$RUNNER_TEMP/release-plan.json"
 
+      - name: Verify release packaging
+        if: steps.version.outputs.exists != 'true'
+        shell: bash
+        run: python3 -m unittest discover -s "$PROJECT_DIR/tools" -p 'test_release*.py' -v
+
       - name: Import, smoke test, and export
         if: steps.version.outputs.exists != 'true'
         shell: bash
@@ -179,7 +184,7 @@ jobs:
           mkdir -p "$PROJECT_DIR/build/windows" "$PROJECT_DIR/build/release"
           "$GODOT" --headless --path "$PROJECT_DIR" --export-release "Windows Desktop" "build/windows/GridCommand.exe"
           if jq -e '.live_patch' "$RUNNER_TEMP/release-plan.json" >/dev/null; then
-            "$GODOT" --headless --path "$PROJECT_DIR" --export-pack "Delta Patch" "build/release/update.pck"
+            "$GODOT" --headless --path "$PROJECT_DIR" --export-patch "Delta Patch" "build/release/update.pck"
           fi
           cd "$PROJECT_DIR/build"
           zip -9 -r release/GridCommand-Windows-x86_64.zip windows
@@ -188,7 +193,7 @@ jobs:
         if: steps.version.outputs.exists != 'true'
         shell: bash
         run: |
-          args=(--plan "$RUNNER_TEMP/release-plan.json" --patch "$PROJECT_DIR/build/release/update.pck" --output "$PROJECT_DIR/build/release/godot-update.json")
+          args=(--plan "$RUNNER_TEMP/release-plan.json" --patch "$PROJECT_DIR/build/release/update.pck" --full-pack "$PROJECT_DIR/build/windows/GridCommand.pck" --output "$PROJECT_DIR/build/release/godot-update.json")
           if [[ -f "$RUNNER_TEMP/previous-manifest.json" ]]; then args+=(--previous-manifest "$RUNNER_TEMP/previous-manifest.json"); fi
           python3 "$PROJECT_DIR/tools/finalize_release.py" "${args[@]}"
           cp "$RUNNER_TEMP/release-plan.json" "$PROJECT_DIR/build/release/release-plan.json"
@@ -202,4 +207,7 @@ jobs:
           set -euo pipefail
           assets=("$PROJECT_DIR/build/release/GridCommand-Windows-x86_64.zip" "$PROJECT_DIR/build/release/godot-update.json" "$PROJECT_DIR/build/release/release-plan.json")
           [[ -f "$PROJECT_DIR/build/release/update.pck" ]] && assets+=("$PROJECT_DIR/build/release/update.pck" "$PROJECT_DIR/build/release/update.pck.sha256")
+          for category in models textures gameplay; do
+            assets+=("$PROJECT_DIR/build/release/update-$category.pck" "$PROJECT_DIR/build/release/update-$category.pck.sha256")
+          done
           gh release create "${{ steps.version.outputs.tag }}" "${assets[@]}" --target "$GITHUB_SHA" --title "Grid Command Godot ${{ steps.version.outputs.version }}" --notes "Windows build and verified Godot update channel assets. See release-plan.json for live-patch compatibility."

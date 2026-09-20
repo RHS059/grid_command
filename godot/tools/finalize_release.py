@@ -8,11 +8,14 @@ import hashlib
 import json
 from pathlib import Path
 
+from release_packages import artifact_metadata, split_packages
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--plan", type=Path, required=True)
     parser.add_argument("--patch", type=Path, required=True)
+    parser.add_argument("--full-pack", type=Path, help="Full build PCK; split into category artifacts for bootstrap releases")
     parser.add_argument("--previous-manifest", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
@@ -26,23 +29,22 @@ def main() -> None:
         except (OSError, json.JSONDecodeError):
             pass
     patches = old_patches
+    tag = f"godot-v{plan['version']}"
+    base = f"https://github.com/RHS059/grid_command/releases/download/{tag}"
+    packages = []
     if plan["live_patch"]:
-        payload = args.patch.read_bytes()
-        digest = hashlib.sha256(payload).hexdigest()
-        tag = f"godot-v{plan['version']}"
-        base = f"https://github.com/RHS059/grid_command/releases/download/{tag}"
+        packages = split_packages(args.patch, args.output.parent, base, args.full_pack, live_patch=True)
         patches = [p for p in patches if not (p.get("from_version") == plan["previous_version"] and p.get("to_version") == plan["version"])]
         patches.append({
             "from_version": plan["previous_version"],
             "to_version": plan["version"],
             "content_mode": "changed-files-only",
-            "url": f"{base}/update.pck",
-            "sha256": digest,
-            "sha256_url": f"{base}/update.pck.sha256",
-            "size_bytes": len(payload),
+            **artifact_metadata(args.patch, base),
             "files": plan["files"],
+            "packages": packages,
         })
-        args.patch.with_suffix(".pck.sha256").write_text(f"{digest}  update.pck\n", encoding="ascii")
+    elif args.full_pack:
+        packages = split_packages(args.full_pack, args.output.parent, base)
     manifest = {
         "schema": 1,
         "app_id": "grid-command-godot",
@@ -52,9 +54,15 @@ def main() -> None:
         "download_url": f"https://github.com/RHS059/grid_command/releases/download/godot-v{plan['version']}/GridCommand-Windows-x86_64.zip",
         "patches": patches,
     }
+    if not plan["live_patch"] and packages:
+        # Informational full-content artifacts. Existing clients must still use
+        # download_url to replace startup scripts and the executable together.
+        manifest["bootstrap_packages"] = packages
     native_zip = args.output.parent / "GridCommand-Windows-x86_64.zip"
     if native_zip.is_file():
-        manifest["download_sha256"] = hashlib.sha256(native_zip.read_bytes()).hexdigest()
+        with native_zip.open("rb") as source:
+            manifest["download_sha256"] = hashlib.file_digest(source, "sha256").hexdigest()
+        manifest["download_size_bytes"] = native_zip.stat().st_size
     args.output.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
 

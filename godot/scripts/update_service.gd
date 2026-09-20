@@ -12,6 +12,10 @@ const CACHE_DIR := "user://updates"
 const RECEIPT_PATH := CACHE_DIR + "/installed.json"
 const MAX_MANIFEST_BYTES := 524288
 const MAX_PATCH_BYTES := 536870912
+const DOWNLOAD_IDLE_TIMEOUT_MS := 30000
+const DOWNLOAD_ATTEMPTS := 3
+const DOWNLOAD_CHUNK_BYTES := 1048576
+const PUBLIC_CA_BUNDLE := "res://data/certificates/mozilla-ca.pem"
 
 var current_version := "0.1.0"
 var base_version := "0.1.0"
@@ -29,9 +33,7 @@ var staged_executable := ""
 var staged_native_version := ""
 var _download_base := 0.0
 var _download_span := 1.0
-var _download_expected := 0
 var _last_download_percent := -1
-var _track_download_progress := false
 
 func _init() -> void:
 	base_version = str(ProjectSettings.get_setting("application/config/version", "0.1.0"))
@@ -84,7 +86,7 @@ func check_for_updates() -> void:
 		return
 	# Autoloads and native settings cannot safely replace a running coordinator.
 	for patch in pending_patches:
-		for file_path in patch["files"]:
+		for file_path in _patch_files(patch):
 			if str(file_path) in ["res://scripts/update_service.gd", "res://scripts/update_service.gdc", "res://project.godot", "res://project.binary"] or str(file_path).ends_with(".gdextension"):
 				await _stage_native_update()
 				return
@@ -99,43 +101,37 @@ func apply_update() -> void:
 	_status("downloading", "Downloading changed files...")
 	var staged: Array[Dictionary] = []
 	progress = 0.0
-	for index in range(pending_patches.size()):
-		_download_base = float(index)/pending_patches.size()
-		_download_span = 1.0/pending_patches.size()
-		var patch := pending_patches[index].duplicate(true)
-		var final_path := _patch_path(patch)
-		var part_path := final_path + ".part"
-		_status("downloading", "Downloading patch %d of %d..." % [index + 1, pending_patches.size()])
-		var result: Dictionary = await _fetch(str(patch["url"]), part_path, int(patch.get("size_bytes", MAX_PATCH_BYTES)))
-		if not result.get("ok", false):
-			_remove_partial(part_path)
-			_status("error", "The download did not finish. The current mission is unchanged.")
-			return
-		if not str(patch.get("sha256_url", "")).is_empty():
-			var checksum_response: Dictionary = await _fetch(str(patch["sha256_url"]), "", 4096)
-			if not checksum_response.get("ok", false):
+	var total_bytes := 0
+	var completed_bytes := 0
+	for patch in pending_patches:
+		for payload in _patch_payloads(patch):
+			total_bytes += int(payload.get("size_bytes",1))
+	for pending in pending_patches:
+		var patch := pending.duplicate(true)
+		for payload in _patch_payloads(patch):
+			var size := int(payload.get("size_bytes",1))
+			_download_base = float(completed_bytes)/total_bytes
+			_download_span = float(size)/total_bytes
+			var final_path := _patch_path(payload)
+			var part_path := final_path+".part"
+			_status("downloading","Downloading %s files for version %s..." % [payload.get("category","changed"),patch["to_version"]])
+			# Reuse already verified packages when a later package or apply failed.
+			if not FileAccess.file_exists(final_path) or FileAccess.get_sha256(final_path).to_lower() != str(payload["sha256"]).to_lower():
+				var result: Dictionary = await _download_file(str(payload["url"]),part_path,str(payload["sha256"]),int(payload.get("size_bytes",0)))
+				if not result.get("ok",false):
+					_status("error",str(result.get("error","The download was interrupted."))+" Saved progress will resume when you try again.")
+					return
+				# The manifest's SHA-256 is the integrity authority. A second checksum
+				# request provides no extra trust and must not discard a good download.
+				if DirAccess.rename_absolute(ProjectSettings.globalize_path(part_path),ProjectSettings.globalize_path(final_path)) != OK:
+					_status("error","Cannot save the verified patch. Downloaded files are kept for retry.")
+					return
 				_remove_partial(part_path)
-				_status("error", "Cannot get the checksum. No patch was applied.")
-				return
-			var checksum_bytes: PackedByteArray = checksum_response["body"]
-			var checksum_fields := checksum_bytes.get_string_from_utf8().strip_edges().replace("\t", " ").split(" ", false)
-			var checksum_text := checksum_fields[0].to_lower() if not checksum_fields.is_empty() else ""
-			if checksum_text != str(patch["sha256"]).to_lower():
-				_remove_partial(part_path)
-				_status("error", "The update checksums do not match. No patch was applied.")
-				return
-		if FileAccess.get_sha256(part_path).to_lower() != str(patch["sha256"]).to_lower():
-			_remove_partial(part_path)
-			_status("error", "The file check failed. No patch was applied.")
-			return
-		if DirAccess.rename_absolute(ProjectSettings.globalize_path(part_path), ProjectSettings.globalize_path(final_path)) != OK:
-			_remove_partial(part_path)
-			_status("error", "Cannot save the verified patch. No patch was applied.")
-			return
-		patch["local_path"] = final_path
+			payload["local_path"] = final_path
+			completed_bytes += size
+			progress = float(completed_bytes)/total_bytes
+			status_changed.emit()
 		staged.append(patch)
-		progress = float(index+1)/pending_patches.size()
-		status_changed.emit()
 	# Verify the full chain before mounting any part of it.
 	progress = 0.0
 	_status("applying", "Applying verified files. The mission will resume shortly.")
@@ -149,12 +145,13 @@ func apply_update() -> void:
 	scene.set_process(false)
 	scene.set_process_unhandled_input(false)
 	for patch in staged:
-		if not ProjectSettings.load_resource_pack(str(patch["local_path"]), true):
-			scene.set_process(true)
-			scene.set_process_unhandled_input(true)
-			session_snapshot.clear()
-			_status("error", "The patch could not load. The mission is still active. Download the new app from the release page.")
-			return
+		for payload in _patch_payloads(patch):
+			if not ProjectSettings.load_resource_pack(str(payload["local_path"]), true):
+				scene.set_process(true)
+				scene.set_process_unhandled_input(true)
+				session_snapshot.clear()
+				_status("error", "The patch could not load. The mission is still active. Download the new app from the release page.")
+				return
 	progress = 0.5
 	status_changed.emit()
 	await get_tree().process_frame
@@ -216,21 +213,14 @@ func _stage_native_update() -> void:
 	_download_base = 0.0
 	_download_span = 1.0
 	_status("downloading","Downloading version %s..." % version)
-	var result: Dictionary = await _fetch(url,archive,MAX_PATCH_BYTES)
+	var result: Dictionary = await _download_file(url,archive,str(manifest.get("download_sha256","")),int(manifest.get("download_size_bytes",0)))
 	if not result.get("ok",false):
-		_remove_partial(archive)
-		_status("error","The app download did not finish. Try again; the current game remains active.")
-		return
-	var checksum := str(manifest.get("download_sha256",""))
-	if not checksum.is_empty() and FileAccess.get_sha256(archive).to_lower() != checksum.to_lower():
-		_remove_partial(archive)
-		_status("error","The app download failed its checksum. No update was applied.")
+		_status("error",str(result.get("error","The app download did not finish."))+" Saved progress will resume when you try again.")
 		return
 	progress = 0.0
 	_status("applying","Preparing the new app. The current mission is still active.")
 	await get_tree().process_frame
 	var unpacked: Dictionary = await _unpack_native_archive(archive,directory)
-	_remove_partial(archive)
 	if not unpacked.get("ok",false):
 		_status("error",str(unpacked.get("error","Cannot prepare this native app update.")))
 		return
@@ -367,23 +357,20 @@ func _unpack_native_archive(archive: String, directory: String) -> Dictionary:
 	var executable := directory.path_join(str(index["executable"]))
 	return {"ok":true,"executable":executable}
 
-func _process(_delta: float) -> void:
-	if phase != "downloading" or not _track_download_progress or not is_instance_valid(_http): return
-	var total := _http.get_body_size()
-	if total <= 0: total = _download_expected
+func _download_progress(received: int, total: int) -> void:
 	if total <= 0: return
-	progress = clampf(_download_base+_download_span*float(_http.get_downloaded_bytes())/float(total),0.0,1.0)
+	progress = clampf(_download_base+_download_span*float(received)/float(total),0.0,1.0)
 	var percent := int(progress*100)
 	if percent != _last_download_percent:
 		_last_download_percent = percent
 		status_changed.emit()
 
 func _fetch(url: String, destination: String, limit: int) -> Dictionary:
-	_track_download_progress = not destination.is_empty()
-	_download_expected = limit if limit < MAX_PATCH_BYTES else 0
-	_last_download_percent = -1
+	# Small manifests/checksums only. Payloads use _download_file below.
 	_http = HTTPRequest.new()
 	_http.timeout = 60.0
+	_http.use_threads = true
+	_http.set_tls_options(_download_tls_options())
 	_http.max_redirects = 6
 	_http.body_size_limit = mini(limit, MAX_PATCH_BYTES)
 	_http.download_file = destination
@@ -396,12 +383,245 @@ func _fetch(url: String, destination: String, limit: int) -> Dictionary:
 	_http.queue_free()
 	return {"ok": reply[0] == HTTPRequest.RESULT_SUCCESS and reply[1] == 200, "body": reply[3]}
 
+func _download_file(url: String, destination: String, expected_sha256: String, expected_size: int = 0) -> Dictionary:
+	if not destination.begins_with(CACHE_DIR+"/") or not destination.ends_with(".part") or ".." in destination:
+		return {"ok":false,"error":"The download destination is not valid."}
+	if expected_sha256.length() != 64 or not expected_sha256.is_valid_hex_number(false) or expected_size < 0 or expected_size > MAX_PATCH_BYTES:
+		return {"ok":false,"error":"The download checksum or size is not valid."}
+	var identity := {"url":url,"sha256":expected_sha256.to_lower(),"size":expected_size}
+	var metadata := identity.duplicate()
+	if FileAccess.file_exists(destination+".json"):
+		var saved: Variant = JSON.parse_string(FileAccess.get_file_as_string(destination+".json"))
+		if saved is Dictionary and saved.get("url") == url and saved.get("sha256") == identity["sha256"] and saved.get("size") == expected_size:
+			metadata = saved
+		else:
+			_remove_partial(destination)
+	elif FileAccess.file_exists(destination):
+		# A legacy completed download is reusable after a full integrity check.
+		if FileAccess.get_sha256(destination).to_lower() != identity["sha256"]:
+			_remove_partial(destination)
+	if DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(destination.get_base_dir())) != OK:
+		return {"ok":false,"error":"Cannot create the download folder."}
+	_last_download_percent = -1
+	var result := {"ok":false,"error":"The download was interrupted."}
+	for attempt in range(DOWNLOAD_ATTEMPTS):
+		var saved_size := _file_size(destination)
+		var total := expected_size if expected_size > 0 else int(metadata.get("total",0))
+		if saved_size > MAX_PATCH_BYTES or (total > 0 and saved_size > total):
+			_remove_partial(destination)
+			saved_size = 0
+		# Completed files survive checksum-fetch, staging, and application failures.
+		if saved_size > 0 and (total <= 0 or saved_size == total) and FileAccess.get_sha256(destination).to_lower() == identity["sha256"]:
+			_download_progress(saved_size,saved_size)
+			return {"ok":true,"cached":true}
+		_download_progress(saved_size,total)
+		if not _save_download_metadata(destination,metadata):
+			return {"ok":false,"error":"Cannot save download progress."}
+		result = await _download_attempt(url,destination,metadata)
+		if result.get("ok",false):
+			if FileAccess.get_sha256(destination).to_lower() == identity["sha256"]:
+				_download_progress(_file_size(destination),_file_size(destination))
+				return {"ok":true}
+			# Corrupt bytes cannot be resumed. Only this payload must be downloaded again.
+			_remove_partial(destination)
+			metadata = identity.duplicate()
+			result = {"ok":false,"retryable":true,"error":"The downloaded file failed its checksum."}
+		elif result.get("reset",false):
+			_remove_partial(destination)
+			metadata = identity.duplicate()
+		if not result.get("retryable",false): break
+		if attempt+1 < DOWNLOAD_ATTEMPTS:
+			status_text = "Connection interrupted. Resuming saved download (attempt %d of %d)..." % [attempt+2,DOWNLOAD_ATTEMPTS]
+			status_changed.emit()
+			await get_tree().create_timer(float(attempt+1)).timeout
+	return result
+
+static func _file_size(path: String) -> int:
+	var file := FileAccess.open(path,FileAccess.READ)
+	return file.get_length() if file != null else 0
+
+static func _save_download_metadata(destination: String, metadata: Dictionary) -> bool:
+	var file := FileAccess.open(destination+".json.tmp",FileAccess.WRITE)
+	if file == null: return false
+	file.store_string(JSON.stringify(metadata))
+	file.close()
+	return DirAccess.rename_absolute(ProjectSettings.globalize_path(destination+".json.tmp"),ProjectSettings.globalize_path(destination+".json")) == OK
+
+static func _download_url_parts(url: String) -> Dictionary:
+	var expression := RegEx.new()
+	expression.compile("^(https?)://([^/:?#]+)(?::([0-9]+))?(/[^#]*)?$")
+	var found := expression.search(url)
+	if found == null: return {}
+	var secure := found.get_string(1) == "https"
+	var host := found.get_string(2)
+	if "@" in host or "\r" in url or "\n" in url: return {}
+	# Loopback HTTP is used by the offline regression harness only. Public
+	# manifest URLs are validated independently and must use GitHub HTTPS.
+	if not secure and host != "127.0.0.1": return {}
+	var port := int(found.get_string(3)) if not found.get_string(3).is_empty() else (443 if secure else 80)
+	if port < 1 or port > 65535: return {}
+	return {"host":host,"port":port,"tls":secure,"path":found.get_string(4) if not found.get_string(4).is_empty() else "/"}
+
+static func _download_tls_options() -> TLSOptions:
+	# The bundled public roots also work when Windows' system certificate store
+	# cannot be decoded by mbedTLS. Certificate and hostname checks stay enabled.
+	if FileAccess.file_exists(PUBLIC_CA_BUNDLE):
+		var certificates := X509Certificate.new()
+		if certificates.load_from_string(FileAccess.get_file_as_string(PUBLIC_CA_BUNDLE)) == OK:
+			return TLSOptions.client(certificates)
+	return TLSOptions.client()
+
+static func _range_response(code: int, headers: Dictionary, offset: int, expected: int) -> Dictionary:
+	if code == 416:
+		return {"ok":false,"retryable":true,"reset":true,"error":"The server rejected the saved download range."}
+	if code not in [200,206]:
+		return {"ok":false,"retryable":code in [408,429,500,502,503,504],"error":"The download server returned HTTP %d." % code}
+	if str(headers.get("content-encoding","identity")).to_lower() != "identity":
+		return {"ok":false,"error":"The download server returned an unsupported encoding."}
+	var length := int(headers.get("content-length","0"))
+	var total := length
+	var start := 0
+	var end := length-1
+	if code == 206:
+		var expression := RegEx.new()
+		expression.compile("^bytes ([0-9]+)-([0-9]+)/([0-9]+)$")
+		var found := expression.search(str(headers.get("content-range","")))
+		if found == null: return {"ok":false,"error":"The server returned an invalid download range."}
+		start = int(found.get_string(1))
+		end = int(found.get_string(2))
+		total = int(found.get_string(3))
+		if start != offset or end < start or end >= total or (length > 0 and length != end-start+1):
+			return {"ok":false,"error":"The server returned a mismatched download range."}
+		length = end-start+1
+	if total < 0 or total > MAX_PATCH_BYTES or (expected > 0 and total > 0 and total != expected):
+		return {"ok":false,"error":"The download size does not match the manifest."}
+	return {"ok":true,"offset":start,"total":total if total > 0 else expected,"length":length}
+
+func _download_attempt(url: String, destination: String, metadata: Dictionary) -> Dictionary:
+	var offset := _file_size(destination)
+	var client := HTTPClient.new()
+	client.read_chunk_size = DOWNLOAD_CHUNK_BYTES
+	var request_url := url
+	var headers := {}
+	var response := {}
+	for redirect in range(7):
+		var parts := _download_url_parts(request_url)
+		if parts.is_empty(): return {"ok":false,"error":"The download redirect is not valid."}
+		var connect_error := client.connect_to_host(str(parts["host"]),int(parts["port"]),_download_tls_options() if parts["tls"] else null)
+		if connect_error != OK: return {"ok":false,"retryable":true,"error":"Cannot connect to the download server."}
+		var last_activity := Time.get_ticks_msec()
+		while client.get_status() in [HTTPClient.STATUS_RESOLVING,HTTPClient.STATUS_CONNECTING]:
+			client.poll()
+			if Time.get_ticks_msec()-last_activity > DOWNLOAD_IDLE_TIMEOUT_MS:
+				client.close()
+				return {"ok":false,"retryable":true,"error":"The download connection timed out."}
+			await get_tree().process_frame
+		if client.get_status() != HTTPClient.STATUS_CONNECTED:
+			client.close()
+			return {"ok":false,"retryable":true,"error":"Cannot connect to the download server."}
+		var request_headers := PackedStringArray(["Accept: application/octet-stream","Accept-Encoding: identity","User-Agent: GridCommand/"+current_version])
+		if offset > 0:
+			request_headers.append("Range: bytes=%d-" % offset)
+			var validator := str(metadata.get("validator",""))
+			if not validator.is_empty() and not "\r" in validator and not "\n" in validator:
+				request_headers.append("If-Range: "+validator)
+		if client.request(HTTPClient.METHOD_GET,str(parts["path"]),request_headers) != OK:
+			client.close()
+			return {"ok":false,"retryable":true,"error":"Cannot request the update file."}
+		last_activity = Time.get_ticks_msec()
+		while client.get_status() == HTTPClient.STATUS_REQUESTING:
+			client.poll()
+			if Time.get_ticks_msec()-last_activity > DOWNLOAD_IDLE_TIMEOUT_MS:
+				client.close()
+				return {"ok":false,"retryable":true,"error":"The download server did not respond."}
+			await get_tree().process_frame
+		if not client.has_response():
+			client.close()
+			return {"ok":false,"retryable":true,"error":"The download server disconnected."}
+		headers.clear()
+		var response_headers := client.get_response_headers_as_dictionary()
+		for name in response_headers:
+			headers[str(name).to_lower()] = response_headers[name]
+		var code := client.get_response_code()
+		if code in [301,302,303,307,308]:
+			var location := str(headers.get("location",""))
+			if location.begins_with("/") and not location.begins_with("//"):
+				location = request_url.get_slice("://",0)+"://"+request_url.get_slice("://",1).get_slice("/",0)+location
+			# Never downgrade an HTTPS download, even through a redirect.
+			if redirect == 6 or (request_url.begins_with("https://") and not location.begins_with("https://")):
+				client.close()
+				return {"ok":false,"error":"The download redirect is not valid."}
+			request_url = location
+			client.close()
+			continue
+		response = _range_response(code,headers,offset,int(metadata.get("size",0)))
+		break
+	if not response.get("ok",false):
+		client.close()
+		return response
+	var validator := str(headers.get("etag",""))
+	if validator.begins_with("W/"): validator = ""
+	if validator.is_empty(): validator = str(headers.get("last-modified",""))
+	if int(response["offset"]) > 0 and not str(metadata.get("validator","")).is_empty() and not validator.is_empty() and metadata["validator"] != validator:
+		client.close()
+		return {"ok":false,"retryable":true,"reset":true,"error":"The update file changed on the server."}
+	if not validator.is_empty() or int(response["offset"]) == 0:
+		metadata["validator"] = validator
+	metadata["total"] = response["total"]
+	if not _save_download_metadata(destination,metadata):
+		client.close()
+		return {"ok":false,"error":"Cannot save download progress."}
+	# Only a validated 206 may append. A 200 means Range was unsupported or
+	# If-Range failed, so replace safely instead of concatenating two files.
+	var file := FileAccess.open(destination,FileAccess.READ_WRITE if int(response["offset"]) > 0 else FileAccess.WRITE)
+	if file == null:
+		client.close()
+		return {"ok":false,"error":"Cannot write the update file."}
+	file.seek_end()
+	var received := int(response["offset"])
+	var body_received := 0
+	var last_activity := Time.get_ticks_msec()
+	var flushed := received
+	var result := {"ok":false,"retryable":true,"error":"The download was interrupted. Saved progress will resume next time."}
+	while client.get_status() == HTTPClient.STATUS_BODY:
+		var frame_deadline := Time.get_ticks_usec()+4000
+		while client.get_status() == HTTPClient.STATUS_BODY and Time.get_ticks_usec() < frame_deadline:
+			client.poll()
+			var chunk := client.read_response_body_chunk()
+			if chunk.is_empty(): break
+			if received+chunk.size() > MAX_PATCH_BYTES or (int(response["total"]) > 0 and received+chunk.size() > int(response["total"])):
+				file.close()
+				client.close()
+				return {"ok":false,"error":"The download exceeded its expected size."}
+			file.store_buffer(chunk)
+			if file.get_error() != OK:
+				file.close()
+				client.close()
+				return {"ok":false,"error":"Cannot save the update file. Check free disk space."}
+			received += chunk.size()
+			body_received += chunk.size()
+			last_activity = Time.get_ticks_msec()
+			if received-flushed >= 4194304:
+				file.flush()
+				flushed = received
+		_download_progress(received,int(response["total"]))
+		if Time.get_ticks_msec()-last_activity > DOWNLOAD_IDLE_TIMEOUT_MS: break
+		if client.get_status() == HTTPClient.STATUS_BODY: await get_tree().process_frame
+	file.close()
+	var total := int(response["total"])
+	var length := int(response["length"])
+	if (total > 0 and received == total and (length <= 0 or body_received == length)) or (total <= 0 and client.get_status() == HTTPClient.STATUS_CONNECTED):
+		result = {"ok":true}
+	client.close()
+	return result
+
 func _patch_path(patch: Dictionary) -> String:
 	return CACHE_DIR.path_join(str(patch["sha256"]).to_lower() + ".pck")
 
 func _remove_partial(path: String) -> void:
-	if path.begins_with(CACHE_DIR + "/") and path.ends_with(".part") and FileAccess.file_exists(path):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	if path.begins_with(CACHE_DIR + "/") and path.ends_with(".part"):
+		for suffix in ["",".json",".json.tmp"]:
+			if FileAccess.file_exists(path+suffix): DirAccess.remove_absolute(ProjectSettings.globalize_path(path+suffix))
 
 func _save_receipt() -> bool:
 	var next_path := RECEIPT_PATH + ".tmp"
@@ -424,26 +644,28 @@ func _restore_installed_patches() -> void:
 		if not patch is Dictionary or not _valid_patch(patch) or patch["from_version"] != version:
 			status_text = "Saved updates are not valid. The base version is active."
 			return
-		var path := _patch_path(patch)
-		if not FileAccess.file_exists(path) or FileAccess.get_sha256(path).to_lower() != str(patch["sha256"]).to_lower():
-			status_text = "A saved update failed its file check. The base version is active."
-			return
-		patch["local_path"] = path
+		for payload in _patch_payloads(patch):
+			var path := _patch_path(payload)
+			if not FileAccess.file_exists(path) or FileAccess.get_sha256(path).to_lower() != str(payload["sha256"]).to_lower():
+				status_text = "A saved update failed its file check. The base version is active."
+				return
+			payload["local_path"] = path
 		verified.append(patch)
 		version = str(patch["to_version"])
 	for patch in verified:
-		if not ProjectSettings.load_resource_pack(str(patch["local_path"]), true):
-			status_text = "A saved patch could not load. Download a new app before the next launch."
-			return
+		for payload in _patch_payloads(patch):
+			if not ProjectSettings.load_resource_pack(str(payload["local_path"]), true):
+				status_text = "A saved patch could not load. Download a new app before the next launch."
+				return
 		installed_patches.append(patch)
 		current_version = str(patch["to_version"])
 
 static func _changed_resources(patches: Array[Dictionary]) -> Array[String]:
 	var paths: Array[String] = []
 	for patch in patches:
-		for entry in patch["files"]:
+		for entry in _patch_files(patch):
 			var path := str(entry)
-			if not paths.has(path) and path.get_extension() in ["gd", "gdc", "tres", "res", "gdshader", "tscn", "scn"]:
+			if not paths.has(path) and path.get_extension() in ["gd", "gdc", "tres", "res", "gdshader", "tscn", "scn", "glb", "gltf", "mesh", "material", "png", "jpg", "jpeg", "webp", "svg", "ctex"]:
 				paths.append(path)
 	# Dependencies first. Main's preload constants must see the new scripts.
 	var priority := ["res://scripts/tactical_map.gd", "res://scripts/rts_camera.gd", "res://scripts/combat_unit.gd", "res://scripts/tactical_hud.gd", "res://scripts/main.gd", "res://scenes/main.tscn"]
@@ -470,6 +692,8 @@ static func validate_manifest(value: Variant) -> Dictionary:
 	var native_hash := str(value.get("download_sha256",""))
 	if not native_hash.is_empty() and (native_hash.length() != 64 or not native_hash.is_valid_hex_number(false)):
 		return {"ok":false}
+	if value.has("download_size_bytes") and (not _valid_size(value["download_size_bytes"])):
+		return {"ok":false}
 	for patch in value["patches"]:
 		if not patch is Dictionary or not _valid_patch(patch):
 			return {"ok": false}
@@ -482,24 +706,63 @@ static func _valid_patch(patch: Dictionary) -> bool:
 		return false
 	if patch.get("content_mode", "") != "changed-files-only":
 		return false
-	var url := str(patch.get("url", ""))
+	if not _valid_payload(patch,false): return false
+	if patch.has("packages"):
+		if not patch["packages"] is Array or patch["packages"].size() != 3: return false
+		var categories := {}
+		var files := {}
+		for payload in patch["packages"]:
+			if not payload is Dictionary or not _valid_payload(payload,true): return false
+			var category := str(payload.get("category",""))
+			if category not in ["models","textures","gameplay"] or categories.has(category): return false
+			categories[category] = true
+			for file_path in payload["files"]:
+				if files.has(file_path): return false
+				files[file_path] = true
+	return true
+
+static func _valid_size(value: Variant) -> bool:
+	return (value is int or value is float) and float(value) == floorf(float(value)) and int(value) >= 1 and int(value) <= MAX_PATCH_BYTES
+
+static func _valid_payload(payload: Dictionary, allow_empty_files: bool) -> bool:
+	var url := str(payload.get("url", ""))
 	if not url.begins_with(RELEASE_PREFIX) or not url.ends_with(".pck"):
 		return false
-	var hash := str(patch.get("sha256", "")).to_lower()
+	var hash := str(payload.get("sha256", "")).to_lower()
 	if hash.length() != 64 or not hash.is_valid_hex_number(false):
 		return false
-	var checksum_url := str(patch.get("sha256_url", ""))
+	var checksum_url := str(payload.get("sha256_url", ""))
 	if not checksum_url.is_empty() and (not checksum_url.begins_with(RELEASE_PREFIX) or not checksum_url.ends_with(".sha256")):
 		return false
-	if int(patch.get("size_bytes", 1)) < 1 or int(patch.get("size_bytes", MAX_PATCH_BYTES)) > MAX_PATCH_BYTES:
+	if (allow_empty_files and not payload.has("size_bytes")) or not _valid_size(payload.get("size_bytes",1)):
 		return false
-	if not patch.get("files", null) is Array or patch["files"].is_empty():
+	if not payload.get("files", null) is Array or (payload["files"].is_empty() and not allow_empty_files):
 		return false
-	for entry in patch["files"]:
+	for entry in payload["files"]:
 		var path := str(entry)
 		if not path.begins_with("res://") or ".." in path or "\\" in path or path.get_extension().to_lower() in ["exe", "dll", "so", "dylib"]:
 			return false
 	return true
+
+static func _patch_payloads(patch: Dictionary) -> Array[Dictionary]:
+	var payloads: Array[Dictionary] = []
+	if patch.has("packages"):
+		# Models/textures are mounted before gameplay resources are reloaded.
+		for category in ["models","textures","gameplay"]:
+			for payload in patch["packages"]:
+				if payload["category"] == category: payloads.append(payload)
+	else:
+		payloads.append(patch)
+	return payloads
+
+static func _patch_files(patch: Dictionary) -> Array[String]:
+	var files: Array[String] = []
+	for path in patch["files"]: files.append(str(path))
+	if patch.has("packages"):
+		for payload in patch["packages"]:
+			for path in payload["files"]:
+				if not files.has(str(path)): files.append(str(path))
+	return files
 
 static func patch_chain(value: Dictionary, installed_version: String) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []

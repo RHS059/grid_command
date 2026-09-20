@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plan a Godot release and create an explicit changed-resource export preset."""
+"""Plan a Godot release and configure the base pack for --export-patch."""
 
 from __future__ import annotations
 
@@ -8,6 +8,8 @@ import json
 import re
 import subprocess
 from pathlib import Path
+
+from release_packages import CATEGORIES, category_for_path
 
 
 RUNTIME_SUFFIXES = {
@@ -41,7 +43,29 @@ def run(*args: str) -> str:
 
 
 def project_without_version(text: str) -> str:
-    return re.sub(r'^config/version=.*$', 'config/version="<release>"', text, flags=re.MULTILINE)
+    # git show output is stripped by run(); compare both sides consistently so
+    # a normal trailing newline never turns a version-only change into a restart.
+    return re.sub(r'^config/version=.*$', 'config/version="<release>"', text.strip(), flags=re.MULTILINE)
+
+
+def append_patch_preset(project: Path, base_pack: Path) -> None:
+    """Use identical import/export settings for full builds and their patches."""
+    path = project / "export_presets.cfg"
+    text = path.read_text(encoding="utf-8")
+    general = re.search(r"\[preset\.0\]\s*\n(.*?)(?=\n\[)", text, re.DOTALL)
+    options = re.search(r"\[preset\.0\.options\]\s*\n(.*?)(?=\n\[preset\.|\Z)", text, re.DOTALL)
+    if not general or not options:
+        raise ValueError("Windows export preset 0 is missing")
+    index = max(int(value) for value in re.findall(r"\[preset\.(\d+)\]", text)) + 1
+    settings = general.group(1)
+    for key, value in {
+        "name": '"Delta Patch"', "runnable": "false",
+        "export_path": '"build/release/update.pck"',
+        "patches": f"PackedStringArray({json.dumps(base_pack.resolve().as_posix())})",
+    }.items():
+        settings = re.sub(rf"^{key}=.*$", lambda _: f"{key}={value}", settings, flags=re.MULTILINE)
+    with path.open("a", encoding="utf-8") as output:
+        output.write(f"\n[preset.{index}]\n\n{settings.strip()}\n\n[preset.{index}.options]\n\n{options.group(1).strip()}\n")
 
 
 def main() -> None:
@@ -55,6 +79,7 @@ def main() -> None:
     repo = args.repo.resolve()
     project = args.project.resolve()
     project_prefix = project.relative_to(repo).as_posix().rstrip("/")
+    source_prefix = "" if project_prefix == "." else project_prefix + "/"
     version_match = re.search(r'^config/version="([^"]+)"', (project / "project.godot").read_text(encoding="utf-8"), re.MULTILINE)
     if not version_match:
         raise SystemExit("project.godot has no config/version")
@@ -68,14 +93,14 @@ def main() -> None:
     if not args.previous_ref:
         restart_reasons.append("This is the first updater-enabled release.")
     else:
-        prior_project = run("git", "-C", str(repo), "show", f"{args.previous_ref}:{project_prefix}/project.godot")
+        prior_project = run("git", "-C", str(repo), "show", f"{args.previous_ref}:{source_prefix}project.godot")
         prior_match = re.search(r'^config/version="([^"]+)"', prior_project, re.MULTILINE)
         previous_version = prior_match.group(1) if prior_match else ""
         lines = run("git", "-C", str(repo), "diff", "--name-status", args.previous_ref, "HEAD", "--", project_prefix).splitlines()
         for line in lines:
             fields = line.split("\t")
             status, repo_path = fields[0], fields[-1]
-            relative = repo_path.removeprefix(project_prefix + "/")
+            relative = repo_path.removeprefix(source_prefix)
             if status.startswith("D"):
                 deleted.append(relative)
                 continue
@@ -118,14 +143,13 @@ def main() -> None:
         "files": sorted(set(changed)),
         "deleted": sorted(deleted),
         "restart_reasons": restart_reasons,
+        "packages": [{"category": category, "filename": f"update-{category}.pck", "files": sorted(path for path in set(changed) if category_for_path(path) == category)} for category in CATEGORIES],
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(plan, indent=2) + "\n", encoding="utf-8")
 
     if live_patch:
-        base_pack = args.base_pack.resolve().as_posix()
-        with (project / "export_presets.cfg").open("a", encoding="utf-8") as preset:
-            preset.write(f'''\n[preset.1]\n\nname="Delta Patch"\nplatform="Windows Desktop"\nrunnable=false\ncustom_features=""\nexport_filter="all_resources"\ninclude_filter="data/**/*.json,data/**/*.bin,data/**/*.pem,data/certificates/LICENSE-MPL-2.0.txt"\nexclude_filter=""\nexport_path="build/release/update.pck"\npatches=PackedStringArray("{base_pack}")\nencrypt_pck=false\nencrypt_directory=false\n\n[preset.1.options]\n\nbinary_format/embed_pck=false\ntexture_format/s3tc_bptc=true\ntexture_format/etc2_astc=false\nbinary_format/architecture="x86_64"\n''')
+        append_patch_preset(project, args.base_pack)
 
 
 if __name__ == "__main__":

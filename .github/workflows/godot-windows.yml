@@ -108,6 +108,10 @@ jobs:
           "$GODOT" --headless --path "$PROJECT_DIR" --import --quit
           "$GODOT" --headless --path "$PROJECT_DIR" --editor --quit-after 2
 
+      - name: Verify release packaging
+        shell: bash
+        run: python3 -m unittest discover -s "$PROJECT_DIR/tools" -p 'test_release*.py' -v
+
       - name: Run native smoke checks
         shell: bash
         run: |
