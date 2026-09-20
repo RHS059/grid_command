@@ -211,13 +211,49 @@ func _process_logistics(delta: float) -> void:
 			depot["airfield"][key] -= moved
 			depot["mob"][key] += moved
 
-func _count(side: String, role: String) -> int:
-	var result := 0
+func _count(side: String, role: String) -> float:
+	var result := 0.0
 	for unit in units[side]:
-		if unit["role"] == role and float(unit.get("hp",100)) > 0: result += 1
+		if unit["role"] == role and float(unit.get("hp",100)) > 0:
+			var maximum := maxi(1,int(unit.get("max_members",1)))
+			result += float(unit.get("members",maximum))/float(maximum)
 	for item in forces[side]["queue"]:
-		if item["role"] == role: result += 1
+		if item["role"] == role: result += 1.0
 	return result
+
+static func commissioning_fuel_percent(role: String) -> float:
+	return 40.0 if role in AIR else 25.0
+
+static func commissioning_fuel_stock(role: String) -> float:
+	if not is_vehicle(role): return 0.0
+	return float(resources(role)["fuel"])*(1.0-commissioning_fuel_percent(role)/100.0)
+
+func fuel_economy(side: String, candidate: String = "") -> Dictionary:
+	var own: Array = units.get(side,[]).filter(func(unit: Dictionary) -> bool: return is_vehicle(str(unit.get("role",""))) and float(unit.get("hp",0.0)) > 0.0 and not unit.get("external",false))
+	var service := 0.0
+	var protected_fuel := 400.0
+	for unit in own:
+		var role := str(unit["role"])
+		var specs: Dictionary = resources(role)
+		if unit.get("service","") != "READY":
+			service += maxf(0.0,100.0-float(unit.get("fuel",0.0)))/100.0*float(specs["fuel"])
+		protected_fuel += float(specs["fuel"])*(0.18 if role in ["TRUCK","TROOP_TRUCK","TRANSPORT_HELI","HEAVY_LIFT_HELI"] else 0.06)
+	var queued_fuel := 0.0
+	for item in forces[side]["queue"]:
+		if is_vehicle(str(item["role"])): queued_fuel += commissioning_fuel_stock(str(item["role"]))
+	var candidate_fuel := 0.0
+	if not candidate.is_empty() and is_vehicle(candidate):
+		candidate_fuel = commissioning_fuel_stock(candidate)+float(resources(candidate)["fuel"])*0.15
+	var depot: Dictionary = depots[side]
+	var base_on_hand := float(depot["airfield"]["fuel"])+float(depot["pending"]["fuel"])+float(depot["mob"]["fuel"])
+	var forward_fuel := 0.0
+	for objective in objectives.values():
+		if objective["owner"] == side: forward_fuel += float(objective["stock"]["fuel"])
+	var inbound := 0.0
+	for shipment in shipments:
+		if shipment.get("side","") == side and shipment.get("phase","") == "APPROACH": inbound += float(shipment.get("stock",{}).get("fuel",0.0))
+	var committed := service+queued_fuel
+	return {"on_hand":base_on_hand+forward_fuel,"base_on_hand":base_on_hand,"forward_fuel":forward_fuel,"inbound":inbound,"committed":committed,"protected_fuel":protected_fuel,"candidate_fuel":candidate_fuel,"available":base_on_hand+inbound-committed-protected_fuel-candidate_fuel}
 
 func _plan_side(side: String) -> void:
 	var force: Dictionary = forces[side]
@@ -260,6 +296,11 @@ func procure(side: String, role: String) -> bool:
 	var cost := ceili(float(CATALOG[role][4])*discount)
 	var members := int(CATALOG[role][0])
 	if int(forces[side]["sp"]) < cost+200 or int(forces[side]["manpower"]) < members: return false
+	if is_vehicle(role):
+		var economy := fuel_economy(side,role)
+		if float(economy["available"]) < 0.0:
+			forces[side]["purchase"] = "Fuel command holds %s · %d fuel short of commissioning reserve" % [role.replace("_"," "),ceili(-float(economy["available"]))]
+			return false
 	forces[side]["sp"] -= cost
 	forces[side]["manpower"] -= members
 	serial += 1
@@ -560,7 +601,10 @@ func _process_queues() -> void:
 		var kept: Array = []
 		for item in forces[side]["queue"]:
 			if time < float(item["due"]): kept.append(item); continue
-			units[side].append(make_unit(side,item["role"],item["id"]))
+			var delivered := make_unit(side,item["role"],item["id"])
+			if is_vehicle(str(item["role"])):
+				delivered["fuel"] = commissioning_fuel_percent(str(item["role"]))
+			units[side].append(delivered)
 			forces[side]["delivered"] += 1
 			forces[side]["purchase"] = str(item["role"]).replace("_"," ") + " delivered"
 			log_event(side,forces[side]["purchase"],"logistics")

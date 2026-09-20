@@ -12,12 +12,16 @@ const ORDER_LIFETIME_SECONDS := 120.0
 const REPORT_DELAY_SECONDS := 1.5
 const ORDER_DELAY_SECONDS := 0.75
 const SENSOR_RANGE := 25.0 # Browser metres / 100.
+const OBJECTIVE_SENSOR_RANGE := 1.8
+const OBJECTIVE_SAMPLE_SECONDS := 2.0
+const OBJECTIVE_REPORT_DELAY_SECONDS := 2.0
 
 var seed := 3701
 var next_update := 0.0
 var next_plan := PLAN_SECONDS
 var sides: Dictionary = {}
 var reports: Array[Dictionary] = []
+var objective_reports: Array[Dictionary] = []
 var orders: Array[Dictionary] = []
 var traces: Array[Dictionary] = []
 
@@ -26,12 +30,15 @@ func setup(value: int = 3701) -> void:
 	next_update = 0.0
 	next_plan = PLAN_SECONDS
 	reports.clear()
+	objective_reports.clear()
 	orders.clear()
 	traces.clear()
 	for side in ["BLU", "RED"]:
 		sides[side] = {
 			"personality": _personality(side),
 			"contacts": {},
+			"objectives": {},
+			"last_objective_report": {},
 			"formations": [],
 			"plan": {},
 			"revision": 0,
@@ -47,6 +54,8 @@ func tick(core) -> void:
 		_deliver_orders(core, now)
 		return
 	next_update = now + UPDATE_SECONDS
+	_observe_objectives(core, now)
+	_deliver_objective_reports(now)
 	_observe(core, now)
 	_deliver_reports(now)
 	_update_factors(core, now)
@@ -79,6 +88,7 @@ func snapshot() -> Dictionary:
 		"next_plan": next_plan,
 		"sides": sides,
 		"reports": reports,
+		"objective_reports": objective_reports,
 		"orders": orders,
 		"traces": traces,
 	}.duplicate(true)
@@ -89,10 +99,59 @@ func restore(data: Dictionary) -> void:
 	next_plan = float(data.get("next_plan", PLAN_SECONDS))
 	sides = data.get("sides", {}).duplicate(true)
 	reports = data.get("reports", []).duplicate(true)
+	objective_reports = data.get("objective_reports", []).duplicate(true)
 	orders = data.get("orders", []).duplicate(true)
 	traces = data.get("traces", []).duplicate(true)
 	if sides.is_empty():
 		setup(seed)
+	for side in sides:
+		if not sides[side].has("objectives"):
+			sides[side]["objectives"] = {}
+		if not sides[side].has("last_objective_report"):
+			sides[side]["last_objective_report"] = {}
+
+func _ensure_objectives(core, side: String) -> void:
+	var known: Dictionary = sides[side]["objectives"]
+	for id in core.objectives:
+		if not known.has(id):
+			# Positions are public. Control status needs a local report.
+			known[id] = {"id": id, "position": _vector2(core.objectives[id].get("position", Vector3.ZERO)), "owner": null, "contested": false, "observed_at": -1.0}
+
+func _observe_objectives(core, now: float) -> void:
+	for side in ["BLU", "RED"]:
+		_ensure_objectives(core, side)
+		var command: Dictionary = sides[side]
+		for id in command["objectives"]:
+			var known: Dictionary = command["objectives"][id]
+			if now - float(command["last_objective_report"].get(id, -INF)) < OBJECTIVE_SAMPLE_SECONDS:
+				continue
+			var observed := false
+			for unit in core.units.get(side, []):
+				if _can_observe(unit) and not bool(unit.get("surrendered", false)) and not bool(unit.get("crew_bailed", unit.get("crewBailed", false))) and not bool(unit.get("external", false)) and not unit.get("carrier", ""):
+					if _position(unit).distance_to(_vector2(known["position"])) <= OBJECTIVE_SENSOR_RANGE:
+						observed = true
+						break
+			if not observed or not core.objectives.has(id):
+				continue
+			var report: Dictionary = known.duplicate(true)
+			report["owner"] = core.objectives[id].get("owner", null)
+			report["contested"] = bool(core.objectives[id].get("contested", false))
+			report["observed_at"] = now
+			command["last_objective_report"][id] = now
+			objective_reports.append({"side": side, "due": now + OBJECTIVE_REPORT_DELAY_SECONDS, "objective": report})
+
+func _deliver_objective_reports(now: float) -> void:
+	var pending: Array[Dictionary] = []
+	for packet in objective_reports:
+		if float(packet["due"]) > now:
+			pending.append(packet)
+			continue
+		var known: Dictionary = sides[packet["side"]]["objectives"]
+		var report: Dictionary = packet["objective"]
+		var id = report["id"]
+		if known.has(id) and float(report["observed_at"]) > float(known[id]["observed_at"]):
+			known[id] = report.duplicate(true)
+	objective_reports = pending
 
 func _observe(core, now: float) -> void:
 	for side in ["BLU", "RED"]:
@@ -187,6 +246,7 @@ func _update_factors(core, now: float) -> void:
 			unit["human_factors"] = factors
 
 func _plan_side(core, side: String, now: float) -> Dictionary:
+	_ensure_objectives(core, side)
 	var command: Dictionary = sides[side]
 	var personality: Dictionary = command["personality"]
 	var own: Array = core.units.get(side, []).filter(func(unit: Dictionary) -> bool: return _commandable(unit))
@@ -199,8 +259,8 @@ func _plan_side(core, side: String, now: float) -> Dictionary:
 	readiness = readiness / maxf(1.0, float(own.size()))
 	var command_position := _command_position(core, side)
 	var scores: Dictionary = {}
-	for id in core.objectives.keys():
-		var objective: Dictionary = core.objectives[id]
+	for id in command["objectives"].keys():
+		var objective: Dictionary = command["objectives"][id]
 		var position := _vector2(objective.get("position", Vector3.ZERO))
 		var threat := 0.0
 		for contact in contacts:
@@ -320,9 +380,10 @@ func _assess_council(core, side: String, plan: Dictionary, own: Array, now: floa
 	for unit in own:
 		seats += int(core.TRANSPORT_CAPACITY.get(str(unit["role"]), 0))
 	var stock: Dictionary = core.depots[side]["mob"]
+	var available_fuel: float = float(core.fuel_economy(side)["available"])
 	var reports := {
 		"TROOPS": _report("Troop Command", infantry >= 2, "%d maneuver groups available" % infantry, now),
-		"FUEL": _report("Fuel Command", float(stock["fuel"]) >= 0.0, "%d fuel at MOB" % int(stock["fuel"]), now),
+		"FUEL": _report("Fuel Command", available_fuel > 0.0, "%d fuel available" % int(available_fuel), now),
 		"MOTORCADE": _report("Motorcade", seats >= 4, "%d troop seats available" % seats, now),
 		"AIR": _report("Air Command", aircraft > 0, "%d aircraft available" % aircraft, now),
 		"LOGISTICS": _report("Logistics", float(stock["repair"]) + float(stock["ammo"]) + float(stock["fuel"]) > 0.0, "%d physical stock" % int(float(stock["repair"]) + float(stock["ammo"]) + float(stock["fuel"])), now),

@@ -440,9 +440,10 @@ func issue_order(point: Vector3, target: CombatUnit = null) -> void:
 			offset = Vector3(float(i % 3 - 1) * 0.15, 0.0, floorf(float(i) / 3.0) * 0.15)
 		var unit := controlled[i]
 		unit.core_record["manual_until"] = elapsed+120.0
-		if unit.role in SimulationCore.NAVAL:
-			core.set_maritime_order("BLU" if unit.team == 0 else "RED",str(unit.core_record["id"]),Vector2(point.x,point.z))
-		if unit.move_to(point + offset, command_mode == "ADVANCE"):
+		var destination := point+offset
+		if unit.move_to(destination, command_mode == "ADVANCE"):
+			if unit.role in SimulationCore.NAVAL:
+				core.set_maritime_order("BLU" if unit.team == 0 else "RED",str(unit.core_record["id"]),Vector2(destination.x,destination.z))
 			success += 1
 			if target != null and target.team != unit.team:
 				unit.attack_target = target
@@ -539,7 +540,6 @@ func _update_command_orders() -> void:
 							core.embark(side,str(pickup.core_record["id"]),str(record["id"]))
 						elif unit.route.is_empty(): unit.move_to(pickup.position,false)
 				continue
-			if unit.role in SimulationCore.NAVAL: continue
 			var mission: Dictionary = record.get("command_mission", {})
 			if mission.is_empty():
 				unit.hold()
@@ -552,6 +552,13 @@ func _update_command_orders() -> void:
 				continue
 			var ordered: Variant = mission.get("destination", Vector2(target.x, target.z))
 			var mission_target := Vector3(float(ordered.x), 0.0, float(ordered.y)) if ordered is Vector2 else target
+			if unit.role in SimulationCore.NAVAL:
+				var maritime_target := map.maritime_staging_point(mission_target)
+				if unit.route.is_empty() and unit.position.distance_to(maritime_target) > 0.12:
+					if unit.move_to(maritime_target,task == "ASSAULT"):
+						core.set_maritime_order(side,str(record["id"]),Vector2(maritime_target.x,maritime_target.z))
+				unit.order = "%s · OFFSHORE OBJ %s" % [task,str(mission.get("target",force["target"]))]
+				continue
 			if unit.personnel > 0 and unit.position.distance_to(target) > 5.0:
 				if not record.has("transport_wait"): record["transport_wait"] = elapsed
 				if elapsed-float(record["transport_wait"]) < 60.0:
@@ -770,6 +777,18 @@ func _run_smoke_test() -> void:
 	assert(carrier["maritime"]["phase"] == "undeploying")
 	core.time += SimulationCore.CARRIER_UNDEPLOY_SECONDS; core._tick_units(0.0)
 	assert(carrier["maritime"]["phase"] == "moving")
+	carrier["position"] = map.naval_base("BLU")
+	carrier["command_mission"] = {"task":"SUPPORT","target":"G","destination":Vector2(g.x,g.z),"revision":1}
+	_sync_core_visuals()
+	var carrier_visual: CombatUnit = visual_core_units["smoke-carrier"]
+	carrier_visual.position = carrier["position"]
+	_update_command_orders()
+	assert(not carrier_visual.route.is_empty() and is_equal_approx(carrier_visual.route[-1].x,-120.0),"AI commander must issue a validated offshore naval route.")
+	carrier_visual.route.clear()
+	carrier["maritime"]["phase"] = "deployed"
+	selected_units = [carrier_visual]
+	issue_order(Vector3.ZERO)
+	assert(carrier["maritime"]["phase"] == "deployed" and carrier_visual.route.is_empty(),"A rejected dry naval order must not undeploy a carrier or replace its route.")
 	for unit in units: unit.position = Vector3(90,0,0)
 	for id in core.objectives: core.objectives[id]["owner"] = "RED"
 	_update_capture(0.05); _update_capture(60.0)

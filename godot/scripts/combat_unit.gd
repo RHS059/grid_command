@@ -298,13 +298,31 @@ func set_selected(value: bool) -> void:
 func move_to(destination: Vector3, attack_move: bool = true) -> bool:
 	if not is_alive or role == "COMMAND" or float(stats["speed"]) <= 0.0:
 		return false
+	if role in SimulationCore.NAVAL:
+		var candidate := map.find_maritime_route(position,destination,role == "AMPHIBIOUS_APC")
+		if candidate.is_empty():
+			order = "NO WATER ROUTE"
+			return false
+		var recovery := map.maritime_recovery_distance(destination,"BLU" if team == 0 else "RED",role == "AMPHIBIOUS_APC")
+		if is_inf(recovery):
+			order = "NO FRIENDLY PORT ROUTE"
+			return false
+		var distance := preload("res://scripts/maritime_navigation.gd").length(position,candidate)+recovery
+		var required := 15.0+distance*100.0/float(SimulationCore.OPERATIONAL_RANGE.get(role,100000))*100.0
+		if float(core_record.get("fuel",100.0)) < required:
+			order = "MISSION FUEL REQUIRED %d%%" % ceili(required)
+			return false
+		route = candidate
+		attack_target = null
+		order = "ADVANCE" if attack_move else "MOVE"
+		return true
 	attack_target = null
 	if SimulationCore.is_vehicle(role) and not core_record.is_empty():
 		var required := position.distance_to(destination)*100.0/float(SimulationCore.OPERATIONAL_RANGE.get(role,100000))*100.0*2.7+15.0
 		if float(core_record.get("fuel",0)) < required:
 			order = "MISSION FUEL REQUIRED %d%%" % ceili(required)
 			return false
-	if airborne or role in SimulationCore.NAVAL:
+	if airborne:
 		route = PackedVector3Array([Vector3(clampf(destination.x, -180, 150), 0, clampf(destination.z, -340, 340))])
 	else:
 		route = map.find_route(position, destination)

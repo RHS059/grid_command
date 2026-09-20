@@ -207,3 +207,50 @@ func find_route(from: Vector3,to: Vector3) -> PackedVector3Array:
 		route[0] = from
 		if not nav.is_point_solid(_cell_for(to)): route.append(Vector3(to.x,0,to.z))
 	return route
+
+# This network defines the schematic San Diego offshore operating area.
+var maritime_water: Array = [PackedVector2Array([Vector2(-180,-340),Vector2(-96,-340),Vector2(-96,340),Vector2(-180,340)])]
+var maritime_ports: Array = [
+	{"id":"BLU_PORT","side":"BLU","position":Vector3(-120,0,240)},
+	{"id":"RED_PORT","side":"RED","position":Vector3(-120,0,-260)}
+]
+var maritime_landings: Array = [
+	{"id":"BLU_SHORE","water":Vector3(-96.1,0,240),"shore":Vector3(-95.9,0,240)},
+	{"id":"RED_SHORE","water":Vector3(-96.1,0,-260),"shore":Vector3(-95.9,0,-260)}
+]
+
+func find_maritime_route(from: Vector3,to: Vector3,amphibious: bool = false) -> PackedVector3Array:
+	var navigation = preload("res://scripts/maritime_navigation.gd")
+	var start := Vector3(from.x,0,from.z)
+	var finish := Vector3(to.x,0,to.z)
+	var prefix := PackedVector3Array()
+	var suffix := PackedVector3Array()
+	if amphibious:
+		for link in maritime_landings:
+			# Only the authored link permits travel across the water boundary.
+			var water: Vector3 = link["water"]
+			var shore: Vector3 = link["shore"]
+			if start.distance_to(water)+start.distance_to(shore) <= water.distance_to(shore)+0.00001:
+				prefix.append(water)
+				start = water
+			if finish.distance_to(shore) < 0.00001:
+				suffix.append(shore)
+				finish = water
+	var result: PackedVector3Array = navigation.route(maritime_water,start,finish)
+	if result.is_empty(): return result
+	prefix.append_array(result)
+	prefix.append_array(suffix)
+	return prefix
+
+func maritime_recovery_distance(from: Vector3,side: String,amphibious: bool = false) -> float:
+	var shortest := INF
+	for port in maritime_ports:
+		if str(port["side"]) != side: continue
+		var recovery := find_maritime_route(from,port["position"],amphibious)
+		if not recovery.is_empty():
+			shortest = minf(shortest,preload("res://scripts/maritime_navigation.gd").length(from,recovery))
+	return shortest
+
+func maritime_staging_point(destination: Vector3) -> Vector3:
+	# Surface units remain offshore at the objective latitude.
+	return Vector3(-120.0,0.0,clampf(destination.z,-330.0,330.0))

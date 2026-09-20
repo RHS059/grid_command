@@ -89,6 +89,21 @@ func _run() -> void:
 	check(squad["transport"].is_empty() and squad["position"] == carrier["position"] and squad["members"] == 0 and squad["hp"] == 0.0,"Destroyed aircraft did not kill its occupants.")
 	check(core.forces["BLU"]["casualties"] == 4,"Passenger losses were not recorded.")
 
+	# Vehicle procurement preserves commissioning and recovery fuel reserves.
+	core = fixture()
+	core.forces["BLU"]["sp"] = 20000
+	core.forces["BLU"]["manpower"] = 120
+	check(not core.procure("BLU","APC"),"Vehicle procurement ignored an empty fuel economy.")
+	check(str(core.forces["BLU"]["purchase"]).begins_with("Fuel command holds APC"),"Fuel hold did not explain the commissioning shortage.")
+	core.depots["BLU"]["airfield"]["fuel"] = 2000.0
+	check(core.procure("BLU","APC"),"Funded vehicle procurement was rejected with sufficient protected fuel.")
+	core.time = float(core.forces["BLU"]["queue"][0]["due"])
+	core._process_queues()
+	check(is_equal_approx(float(core._unit("BLU",core.units["BLU"].back()["id"])["fuel"]),25.0),"Ground vehicles did not arrive with browser commissioning fuel.")
+	var depleted := ready(core,"BLU","RIFLE","depleted")
+	depleted["members"] = 1
+	check(is_equal_approx(core._count("BLU","RIFLE"),0.25),"Depleted infantry did not count fractionally toward force structure.")
+
 	# Context actions: jammer construction and passenger/crew dismount.
 	core = fixture()
 	var builder := ready(core,"BLU","ENGINEER","builder",Vector3(2,0,2))
