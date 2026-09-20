@@ -102,9 +102,9 @@ test('GLSL and WGSL contour shaders use restrained geometric Fresnel without tex
       assert.doesNotMatch(shader, /texture|sampler|discard|dFdx|dpdx|alpha\s*=|finalEmissive\s*[+*=]/)
       assert.equal(shader.includes('uniforms.gridUnitContour'), language === ShaderLanguage.WGSL)
     }
-    assert.ok(UNIT_CONTOUR.strength > 0 && UNIT_CONTOUR.strength <= .03)
+    assert.ok(UNIT_CONTOUR.strength > 0 && UNIT_CONTOUR.strength <= .15)
     // Fourth-power Fresnel is zero face on, narrow at 60 degrees, full at grazing.
     assert.equal((1 - 1) ** UNIT_CONTOUR.power, 0)
-    assert.equal((1 - .5) ** UNIT_CONTOUR.power * UNIT_CONTOUR.strength, .0015625)
+    assert.equal((1 - .5) ** UNIT_CONTOUR.power * UNIT_CONTOUR.strength, .015)
   } finally { runtime.dispose() }
 })

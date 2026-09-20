@@ -7,7 +7,7 @@ import type { AbstractEngine } from '@babylonjs/core/Engines/abstractEngine'
 import type { Scene } from '@babylonjs/core/scene'
 import type { Object3D } from './scene-data'
 
-export const UNIT_CONTOUR = Object.freeze({ strength: .025, power: 4 })
+export const UNIT_CONTOUR = Object.freeze({ strength: .12, power: 3 })
 
 /** Factories opt in at the unit root; lights, exhaust and muzzle effects opt out. */
 export function hasUnitSurface(object: Object3D) {
@@ -46,7 +46,7 @@ export class UnitContourPlugin extends MaterialPluginBase {
       CUSTOM_FRAGMENT_BEFORE_FINALCOLORCOMPOSITION: `#if !defined(UNLIT) && !defined(SM_FLOAT)
 ${scalar} gridContourFacing=clamp(abs(dot(geometricNormalW,viewDirectionW)),0.,1.);
 ${scalar} gridContourEdge=pow(1.-gridContourFacing,${UNIT_CONTOUR.power.toFixed(1)});
-${scalar} gridContourPaint=.4+.6*clamp(dot(surfaceAlbedo,${vector}(.2126,.7152,.0722)),0.,1.);
+${scalar} gridContourPaint=.65+.35*clamp(dot(surfaceAlbedo,${vector}(.2126,.7152,.0722)),0.,1.);
 ${scalar} gridContourEmission=1.-clamp(max(finalEmissive.r,max(finalEmissive.g,finalEmissive.b)),0.,1.);
 finalAmbient+=${vector}(${gpu ? 'uniforms.' : ''}gridUnitContour*gridContourEdge*gridContourPaint*gridContourEmission);
 #endif`,
