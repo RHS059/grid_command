@@ -11,11 +11,29 @@ from pathlib import Path
 
 
 RUNTIME_SUFFIXES = {
-    ".gd", ".gdshader", ".glb", ".gltf", ".jpg", ".jpeg", ".json",
+    ".bin", ".gd", ".gdshader", ".glb", ".gltf", ".jpg", ".jpeg", ".json", ".pem",
     ".material", ".mesh", ".ogg", ".png", ".res", ".scn", ".svg",
     ".tres", ".tscn", ".wav", ".webp",
 }
-RESTART_PATHS = {"scripts/update_service.gd"}
+RESTART_PATHS = {"scripts/update_service.gd", "scripts/geographic_http.gd", "tools/sync_browser_assets.py"}
+CATALOG_SOURCE_PATHS = {"public/san-diego-buildings.json", "public/_buildings.json"}
+SHARED_ASSET_SOURCE_PATH = "public/models"
+GEOGRAPHIC_SOURCE_PATHS = {
+    "lib/game/geography.ts",
+    "lib/game/geo-tile-geometry.ts",
+    "lib/game/installation-footprints.ts",
+    "lib/game/theater.ts",
+    "package.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+}
+GEOGRAPHIC_PROJECT_INPUT_PATHS = {
+    "data/certificates/mozilla-ca.pem",
+    "data/certificates/mozilla-ca-source.json",
+    "data/theater.json",
+    "tools/geographic/build-catalog.ts",
+    "tools/geographic/format.ts",
+}
 
 
 def run(*args: str) -> str:
@@ -45,6 +63,7 @@ def main() -> None:
     deleted: list[str] = []
     restart_reasons: list[str] = []
     previous_version = ""
+    geographic_inputs_changed = False
 
     if not args.previous_ref:
         restart_reasons.append("This is the first updater-enabled release.")
@@ -65,10 +84,28 @@ def main() -> None:
                 if project_without_version(prior_project) != project_without_version(current_project):
                     restart_reasons.append("Startup configuration changed.")
                 continue
+            if relative in GEOGRAPHIC_PROJECT_INPUT_PATHS:
+                geographic_inputs_changed = True
             if relative in RESTART_PATHS or Path(relative).suffix.lower() in {".dll", ".exe", ".gdextension", ".so", ".dylib"}:
                 restart_reasons.append(f"Startup or native file changed: {relative}")
             if Path(relative).suffix.lower() in RUNTIME_SUFFIXES:
                 changed.append("res://" + relative)
+        input_lines = run(
+            "git", "-C", str(repo), "diff", "--name-only", args.previous_ref, "HEAD", "--",
+            *sorted(CATALOG_SOURCE_PATHS | GEOGRAPHIC_SOURCE_PATHS),
+        ).splitlines()
+        shared_asset_lines = run(
+            "git", "-C", str(repo), "diff", "--name-only", args.previous_ref, "HEAD", "--",
+            SHARED_ASSET_SOURCE_PATH,
+        ).splitlines()
+        if any(path in CATALOG_SOURCE_PATHS for path in input_lines):
+            restart_reasons.append("The generated San Diego building catalog changed.")
+        if any(path in GEOGRAPHIC_SOURCE_PATHS for path in input_lines):
+            geographic_inputs_changed = True
+        if shared_asset_lines:
+            restart_reasons.append("Shared browser vehicle assets changed and were resynchronized into the native build.")
+        if geographic_inputs_changed:
+            restart_reasons.append("The generated global geographic warm cache changed.")
         if deleted:
             restart_reasons.append("Resources were deleted and cannot be removed by an overlay pack.")
 
@@ -88,7 +125,7 @@ def main() -> None:
     if live_patch:
         base_pack = args.base_pack.resolve().as_posix()
         with (project / "export_presets.cfg").open("a", encoding="utf-8") as preset:
-            preset.write(f'''\n[preset.1]\n\nname="Delta Patch"\nplatform="Windows Desktop"\nrunnable=false\ncustom_features=""\nexport_filter="all_resources"\ninclude_filter=""\nexclude_filter=""\nexport_path="build/release/update.pck"\npatches=PackedStringArray("{base_pack}")\nencrypt_pck=false\nencrypt_directory=false\n\n[preset.1.options]\n\nbinary_format/embed_pck=false\ntexture_format/s3tc_bptc=true\ntexture_format/etc2_astc=false\nbinary_format/architecture="x86_64"\n''')
+            preset.write(f'''\n[preset.1]\n\nname="Delta Patch"\nplatform="Windows Desktop"\nrunnable=false\ncustom_features=""\nexport_filter="all_resources"\ninclude_filter="data/**/*.json,data/**/*.bin,data/**/*.pem,data/certificates/LICENSE-MPL-2.0.txt"\nexclude_filter=""\nexport_path="build/release/update.pck"\npatches=PackedStringArray("{base_pack}")\nencrypt_pck=false\nencrypt_directory=false\n\n[preset.1.options]\n\nbinary_format/embed_pck=false\ntexture_format/s3tc_bptc=true\ntexture_format/etc2_astc=false\nbinary_format/architecture="x86_64"\n''')
 
 
 if __name__ == "__main__":

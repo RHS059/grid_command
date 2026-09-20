@@ -7,6 +7,16 @@ on:
     paths:
       - "godot/**"
       - ".github/workflows/godot-release.yml"
+      - "public/san-diego-buildings.json"
+      - "public/_buildings.json"
+      - "public/models/**"
+      - "lib/game/geography.ts"
+      - "lib/game/geo-tile-geometry.ts"
+      - "lib/game/installation-footprints.ts"
+      - "lib/game/theater.ts"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
 
 permissions:
   contents: write
@@ -61,6 +71,22 @@ jobs:
             unzip -q "$RUNNER_TEMP/previous-build.zip" -d "$RUNNER_TEMP/previous"
           fi
 
+      - name: Install browser geographic build dependencies
+        if: steps.version.outputs.exists != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          corepack enable
+          pnpm install --frozen-lockfile
+
+      - name: Sync shared vehicle assets
+        if: steps.version.outputs.exists != 'true'
+        shell: bash
+        run: |
+          python3 "$PROJECT_DIR/tools/sync_browser_assets.py" \
+            --source public/models \
+            --destination "$PROJECT_DIR/assets/models"
+
       - name: Download Godot and export templates
         if: steps.version.outputs.exists != 'true'
         shell: bash
@@ -75,6 +101,37 @@ jobs:
           cp -R "$RUNNER_TEMP/godot/templates/templates/." "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/"
           chmod +x "$RUNNER_TEMP/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64"
           echo "GODOT=$RUNNER_TEMP/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64" >> "$GITHUB_ENV"
+
+      - name: Build streamed San Diego catalog
+        if: steps.version.outputs.exists != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_json="public/san-diego-buildings.json"
+          preset_json="public/_buildings.json"
+          if [[ ! -f "$source_json" ]]; then source_json="$PROJECT_DIR/data/san-diego-buildings.json"; fi
+          if [[ ! -f "$preset_json" ]]; then preset_json="$PROJECT_DIR/data/building-presets.json"; fi
+          python3 "$PROJECT_DIR/tools/theater/build_catalog.py" \
+            --source "$source_json" \
+            --presets "$preset_json" \
+            --output "$PROJECT_DIR/data/generated/san_diego"
+          python3 "$PROJECT_DIR/tools/theater/build_catalog.py" \
+            --source "$source_json" \
+            --presets "$preset_json" \
+            --output "$PROJECT_DIR/data/generated/san_diego" \
+            --check
+
+      - name: Build global geographic warm cache
+        if: steps.version.outputs.exists != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm exec tsx "$PROJECT_DIR/tools/geographic/build-catalog.ts" \
+            --source "$GITHUB_WORKSPACE" \
+            --theater "$PROJECT_DIR/data/theater.json" \
+            --output "$PROJECT_DIR/data/generated/geographic" \
+            --zooms 10,12
+          pnpm exec tsx --test "$PROJECT_DIR/tools/geographic/format.test.ts"
 
       - name: Plan release
         if: steps.version.outputs.exists != 'true'
@@ -96,7 +153,17 @@ jobs:
           "$GODOT" --headless --path "$PROJECT_DIR" --quit-after 180 -- --smoke-test 2>&1 | tee "$RUNNER_TEMP/godot-smoke.log"
           grep -F "GRID_COMMAND_SMOKE_OK" "$RUNNER_TEMP/godot-smoke.log"
           grep -F "GRID_COMMAND_UPDATE_SMOKE_OK" "$RUNNER_TEMP/godot-smoke.log"
-          ! grep -E "SCRIPT ERROR|Parse Error" "$RUNNER_TEMP/godot-smoke.log"
+          "$GODOT" --headless --path "$PROJECT_DIR" --script res://tests/building_streamer_smoke.gd 2>&1 | tee "$RUNNER_TEMP/building-streamer-smoke.log"
+          grep -F "GRID_COMMAND_BUILDING_STREAMER_SMOKE_OK" "$RUNNER_TEMP/building-streamer-smoke.log"
+          "$GODOT" --headless --path "$PROJECT_DIR" --script res://tests/geographic_smoke.gd 2>&1 | tee "$RUNNER_TEMP/geographic-smoke.log"
+          grep -F "GRID_COMMAND_GEOGRAPHIC_SMOKE_OK" "$RUNNER_TEMP/geographic-smoke.log"
+          "$GODOT" --headless --path "$PROJECT_DIR" --script res://tests/geographic_budget_smoke.gd 2>&1 | tee "$RUNNER_TEMP/geographic-budget-smoke.log"
+          grep -F "GRID_COMMAND_GEOGRAPHIC_BUDGET_SMOKE_OK" "$RUNNER_TEMP/geographic-budget-smoke.log"
+          "$GODOT" --headless --path "$PROJECT_DIR" --script res://tests/geographic_global_smoke.gd 2>&1 | tee "$RUNNER_TEMP/geographic-global-smoke.log"
+          grep -F "GRID_COMMAND_GLOBAL_GEOGRAPHIC_SMOKE_OK" "$RUNNER_TEMP/geographic-global-smoke.log"
+          "$GODOT" --headless --path "$PROJECT_DIR" --script res://tests/geographic_global_smoke.gd -- --network 2>&1 | tee "$RUNNER_TEMP/geographic-live-smoke.log"
+          grep -F "GRID_COMMAND_GLOBAL_GEOGRAPHIC_LIVE_OK" "$RUNNER_TEMP/geographic-live-smoke.log"
+          ! grep -E "SCRIPT ERROR|Parse Error" "$RUNNER_TEMP/godot-smoke.log" "$RUNNER_TEMP/building-streamer-smoke.log" "$RUNNER_TEMP/geographic-smoke.log" "$RUNNER_TEMP/geographic-budget-smoke.log" "$RUNNER_TEMP/geographic-global-smoke.log" "$RUNNER_TEMP/geographic-live-smoke.log"
           mkdir -p "$PROJECT_DIR/build/windows" "$PROJECT_DIR/build/release"
           "$GODOT" --headless --path "$PROJECT_DIR" --export-release "Windows Desktop" "build/windows/GridCommand.exe"
           if jq -e '.live_patch' "$RUNNER_TEMP/release-plan.json" >/dev/null; then

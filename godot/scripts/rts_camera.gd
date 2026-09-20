@@ -1,18 +1,22 @@
 extends Camera3D
 class_name RTSCamera
 
-var focus := Vector3(7.0, 0.0, 12.0)
-var distance := 113.0
-var target_distance := 113.0
-var yaw := -0.25
+const MIN_DISTANCE := 0.15
+const MAX_DISTANCE := 12000.0
+var geographic_bounds := Rect2(-400000,-400000,800000,800000)
+
+var focus := Vector3(-5.0, 0.0, 0.0)
+var distance := 900.0
+var target_distance := 900.0
+var yaw := 0.0
 var pitch := 0.91
 var dragging := false
 var drag_mode := 0
 var input_enabled := true
 
 func _ready() -> void:
-	near = 0.4
-	far = 700.0
+	near = 0.003
+	far = 2400.0
 	fov = 48.0
 	current = true
 	_update_pose(1.0)
@@ -36,8 +40,8 @@ func _process(delta: float) -> void:
 			var right := Vector3(cos(yaw), 0.0, -sin(yaw))
 			var back := Vector3(sin(yaw), 0.0, cos(yaw))
 			focus += (right * axis.normalized().x + back * axis.normalized().y) * distance * 0.56 * delta
-		focus.x = clampf(focus.x, -75.0, 86.0)
-		focus.z = clampf(focus.z, -80.0, 85.0)
+		focus.x = clampf(focus.x, geographic_bounds.position.x, geographic_bounds.end.x)
+		focus.z = clampf(focus.z, geographic_bounds.position.y, geographic_bounds.end.y)
 	_update_pose(delta)
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -45,9 +49,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
-			target_distance = maxf(22.0, target_distance * 0.88)
+			target_distance = maxf(MIN_DISTANCE, target_distance * 0.88)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
-			target_distance = minf(190.0, target_distance * 1.12)
+			target_distance = minf(MAX_DISTANCE, target_distance * 1.12)
 		elif event.button_index == MOUSE_BUTTON_MIDDLE:
 			dragging = event.pressed
 			drag_mode = 1 if event.shift_pressed else 0
@@ -62,6 +66,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _update_pose(delta: float) -> void:
 	distance = lerpf(distance, target_distance, 1.0 - exp(-10.0 * delta))
+	# Keep enough depth precision for geographic road/water layers separated by centimetres.
+	# The ground is always farther than half the orbit distance inside this pitch range.
+	near = maxf(0.003,distance*0.25)
+	far = maxf(2400.0,distance*4.0)
 	position = focus + Vector3(sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch)) * distance
 	look_at(focus, Vector3.UP)
 
@@ -69,4 +77,7 @@ func ground_point(screen_point: Vector2) -> Variant:
 	return Plane(Vector3.UP, 0.0).intersects_ray(project_ray_origin(screen_point), project_ray_normal(screen_point))
 
 func focus_at(point: Vector3) -> void:
-	focus = Vector3(point.x, 0.0, point.z)
+	focus = point
+
+func set_geographic_bounds(northwest: Vector3, southeast: Vector3) -> void:
+	geographic_bounds = Rect2(Vector2(northwest.x,northwest.z),Vector2(southeast.x-northwest.x,southeast.z-northwest.z)).abs()

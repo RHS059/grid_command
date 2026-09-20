@@ -3,4 +3,18 @@
 build/
 godot-*.zip
 *.tmp
-
+__pycache__/
+*.pyc
+data/generated/
+data/san-diego-buildings.json
+data/building-presets.json
+# These source assets already live in the browser project's public/models folder.
+# CI copies them here before Godot imports and exports the native build.
+assets/models/amphibious_apc*
+assets/models/mec_lift.glb*
+assets/models/soldier.glb*
+assets/models/soldier-weapons.glb*
+assets/models/carrier-soldier.glb*
+assets/models/troop_transport.glb*
+assets/models/vtol_attack.glb*
+assets/models/vtol_cargo.glb*

@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "source": "work/grid_command/lib/game/theater.ts",
+  "origin": [-117.08, 32.82],
+  "native_scale": "metres / 100",
+  "objectives": [["A", "San Pasqual Valley", -117.0199, 33.078], ["B", "Rancho Bernardo", -117.074, 33.017], ["C", "Carmel Mountain", -117.083, 32.978], ["D", "Sabre Springs", -117.094, 32.948], ["E", "Scripps Ranch", -117.11, 32.899], ["F", "Tierrasanta", -117.098, 32.832], ["G", "Mission Valley", -117.11, 32.777], ["H", "City Heights", -117.103, 32.739], ["I", "South Bay corridor", -117.058, 32.638], ["J", "Otay Mesa", -117.028, 32.574]],
+  "bases": {"BLU": [-117.035, 32.546], "RED": [-117.005, 33.092]},
+  "airbases": {"BLU": [-117.026, 32.553], "RED": [-117.019, 33.084]},
+  "corridor": [[-117.005, 33.092], [-117.0199, 33.078], [-117.069, 33.072], [-117.079, 33.045], [-117.074, 33.017], [-117.083, 32.978], [-117.094, 32.948], [-117.11, 32.899], [-117.113, 32.862], [-117.098, 32.832], [-117.11, 32.777], [-117.103, 32.739], [-117.094, 32.702], [-117.066, 32.674], [-117.058, 32.638], [-117.028, 32.574], [-117.035, 32.546]],
+  "building_catalog": "data/san-diego-buildings.json",
+  "building_catalog_source": "work/grid_command/public/san-diego-buildings.json (OpenFreeMap / OpenStreetMap)"
+}

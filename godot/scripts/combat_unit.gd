@@ -7,16 +7,11 @@ signal destroyed(unit: CombatUnit)
 const FRESNEL = preload("res://shaders/unit_fresnel.gdshader")
 const BLUE := Color("66b9ec")
 const RED := Color("e98d79")
-const SPECS := {
-	"tank": {"name": "MAIN BATTLE TANK", "size": 4.7, "speed": 5.5, "health": 160.0, "range": 25.0, "damage": 24.0, "rate": 2.2},
-	"apc": {"name": "ARMORED CARRIER", "size": 4.3, "speed": 7.5, "health": 110.0, "range": 20.0, "damage": 10.0, "rate": 1.0},
-	"troop_transport": {"name": "TROOP TRANSPORT", "size": 4.6, "speed": 8.2, "health": 85.0, "range": 16.0, "damage": 6.0, "rate": 1.0},
-	"soldier": {"name": "INFANTRY TEAM", "size": 1.7, "speed": 4.0, "health": 65.0, "range": 16.0, "damage": 5.0, "rate": 0.7},
-	"fighter": {"name": "FIGHTER", "size": 8.2, "speed": 16.0, "health": 100.0, "range": 30.0, "damage": 13.0, "rate": 1.8},
-	"vtol_attack": {"name": "ATTACK HELICOPTER", "size": 6.1, "speed": 10.0, "health": 100.0, "range": 24.0, "damage": 10.0, "rate": 1.4}
-}
+const MODEL_LENGTH := {"command":0.025,"soldier":0.018,"tank":0.095,"apc":0.07,"cannon_apc":0.075,"troop_transport":0.07,"fighter":0.15,"cas":0.18,"vtol_attack":0.14,"vtol_cargo":0.20,"mec_lift":0.30,"cargo_plane":0.40,"recon_uav":0.06,"aircraft_carrier":3.30,"missile_cruiser":1.75,"patrol_boat":0.27,"landing_craft":0.46,"amphibious_apc":0.085,"truck":0.09,"forklift":0.035,"uav_jammer":0.03}
 
 var kind := "tank"
+var role := "TANK"
+var core_record: Dictionary = {}
 var team := 0
 var call_sign := "ALPHA 01"
 var map: TacticalMap
@@ -43,17 +38,20 @@ var anim_idle := ""
 var anim_move := ""
 var phase := 0.0
 var imported_model := false
+var personnel := 0
 
 func _ready() -> void:
-	stats = SPECS.get(kind, SPECS["tank"])
-	max_health = float(stats["health"])
-	health = max_health
-	airborne = kind in ["fighter", "vtol_attack"]
-	altitude = 10.0 if kind == "fighter" else 7.0 if airborne else 0.0
+	var catalog: Array = SimulationCore.CATALOG.get(role,SimulationCore.CATALOG["RIFLE"])
+	stats = {"name":role.replace("_"," "),"size":MODEL_LENGTH.get(kind,0.07),"speed":float(catalog[1])/100.0,"health":100.0,"range":float(catalog[2])/100.0,"damage":float(catalog[3]),"rate":2.0}
+	max_health = 100.0
+	health = float(core_record.get("hp",max_health))
+	airborne = role in SimulationCore.AIR
+	personnel = int(catalog[0]) if not SimulationCore.is_vehicle(role) and role != "COMMAND" else 0
+	altitude = 1.8 if role in ["JET","CAS_FIGHTER","CARGO_PLANE"] else 0.8 if airborne else 0.0
 	phase = float(get_instance_id() % 100) * 0.1
 	visual = Node3D.new()
 	visual.name = "UnitVisual"
-	visual.position.y = altitude + 0.14
+	visual.position.y = altitude + 0.0014
 	add_child(visual)
 	_create_model()
 	_create_markers()
@@ -93,6 +91,10 @@ func _create_model() -> void:
 			visual_meshes.clear()
 	if not imported_model:
 		_create_fallback()
+		# Fallback dimensions are metres; the theater uses metres / 100.
+		for part in visual_meshes:
+			part.scale *= 0.01
+			part.position *= 0.01
 	overlay = ShaderMaterial.new()
 	overlay.shader = FRESNEL
 	overlay.set_shader_parameter("team_color", BLUE if team == 0 else RED)
@@ -101,7 +103,7 @@ func _create_model() -> void:
 		mesh.layers = 2 if team == 0 else 4
 		# The dummy renderer has no shader material storage in headless runs.
 		mesh.material_overlay = overlay if DisplayServer.get_name() != "headless" else null
-		mesh.visibility_range_end = 310.0
+		mesh.visibility_range_end = 1400.0
 		# Keep the authored smooth normals and all source textures.
 		for surface in range(mesh.mesh.get_surface_count()):
 			var source: Material = mesh.get_active_material(surface)
@@ -109,7 +111,6 @@ func _create_model() -> void:
 				var mat: StandardMaterial3D = source.duplicate()
 				mat.roughness = maxf(mat.roughness, 0.60)
 				mat.metallic = minf(mat.metallic, 0.45)
-				mat.albedo_color = mat.albedo_color.lerp(BLUE if team == 0 else RED, 0.07)
 				mesh.set_surface_override_material(surface, mat)
 
 func _collect_meshes(node: Node) -> void:
@@ -164,7 +165,7 @@ func _box_part(size: Vector3, pos: Vector3, color: Color) -> void:
 func _create_fallback() -> void:
 	var paint := Color("738f96") if team == 0 else Color("a28c7a")
 	var dark := Color("34464b")
-	if kind == "soldier":
+	if kind in ["soldier", "command"]:
 		var body := CapsuleMesh.new()
 		body.radius = 0.30
 		body.height = 1.3
@@ -197,13 +198,13 @@ func _create_fallback() -> void:
 func _create_markers() -> void:
 	selection_ring = MeshInstance3D.new()
 	var torus := TorusMesh.new()
-	var radius := 1.1 if kind == "soldier" else 2.8 if airborne else 2.1
+	var radius := maxf(0.025,float(stats["size"])*0.6)
 	torus.inner_radius = radius
-	torus.outer_radius = radius + 0.13
+	torus.outer_radius = radius + 0.003
 	torus.rings = 40
 	torus.ring_segments = 6
 	selection_ring.mesh = torus
-	selection_ring.position.y = 0.18
+	selection_ring.position.y = 0.002
 	var mat := TacticalMap.material(BLUE if team == 0 else RED)
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	selection_ring.material_override = mat
@@ -212,12 +213,12 @@ func _create_markers() -> void:
 	add_child(selection_ring)
 	team_marker = MeshInstance3D.new()
 	var marker := CylinderMesh.new()
-	marker.top_radius = 0.42
-	marker.bottom_radius = 0.42
-	marker.height = 0.045
+	marker.top_radius = 0.008
+	marker.bottom_radius = 0.008
+	marker.height = 0.0005
 	marker.radial_segments = 16
 	team_marker.mesh = marker
-	team_marker.position = Vector3(0, 0.15, 0)
+	team_marker.position = Vector3(0, 0.003, 0)
 	team_marker.material_override = mat
 	team_marker.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(team_marker)
@@ -255,6 +256,8 @@ func _create_exhaust() -> void:
 	particle_mesh.material = mat
 	exhaust.mesh = particle_mesh
 	exhaust.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	exhaust.scale = Vector3.ONE*0.01
+	exhaust.position *= 0.01
 	visual.add_child(exhaust)
 
 func set_selected(value: bool) -> void:
@@ -264,11 +267,16 @@ func set_selected(value: bool) -> void:
 		overlay.set_shader_parameter("strength", 0.17 if selected else 0.10)
 
 func move_to(destination: Vector3, attack_move: bool = true) -> bool:
-	if not is_alive:
+	if not is_alive or role == "COMMAND" or float(stats["speed"]) <= 0.0:
 		return false
 	attack_target = null
-	if airborne:
-		route = PackedVector3Array([Vector3(clampf(destination.x, -86, 86), 0, clampf(destination.z, -84, 84))])
+	if SimulationCore.is_vehicle(role) and not core_record.is_empty():
+		var required := position.distance_to(destination)*100.0/float(SimulationCore.OPERATIONAL_RANGE.get(role,100000))*100.0*2.7+15.0
+		if float(core_record.get("fuel",0)) < required:
+			order = "MISSION FUEL REQUIRED %d%%" % ceili(required)
+			return false
+	if airborne or role in SimulationCore.NAVAL:
+		route = PackedVector3Array([Vector3(clampf(destination.x, -180, 150), 0, clampf(destination.z, -340, 340))])
 	else:
 		route = map.find_route(position, destination)
 		if route.size() > 1:
@@ -287,24 +295,39 @@ func hold() -> void:
 func tick(delta: float, units: Array[CombatUnit], elapsed: float) -> void:
 	if not is_alive:
 		return
+	var transport: Dictionary = core_record.get("transport",{})
+	var mounted: bool = transport.get("phase","") in ["mounting","seated","dismounting"]
+	visual.visible = not mounted
+	team_marker.visible = not mounted
+	if mounted: return
+	var can_operate: bool = not SimulationCore.is_vehicle(role) or (float(core_record.get("fuel",100)) > 0 and core_record.get("service","READY") == "READY")
+	var deck_phase: String = core_record.get("maritime",{}).get("phase","moving")
+	var can_move: bool = can_operate and (role != "AIRCRAFT_CARRIER" or deck_phase == "moving")
+	if role == "AIRCRAFT_CARRIER":
+		order = deck_phase.to_upper()
+		selection_ring.visible = selected or deck_phase in ["stopping","deploying","deployed","undeploying"]
+		selection_ring.scale = Vector3.ONE*(1.0+0.02*sin(elapsed*3.0)) if deck_phase != "moving" else Vector3.ONE
+		var deck_mat: StandardMaterial3D = selection_ring.material_override
+		deck_mat.albedo_color = Color("9ad7a6") if deck_phase == "deployed" else Color("f7bd6b")
 	cooldown = maxf(0.0, cooldown - delta)
 	next_scan -= delta
 	if next_scan <= 0.0:
 		next_scan = 0.28
 		_find_target(units)
 	var engaged := is_instance_valid(attack_target) and attack_target.is_alive
-	if engaged and global_position.distance_to(attack_target.global_position) <= float(stats["range"]):
+	if can_operate and engaged and float(core_record.get("ammo",100)) > 0 and global_position.distance_to(attack_target.global_position) <= float(stats["range"]):
 		if cooldown <= 0.0:
 			cooldown = float(stats["rate"])
+			if not core_record.is_empty(): core_record["ammo"] = maxf(0.0,float(core_record["ammo"])-1.0)
 			fired.emit(self, attack_target)
 			attack_target.take_damage(float(stats["damage"]))
 		if route.is_empty():
 			_face(attack_target.position - position, delta)
-	if not route.is_empty() and not (engaged and order == "ADVANCE" and not airborne):
+	if can_move and not route.is_empty() and not (engaged and order == "ADVANCE" and not airborne):
 		var to_point := route[0] - position
 		to_point.y = 0.0
 		var step := float(stats["speed"]) * delta
-		if to_point.length() <= maxf(step, 0.25):
+		if to_point.length() <= maxf(step, 0.0025):
 			position = route[0]
 			route.remove_at(0)
 		else:
@@ -312,10 +335,16 @@ func tick(delta: float, units: Array[CombatUnit], elapsed: float) -> void:
 			_face(to_point, delta)
 		if route.is_empty():
 			order = "READY"
+	if not core_record.is_empty():
+		core_record["position"] = position
+		core_record["moving"] = can_move and not route.is_empty()
+		core_record["hp"] = health
 	if airborne:
-		visual.position.y = altitude + 0.14 + sin(elapsed * 1.6 + phase) * 0.20
+		var target_altitude := 0.0 if not can_operate else (1.8 if role in ["JET","CAS_FIGHTER","CARGO_PLANE"] else 0.8)
+		altitude = move_toward(altitude,target_altitude,delta*0.08)
+		visual.position.y = altitude + 0.0014 + sin(elapsed * 1.6 + phase) * 0.002
 	if exhaust != null:
-		exhaust.emitting = true
+		exhaust.emitting = can_move
 	if animation_player != null:
 		var desired := anim_idle if route.is_empty() else anim_move
 		if not desired.is_empty() and animation_player.current_animation != desired:
@@ -330,13 +359,14 @@ func _find_target(units: Array[CombatUnit]) -> void:
 		if global_position.distance_to(attack_target.global_position) <= float(stats["range"]):
 			return
 	attack_target = null
+	if float(stats["damage"]) <= 0: return
 	var nearest := float(stats["range"])
 	for unit in units:
 		if unit == self or not unit.is_alive or unit.team == team:
 			continue
-		# Infantry and ground carriers cannot engage aircraft in this slice.
-		if unit.airborne and not airborne:
-			continue
+		if not str(unit.core_record.get("transport",{}).get("carrier","")).is_empty(): continue
+		if unit.airborne and role not in ["JET","AA_TEAM","FRIGATE","AIRCRAFT_CARRIER"]: continue
+		if role in ["JET","AA_TEAM"] and not unit.airborne: continue
 		var gap := global_position.distance_to(unit.global_position)
 		if gap < nearest:
 			nearest = gap
@@ -346,6 +376,7 @@ func take_damage(amount: float) -> void:
 	if not is_alive:
 		return
 	health = maxf(0.0, health - amount)
+	if not core_record.is_empty(): core_record["hp"] = health
 	if health <= 0.0:
 		is_alive = false
 		order = "LOST"
@@ -358,7 +389,7 @@ func take_damage(amount: float) -> void:
 			mesh.material_overlay = null
 			mesh.material_override = TacticalMap.material(Color("3d4948"), 1.0)
 		if airborne:
-			visual.position.y = 0.2
+			visual.position.y = 0.002
 			visual.rotation.z = 0.22
 		destroyed.emit(self)
 

@@ -1,0 +1,9 @@
+{
+  "source": "https://curl.se/ca/cacert.pem",
+  "checksum_url": "https://curl.se/ca/cacert.pem.sha256",
+  "sha256": "f66dff1bdf8f96060b8177976f8b7d9254bc89bc4db933d769f7384d28480bc9",
+  "bytes": 188900,
+  "license": "MPL-2.0",
+  "source_documentation": "https://curl.se/docs/caextract.html",
+  "certificate_count": 121
+}

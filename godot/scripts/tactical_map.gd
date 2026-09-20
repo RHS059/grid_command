@@ -1,262 +1,209 @@
 extends Node3D
 class_name TacticalMap
 
-const HALF_SIZE := 96.0
-const CELL := 2.0
-const GRID_SIZE := 96
-const LAND := [Vector2(-48, -88), Vector2(90, -88), Vector2(90, 90), Vector2(-48, 90), Vector2(-48, 55), Vector2(-31, 47), Vector2(-28, 26), Vector2(-43, 12), Vector2(-42, -12), Vector2(-29, -30), Vector2(-31, -53), Vector2(-48, -62)]
+## Exact browser Mercator projection at metres / 100. Scene +X=east, -Z=north.
+## Global geographic tiles supply ground, water, roads and buildings. This node
+## owns current-theater installations/objectives/navigation and an offline fallback.
+const HALF_SIZE := 360.0
+const CELL := 1.0
+const GRID_SIZE := 720
+const OBJECTIVES := [
+	{"id":"A", "name":"SAN PASQUAL VALLEY", "pos":Vector3(56,0,286)}, {"id":"B", "name":"RANCHO BERNARDO", "pos":Vector3(6,0,219)},
+	{"id":"C", "name":"CARMEL MOUNTAIN", "pos":Vector3(-2.8,0,176.0)}, {"id":"D", "name":"SABRE SPRINGS", "pos":Vector3(-13,0,142)},
+	{"id":"E", "name":"SCRIPPS RANCH", "pos":Vector3(-28,0,88)}, {"id":"F", "name":"TIERRASANTA", "pos":Vector3(-17,0,13)},
+	{"id":"G", "name":"MISSION VALLEY", "pos":Vector3(-28,0,-48)}, {"id":"H", "name":"CITY HEIGHTS", "pos":Vector3(-22,0,-90)},
+	{"id":"I", "name":"SOUTH BAY CORRIDOR", "pos":Vector3(21,0,-202)}, {"id":"J", "name":"OTAY MESA", "pos":Vector3(49,0,-273)},
+]
+const BASES := {"BLU": Vector3(42,0,-304), "RED": Vector3(70,0,302)}
+const AIRBASES := {"BLU": Vector3(51,0,-296), "RED": Vector3(57.1,0,294.3)}
+const CORRIDOR := [Vector3(70,0,302),Vector3(56,0,286),Vector3(6,0,219),Vector3(-28,0,175),Vector3(-13,0,142),Vector3(-28,0,88),Vector3(-17,0,13),Vector3(-28,0,-48),Vector3(-22,0,-90),Vector3(21,0,-202),Vector3(49,0,-273),Vector3(42,0,-304)]
+
+var geographic_active := false
 var nav := AStarGrid2D.new()
 var building_rects: Array[Rect2] = []
 var batches: Dictionary = {}
 var map_materials: Dictionary = {}
-var objective_position := Vector3(0.0, 0.0, 12.0)
+var objective_position := Vector3(-28,0,-48)
 var objective_ring: MeshInstance3D
 var objective_label: Label3D
+var objective_rings: Dictionary = {}
+var objective_labels: Dictionary = {}
 var rng := RandomNumberGenerator.new()
+var objective_data: Array = OBJECTIVES.duplicate(true)
+var corridor_data: Array = CORRIDOR.duplicate()
+var bases: Dictionary = BASES.duplicate()
+var airbases: Dictionary = AIRBASES.duplicate()
 
 func _ready() -> void:
 	rng.seed = 941921
+	_load_authoritative_theater()
 	_create_materials()
-	_create_terrain()
-	_create_roads()
-	_create_city()
-	_create_port()
-	_create_palms()
-	_flush_batches()
-	_create_objective()
-	_create_navigation()
+	if not geographic_active:
+		_create_terrain()
+		_create_corridor_roads()
+	_create_installations(); _flush_batches(); _create_objectives(); _create_navigation()
+
+func enable_schematic_fallback() -> void:
+	if not geographic_active: return
+	geographic_active = false
+	_create_terrain(); _create_corridor_roads(); _flush_batches()
 
 func _create_materials() -> void:
-	map_materials["ground"] = material(Color("b5b49e"), 1.0)
-	map_materials["sand"] = material(Color("d4c8a3"), 1.0)
-	map_materials["road"] = material(Color("4b5a60"), 1.0)
-	map_materials["stripe"] = material(Color("bdc7bd"), 1.0)
-	map_materials["walk"] = material(Color("d6d5bf"), 1.0)
-	map_materials["wall"] = material(Color("d9dfd6"), 0.9)
-	map_materials["white"] = material(Color("e7e8d6"), 0.88)
-	map_materials["blue"] = material(Color("87a7ad"), 0.64)
-	map_materials["roof"] = material(Color("638082"), 0.92)
-	map_materials["glass"] = material(Color("456d79"), 0.38)
-	map_materials["park"] = material(Color("8a9b73"), 1.0)
-	map_materials["trunk"] = material(Color("80705a"), 1.0)
-	map_materials["leaf"] = material(Color("537f69"), 1.0)
-	map_materials["orange"] = material(Color("b17d56"), 0.9)
-	map_materials["container"] = material(Color("678d90"), 0.85)
+	for spec in [["ground","030815"],["water","02040b"],["road","23394b"],["stripe","526b7c"],["concrete","495865"],["wall","253d55"],["white","5e707f"],["blue","173c6b"],["roof","163257"],["glass","2c4d6b"],["park","0c1824"],["container","303e31"],["orange","79613d"],["runway","172431"]]: map_materials[spec[0]] = material(Color(spec[1]))
 
 static func material(color: Color, roughness: float = 0.8) -> StandardMaterial3D:
-	var result := StandardMaterial3D.new()
-	result.albedo_color = color
-	result.roughness = roughness
-	return result
+	var result := StandardMaterial3D.new(); result.albedo_color = color; result.roughness = roughness; result.metallic_specular = 0.0; return result
 
 func _box(pos: Vector3, size: Vector3, mat_key: String, rotation_y: float = 0.0) -> void:
-	if not batches.has(mat_key):
-		batches[mat_key] = []
-	var basis := Basis(Vector3.UP, rotation_y).scaled(size)
-	batches[mat_key].append(Transform3D(basis, pos))
+	if not batches.has(mat_key): batches[mat_key] = []
+	batches[mat_key].append(Transform3D(Basis(Vector3.UP,rotation_y).scaled(size),pos))
 
 func _flush_batches() -> void:
-	for key: String in batches:
+	for key_variant in batches:
+		var key: String = str(key_variant)
 		var transforms: Array = batches[key]
-		var instance := MultiMeshInstance3D.new()
-		instance.name = "City_" + key
-		var mesh := BoxMesh.new()
-		mesh.size = Vector3.ONE
-		mesh.material = map_materials[key]
-		var multi := MultiMesh.new()
-		multi.transform_format = MultiMesh.TRANSFORM_3D
-		multi.mesh = mesh
-		multi.instance_count = transforms.size()
-		for index in range(transforms.size()):
-			multi.set_instance_transform(index, transforms[index])
-		instance.multimesh = multi
-		instance.visibility_range_end = 330.0
-		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-		add_child(instance)
-	# One draw batch per city material, with batch bounds and range culling.
+		var instance := MultiMeshInstance3D.new(); instance.name = "SanDiego_" + key
+		var mesh := BoxMesh.new(); mesh.size = Vector3.ONE; mesh.material = map_materials[key]
+		var multi := MultiMesh.new(); multi.transform_format = MultiMesh.TRANSFORM_3D; multi.mesh = mesh; multi.instance_count = transforms.size()
+		for index in range(transforms.size()): multi.set_instance_transform(index,transforms[index])
+		instance.multimesh = multi; instance.visibility_range_end = 1600.0; instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON; add_child(instance)
 	batches.clear()
 
 func _create_terrain() -> void:
-	var water := MeshInstance3D.new()
-	water.name = "PacificOcean"
-	var plane := PlaneMesh.new()
-	plane.size = Vector2(900.0, 900.0)
-	water.mesh = plane
-	water.position.y = -0.55
-	var water_mat := material(Color("3f8793"), 0.33)
-	water_mat.metallic = 0.14
-	water.material_override = water_mat
-	water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(water)
-	var polygon := PackedVector2Array(LAND)
-	var triangles := Geometry2D.triangulate_polygon(polygon)
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for index in triangles:
-		st.set_normal(Vector3.UP)
-		st.add_vertex(Vector3(polygon[index].x, 0.0, polygon[index].y))
-	var land := MeshInstance3D.new()
-	land.name = "Mainland"
-	land.mesh = st.commit()
-	var land_mat: StandardMaterial3D = map_materials["ground"].duplicate()
-	land_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	land.material_override = land_mat
-	add_child(land)
-	# Coronado-like sand spit on the west side of the bay.
-	_box(Vector3(-72.0, -0.48, 26.0), Vector3(13.0, 0.6, 132.0), "sand", -0.12)
-	_box(Vector3(-72.0, -0.10, 26.0), Vector3(5.8, 0.12, 126.0), "park", -0.12)
-	_box(Vector3(-72.0, 0.02, 26.0), Vector3(1.8, 0.14, 121.0), "walk", -0.12)
-	for i in range(24):
-		var z := -76.0 + i * 7.0
-		_box(Vector3(92.0, 1.0 + sin(i * 0.6) * 0.5, z), Vector3(14.0, 5.0 + sin(i * 0.6), 9.0), "park")
+	var water := MeshInstance3D.new(); water.name = "PacificOceanAndSanDiegoBay"
+	var plane := PlaneMesh.new(); plane.size = Vector2(1600,1600); water.mesh = plane; water.position.y = -0.005
+	var water_mat: StandardMaterial3D = map_materials["water"].duplicate(); water_mat.metallic = 0.0; water_mat.emission_enabled = true; water_mat.emission = Color("02040b"); water.material_override = water_mat; water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(water)
+	var polygon := PackedVector2Array([Vector2(-150,-350),Vector2(108,-350),Vector2(110,340),Vector2(-10,340),Vector2(-20,270),Vector2(-65,205),Vector2(-50,95),Vector2(-88,20),Vector2(-80,-80),Vector2(-115,-175),Vector2(-72,-290)])
+	var st := SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for index in Geometry2D.triangulate_polygon(polygon): st.set_normal(Vector3.UP); st.add_vertex(Vector3(polygon[index].x,0,-polygon[index].y))
+	var land := MeshInstance3D.new(); land.name = "SanDiegoLandmass"; land.mesh = st.commit(); var land_mat: StandardMaterial3D = map_materials["ground"].duplicate(); land_mat.cull_mode = BaseMaterial3D.CULL_DISABLED; land.material_override = land_mat; add_child(land)
+	_create_map_label("PACIFIC OCEAN",Vector3(-135,0.01,-30),Color("526b7c"),0.05)
 
-func _create_roads() -> void:
-	for x in [-24.0, 0.0, 24.0, 48.0, 72.0]:
-		_box(Vector3(x, 0.035, 0.0), Vector3(6.0, 0.07, 170.0), "road")
-		for z in range(-80, 84, 5):
-			_box(Vector3(x, 0.078, float(z)), Vector3(0.10, 0.014, 2.0), "stripe")
-	for z in [-60.0, -36.0, -12.0, 12.0, 36.0, 60.0, 84.0]:
-		_box(Vector3(29.5, 0.04, z), Vector3(119.0, 0.08, 6.0), "road")
-		for x in range(-27, 87, 5):
-			_box(Vector3(float(x), 0.084, z), Vector3(2.0, 0.014, 0.10), "stripe")
-	# Seafront path and a harbor quay.
-	_box(Vector3(-24.0, 0.09, 65.0), Vector3(8.0, 0.1, 41.0), "walk")
-	_box(Vector3(-42.0, -0.10, 66.0), Vector3(11.0, 0.35, 27.0), "walk")
-	_create_map_label("PACIFIC OCEAN", Vector3(-87.0, 0.1, -33.0), Color("a6d8db"), 0.038)
-	_create_map_label("CORONADO", Vector3(-71.0, 0.7, 12.0), Color("dce0c5"), 0.025)
-	_create_map_label("HARBOR DRIVE", Vector3(-21.0, 0.17, 43.0), Color("dfe1cb"), 0.019)
-	_create_map_label("DOWNTOWN", Vector3(12.0, 0.2, -60.0), Color("ced9ce"), 0.028)
+func _create_corridor_roads() -> void:
+	# A strategic centerline until source road vector geometry is ported.
+	for i in range(corridor_data.size()-1): _road_between(corridor_data[i],corridor_data[i+1],0.24)
 
-func _create_city() -> void:
-	for x in [-12.0, 12.0, 36.0, 60.0]:
-		for z in [-48.0, -24.0, 0.0, 24.0, 48.0, 72.0]:
-			if x == -12.0 and z >= 24.0:
-				_box(Vector3(x, 0.09, z), Vector3(16.0, 0.16, 16.0), "park")
-				continue
-			_box(Vector3(x, 0.08, z), Vector3(18.0, 0.16, 18.0), "walk")
-			for dx in [-4.5, 4.5]:
-				for dz in [-4.5, 4.5]:
-					var bx: float = x + dx
-					var bz: float = z + dz
-					var width := rng.randf_range(5.4, 7.4)
-					var depth := rng.randf_range(5.2, 7.6)
-					var height := rng.randf_range(2.2, 7.0)
-					if z <= 0.0 and x <= 36.0:
-						height += rng.randf_range(1.0, 13.0)
-					var key: String = ["wall", "white", "blue"][rng.randi_range(0, 2)]
-					_box(Vector3(bx, height * 0.5 + 0.17, bz), Vector3(width, height, depth), key)
-					_box(Vector3(bx, height + 0.28, bz), Vector3(width + 0.20, 0.24, depth + 0.20), "roof")
-					_box(Vector3(bx + 0.3, height + 0.62, bz + 0.2), Vector3(width * 0.30, 0.62, depth * 0.34), "white")
-					for floor_index in range(1, int(height / 2.2)):
-						var fy := floor_index * 2.2 + 0.45
-						_box(Vector3(bx, fy, bz + depth * 0.5 + 0.016), Vector3(width * 0.83, 0.78, 0.03), "glass")
-						_box(Vector3(bx + width * 0.5 + 0.016, fy, bz), Vector3(0.03, 0.78, depth * 0.83), "glass")
-					building_rects.append(Rect2(Vector2(bx - width * 0.5 - 0.9, bz - depth * 0.5 - 0.9), Vector2(width + 1.8, depth + 1.8)))
-	# A hangar, an apron, and a short visual runway north of downtown.
-	_box(Vector3(9.0, 0.1, -75.0), Vector3(43.0, 0.16, 11.0), "road")
-	for x in range(-10, 31, 5):
-		_box(Vector3(float(x), 0.195, -75.0), Vector3(2.3, 0.02, 0.2), "stripe")
-	_box(Vector3(49.0, 3.0, -77.0), Vector3(17.0, 6.0, 13.0), "wall")
-	building_rects.append(Rect2(39.5, -84.5, 19.0, 15.0))
+func _road_between(a: Vector3,b: Vector3,width: float) -> void:
+	var delta := b-a; var length := Vector2(delta.x,delta.z).length()
+	if length < 0.1: return
+	var angle := atan2(delta.x,delta.z); _box((a+b)*0.5+Vector3(0,0.001,0),Vector3(width,0.002,length),"road",angle)
+	for d in range(1,int(length),3): _box(a.lerp(b,float(d)/length)+Vector3(0,0.0025,0),Vector3(0.005,0.001,0.15),"stripe",angle)
 
-func _create_port() -> void:
-	for z in [58.0, 72.0, 84.0]:
-		_box(Vector3(-49.0, -0.1, z), Vector3(18.0, 0.5, 5.0), "walk")
-	for i in range(11):
-		var pos := Vector3(-39.0 + (i % 2) * 5.0, 1.2, 56.0 + (i / 2) * 4.7)
-		_box(pos, Vector3(3.5, 2.1, 3.0), "orange" if i % 3 == 0 else "container")
-		building_rects.append(Rect2(Vector2(pos.x - 2.3, pos.z - 2.0), Vector2(4.6, 4.0)))
-	# Bridge deck across the bay; it is scenic and outside the active road graph.
-	_box(Vector3(-52.0, 4.0, 89.0), Vector3(55.0, 1.0, 4.0), "wall", -0.13)
-	for x in [-72.0, -61.0, -50.0, -39.0]:
-		_box(Vector3(x, 1.6, 89.0), Vector3(1.4, 4.0, 2.0), "roof")
+func installation_rectangles() -> Array[Rect2]:
+	var rectangles: Array[Rect2] = []
+	for side in ["BLU","RED"]:
+		var base: Vector3 = bases[side]
+		var air: Vector3 = airbases[side]
+		rectangles.append(Rect2(Vector2(base.x-0.85,base.z-0.45),Vector2(1.7,1.9)))
+		rectangles.append(Rect2(Vector2(air.x-1.4,air.z-6.2),Vector2(2.8,12.4)))
+	return rectangles
 
-func _create_palms() -> void:
-	for i in range(35):
-		var x := -18.7 if i < 17 else 78.0
-		var z := -70.0 + (i % 18) * 8.5
-		if not is_land(Vector2(x, z)):
-			continue
-		var h := rng.randf_range(2.4, 3.7)
-		_box(Vector3(x, h * 0.5, z), Vector3(0.23, h, 0.23), "trunk", 0.2)
-		for leaf in range(5):
-			_box(Vector3(x, h, z), Vector3(2.6, 0.14, 0.46), "leaf", leaf * TAU / 5.0)
+func source_installation_rectangles() -> Array[Rect2]:
+	var rectangles: Array[Rect2] = []
+	for rect in installation_rectangles(): rectangles.append(Rect2(Vector2(rect.position.x,-rect.end.y),rect.size))
+	return rectangles
 
-func _create_objective() -> void:
-	objective_ring = MeshInstance3D.new()
-	objective_ring.name = "HarborControlRing"
-	var ring := TorusMesh.new()
-	ring.inner_radius = 7.8
-	ring.outer_radius = 8.05
-	ring.rings = 64
-	ring.ring_segments = 8
-	objective_ring.mesh = ring
-	objective_ring.position = objective_position + Vector3.UP * 0.15
-	objective_ring.material_override = material(Color("e0c988"), 0.8)
-	objective_ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(objective_ring)
-	objective_label = _create_map_label("01 / HARBOR", objective_position + Vector3(0, 0.4, -8.5), Color("e4d9b1"), 0.025)
+func naval_base(side: String) -> Vector3:
+	return Vector3(-120.0,0,240.0 if side == "BLU" else -260.0)
 
-func _create_map_label(text: String, pos: Vector3, color: Color, pixel: float) -> Label3D:
-	var label := Label3D.new()
-	label.text = text
-	label.font_size = 42
-	label.pixel_size = pixel
-	label.modulate = color
-	label.outline_size = 0
-	label.no_depth_test = false
-	label.position = pos
-	label.rotation_degrees.x = -90.0
-	label.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(label)
-	return label
+func _create_installations() -> void:
+	for side in ["BLU","RED"]:
+		var base: Vector3 = bases[side]
+		var air: Vector3 = airbases[side]
+		var color := Color("7dbcff") if side == "BLU" else Color("ff8080")
+		_box(base+Vector3(0,0.001,0.5),Vector3(1.6,0.002,1.8),"concrete")
+		_box(base+Vector3(-0.52,0.055,-0.18),Vector3(0.38,0.11,0.32),"container")
+		_box(base+Vector3(-0.2,0.025,0.2),Vector3(0.4,0.05,0.25),"wall")
+		for n in range(6):
+			_box(base+Vector3(0.15+float(n%3)*0.07,0.02,0.16+floor(n/3.0)*0.18),Vector3(0.06,0.04,0.12),"container")
+		# Two gantry supports and a beam at the browser's crane-yard coordinates.
+		for x in [0.10,0.40]: _box(base+Vector3(x,0.11,0.6),Vector3(0.012,0.22,0.02),"container")
+		_box(base+Vector3(0.25,0.22,0.6),Vector3(0.34,0.014,0.02),"container")
+		_box(air+Vector3(-0.48,0.001,0),Vector3(0.42,0.002,12.0),"runway")
+		for z in range(-5,6): _box(air+Vector3(-0.48,0.003,float(z)),Vector3(0.025,0.001,0.25),"stripe")
+		_box(air+Vector3(0.28,0.055,-1),Vector3(0.4,0.11,0.5),"wall")
+		_create_map_label(side+" MOB",base+Vector3(0,0.008,-0.5),color,0.001)
+		_create_map_label(side+" AIRBASE",air+Vector3(0,0.008,6.4),color,0.001)
+
+func _create_objectives() -> void:
+	for entry in objective_data:
+		var point: Vector3 = entry["pos"]; var ring := MeshInstance3D.new(); var mesh := TorusMesh.new(); mesh.inner_radius = 0.98; mesh.outer_radius = 1.0; mesh.rings = 32; mesh.ring_segments = 6; ring.mesh = mesh; ring.position = point+Vector3.UP*0.003; ring.material_override = material(Color("c5bd76"),0.8); ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(ring); objective_rings[str(entry["id"])] = ring; objective_labels[str(entry["id"])] = _create_map_label(str(entry["id"])+" / "+str(entry["name"]),point+Vector3(0,0.006,-1.2),Color("9aa8b8"),0.004)
+	objective_ring = objective_rings["G"]; objective_label = objective_labels["G"]
+
+func set_objective_control(id: String,progress: float) -> void:
+	var ring: MeshInstance3D = objective_rings.get(id)
+	if ring == null: return
+	var mat: StandardMaterial3D = ring.material_override; mat.albedo_color = Color("66b9ec") if progress >= 100.0 else Color("e98d79") if progress <= -100.0 else Color("c5bd76")
+
+func get_objectives() -> Array:
+	return objective_data
+
+func get_corridor() -> Array:
+	return corridor_data
+
+func _load_authoritative_theater() -> void:
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/theater.json"))
+	if not parsed is Dictionary or parsed.get("schema",0) != 1 or not parsed.get("objectives",null) is Array:
+		push_error("The San Diego theater data is not valid.")
+		return
+	var records: Array = parsed["objectives"]
+	if records.size() != 10:
+		push_error("The San Diego theater must contain objectives A through J.")
+		return
+	objective_data.clear()
+	for record in records:
+		if not record is Array or record.size() != 4: continue
+		var longitude := float(record[2])
+		var latitude := float(record[3])
+		# Exact local Web Mercator projection, matching browser geography.ts.
+		objective_data.append({"id":str(record[0]),"name":str(record[1]).to_upper(),"pos":project(longitude,latitude)})
+	corridor_data.clear()
+	for record in parsed.get("corridor",[]):
+		if record is Array and record.size() == 2:
+			corridor_data.append(project(float(record[0]),float(record[1])))
+
+	for side in ["BLU","RED"]:
+		var base: Array = parsed["bases"][side]
+		var air: Array = parsed["airbases"][side]
+		bases[side] = project(float(base[0]),float(base[1]))
+		airbases[side] = project(float(air[0]),float(air[1]))
+	objective_position = objective_data[6]["pos"]
+
+static func project(longitude: float, latitude: float) -> Vector3:
+	var origin_lat := deg_to_rad(32.82)
+	var scale := 40075016.68557849*cos(origin_lat)/100.0
+	var x := (longitude+117.08)/360.0*scale
+	var z := (log(tan(PI/4.0+deg_to_rad(latitude)/2.0))-log(tan(PI/4.0+origin_lat/2.0)))/(TAU)*scale
+	return Vector3(x,0,-z)
+
+func _create_map_label(text: String,pos: Vector3,color: Color,pixel: float) -> Label3D:
+	var label := Label3D.new(); label.text = text; label.font_size = 38; label.pixel_size = pixel; label.modulate = color; label.position = pos; label.rotation_degrees.x = -90; label.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(label); return label
 
 func _create_navigation() -> void:
-	nav.region = Rect2i(0, 0, GRID_SIZE, GRID_SIZE)
-	nav.cell_size = Vector2(CELL, CELL)
-	nav.offset = Vector2(-HALF_SIZE + CELL * 0.5, -HALF_SIZE + CELL * 0.5)
-	nav.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
-	nav.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
-	nav.default_estimate_heuristic = AStarGrid2D.HEURISTIC_OCTILE
-	nav.update()
+	nav.region = Rect2i(0,0,GRID_SIZE,GRID_SIZE); nav.cell_size = Vector2(CELL,CELL); nav.offset = Vector2(-HALF_SIZE+CELL*0.5,-HALF_SIZE+CELL*0.5); nav.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES; nav.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE; nav.default_estimate_heuristic = AStarGrid2D.HEURISTIC_OCTILE; nav.update()
 	for x in range(GRID_SIZE):
 		for y in range(GRID_SIZE):
-			var cell := Vector2i(x, y)
-			var pos := nav.get_point_position(cell)
-			var blocked := not is_land(pos)
+			var cell := Vector2i(x,y); var pos := nav.get_point_position(cell); var blocked := pos.x < -96.0 or pos.x > 105.0
 			if not blocked:
 				for rect in building_rects:
-					if rect.has_point(pos):
-						blocked = true
-						break
-			nav.set_point_solid(cell, blocked)
+					if rect.has_point(pos): blocked = true; break
+			nav.set_point_solid(cell,blocked)
 
-func is_land(point: Vector2) -> bool:
-	return Geometry2D.is_point_in_polygon(point, PackedVector2Array(LAND))
-
-func _cell_for(pos: Vector3) -> Vector2i:
-	return Vector2i(clampi(int(floor((pos.x + HALF_SIZE) / CELL)), 0, GRID_SIZE - 1), clampi(int(floor((pos.z + HALF_SIZE) / CELL)), 0, GRID_SIZE - 1))
-
+func _cell_for(pos: Vector3) -> Vector2i: return Vector2i(clampi(int(floor((pos.x+HALF_SIZE)/CELL)),0,GRID_SIZE-1),clampi(int(floor((pos.z+HALF_SIZE)/CELL)),0,GRID_SIZE-1))
 func _nearest_open(cell: Vector2i) -> Vector2i:
-	if not nav.is_point_solid(cell):
-		return cell
-	for radius in range(1, 15):
-		for x in range(-radius, radius + 1):
-			for y in range(-radius, radius + 1):
-				if absi(x) != radius and absi(y) != radius:
-					continue
-				var candidate := cell + Vector2i(x, y)
-				if nav.is_in_boundsv(candidate) and not nav.is_point_solid(candidate):
-					return candidate
-	return Vector2i(-1, -1)
-
-func find_route(from: Vector3, to: Vector3) -> PackedVector3Array:
-	var start := _nearest_open(_cell_for(from))
-	var end := _nearest_open(_cell_for(to))
-	var route := PackedVector3Array()
-	if start.x < 0 or end.x < 0:
-		return route
-	var points := nav.get_point_path(start, end)
-	for point in points:
-		route.append(Vector3(point.x, 0.0, point.y))
+	if not nav.is_point_solid(cell): return cell
+	for radius in range(1,18):
+		for x in range(-radius,radius+1):
+			for y in range(-radius,radius+1):
+				if absi(x)!=radius and absi(y)!=radius: continue
+				var candidate := cell+Vector2i(x,y)
+				if nav.is_in_boundsv(candidate) and not nav.is_point_solid(candidate): return candidate
+	return Vector2i(-1,-1)
+func find_route(from: Vector3,to: Vector3) -> PackedVector3Array:
+	var start := _nearest_open(_cell_for(from)); var end := _nearest_open(_cell_for(to)); var route := PackedVector3Array()
+	if start.x < 0 or end.x < 0: return route
+	for point in nav.get_point_path(start,end): route.append(Vector3(point.x,0,point.y))
+	if not route.is_empty():
+		route[0] = from
+		if not nav.is_point_solid(_cell_for(to)): route.append(Vector3(to.x,0,to.z))
 	return route
