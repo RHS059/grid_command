@@ -49,9 +49,12 @@ def main() -> None:
         "version": plan["version"],
         "min_runtime_version": "4.7.2",
         "requires_restart": plan["requires_restart"],
-        "download_url": "https://github.com/RHS059/grid_command/releases/latest",
+        "download_url": f"https://github.com/RHS059/grid_command/releases/download/godot-v{plan['version']}/GridCommand-Windows-x86_64.zip",
         "patches": patches,
     }
+    native_zip = args.output.parent / "GridCommand-Windows-x86_64.zip"
+    if native_zip.is_file():
+        manifest["download_sha256"] = hashlib.sha256(native_zip.read_bytes()).hexdigest()
     args.output.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
 

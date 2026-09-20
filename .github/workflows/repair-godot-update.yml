@@ -1,0 +1,35 @@
+name: Repair Godot update metadata
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [".github/workflows/repair-godot-update.yml"]
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repair published v0.2.4 download target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/update-repair"
+          cd "$RUNNER_TEMP/update-repair"
+          gh release download godot-v0.2.4 --pattern godot-update.json --pattern GridCommand-Windows-x86_64.zip
+          python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          path = Path('godot-update.json')
+          manifest = json.loads(path.read_text())
+          assert manifest['app_id'] == 'grid-command-godot'
+          assert manifest['version'] == '0.2.4'
+          manifest['download_url'] = 'https://github.com/RHS059/grid_command/releases/download/godot-v0.2.4/GridCommand-Windows-x86_64.zip'
+          manifest['download_sha256'] = hashlib.sha256(Path('GridCommand-Windows-x86_64.zip').read_bytes()).hexdigest()
+          path.write_text(json.dumps(manifest, indent=2) + '\n')
+          print(json.dumps({key: manifest[key] for key in ['version','requires_restart','download_url','download_sha256']}))
+          PY
+          gh release upload godot-v0.2.4 godot-update.json --clobber
