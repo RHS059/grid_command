@@ -11,6 +11,7 @@ import type { SubMesh } from '@babylonjs/core/Meshes/subMesh'
 import type { Scene } from '@babylonjs/core/scene'
 import type { Object3D } from './scene-data'
 import { assetPath } from '../asset-path'
+import { InteriorRoomPlugin } from './babylon-interior'
 
 export const DESTROYED_MASK_PATH = '/textures/vehicle_destroyed_mask.png'
 export const FURY_PBR_MAPS = { normal: '/models/fighter_normal.png', orm: '/models/fighter_orm.png' } as const
@@ -147,7 +148,8 @@ export class DestroyedVehiclePlugin extends MaterialPluginBase {
     if (shaderType !== 'fragment') return null
     // Babylon 9.25's wrapper only injects fragment declarations into GLSL main.
     // Supply its WGSL declarations conditionally for the shadow specialization.
-    const definitions = gpu ? `#ifdef SM_FLOAT
+    const definitions = gpu ? `#if defined(SM_FLOAT) && !defined(GRID_SHADOW_FRAGMENT_DECLARED)
+#define GRID_SHADOW_FRAGMENT_DECLARED
 #include<shadowMapFragmentExtraDeclaration>
 #endif
 varying gridDamagePosition: vec3f;
@@ -233,6 +235,8 @@ export function createDestroyedMaterial(source: PBRMaterial): PBRMaterial {
   }
   material.emissiveColor.set(0, 0, 0)
   material.emissiveTexture = null
+  // Rebuild this plugin because it has no serialized constructor registration.
+  if (source.pluginManager?.getPlugin('GridInteriorRooms')) new InteriorRoomPlugin(material)
   new DestroyedVehiclePlugin(material)
   // A standard shadow pass cannot see a material plugin's custom discard.
   material.shadowDepthWrapper = new ShadowDepthWrapper(material, material.getScene(), material.shaderLanguage === ShaderLanguage.WGSL ? { remappedVariables: ['vNormalW', 'vertexOutputs.vNormalW'] } : undefined)

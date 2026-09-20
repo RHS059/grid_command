@@ -4,7 +4,7 @@ import { NullEngine } from '@babylonjs/core/Engines/nullEngine'
 import { Scene } from '@babylonjs/core/scene'
 import { VertexData } from '@babylonjs/core/Meshes/mesh.vertexData'
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
-import { buildGeographicBatches, geographicPolygons, GEOGRAPHIC_PALETTE, selectGeographicLabels, type GeographicBatch, type GeographicLayers, type TilePoint, type TileTerrain } from '../lib/game/geo-tile-geometry'
+import { buildGeographicBatches, buildGeographicLabelBatch, geographicPolygons, GEOGRAPHIC_PALETTE, selectGeographicLabels, type GeographicBatch, type GeographicLayers, type TilePoint, type TileTerrain } from '../lib/game/geo-tile-geometry'
 import { GeographicTiles, terrainTriangleHeightAt } from '../lib/game/geo-tiles'
 
 const ring = (left: number, top: number, right: number, bottom: number): TilePoint[] => [{ x: left, y: top }, { x: right, y: top }, { x: right, y: bottom }, { x: left, y: bottom }, { x: left, y: top }]
@@ -112,6 +112,47 @@ test('hundreds of buildings still produce one mass batch and one perimeter batch
   assert.deepEqual(Object.entries(batches).filter(([, batch]) => batch.indices.length).map(([name]) => name), ['buildings', 'edges'])
   assert.ok(batches.buildings.positions.length / 3 < 400 * 30)
   checkGeometry(batches.buildings); checkGeometry(batches.edges)
+})
+
+test('installation exclusions remove contained and crossing buildings with their edges', () => {
+  const exclusions = [{ minX: 30, maxX: 70, minY: 30, maxY: 70 }]
+  const retained = [ring(5, 5, 15, 15)]
+  const blocked = [[ring(40, 40, 60, 60)], [ring(5, 45, 95, 55)], [ring(20, 20, 80, 80)], [ring(68, 25, 78, 45)]]
+  const expected = buildGeographicBatches({ building: layer([retained]) }, terrain(2), exclusions)
+  const actual = buildGeographicBatches({ building: layer([...blocked, retained]) }, terrain(2), exclusions)
+  assert.deepEqual(actual.buildings, expected.buildings)
+  assert.deepEqual(actual.edges, expected.edges)
+  const courtyard = buildGeographicBatches({ building: layer([[ring(5, 5, 95, 95), ring(20, 20, 80, 80).reverse()]]) }, terrain(2), exclusions)
+  assert.ok(courtyard.buildings.indices.length > 0, 'an exclusion wholly inside a courtyard does not remove its surrounding building')
+})
+
+test('installation surfaces exclude map water, roads and labels while retaining the terrain plane', () => {
+  const ground = terrain(2, (x, y) => x / 10 + y / 20), original = Array.from(ground.positions)
+  const exclusions = [{ minX: 30, maxX: 70, minY: 30, maxY: 70 }]
+  const path = [{ x: -20, y: 50 }, { x: 120, y: 50 }]
+  const water = buildGeographicBatches({ water: layer([[ring(0, 0, 100, 100)]]) }, ground, exclusions).water
+  const roads = buildGeographicBatches({ transportation: layer([[path]], 2) }, ground, exclusions).roads
+  const highways = buildGeographicBatches({ transportation: layer([[path]], 2, { class: 'motorway' }) }, ground, exclusions).highways
+  const waterway = buildGeographicBatches({ waterway: layer([[path]], 2) }, ground, exclusions).water
+  const labels = buildGeographicLabelBatch(ground, exclusions)
+  for (const [batch, expectedArea, lift] of [[water, 8400, .08], [roads, 300, .16], [highways, 660, .2], [waterway, 180, .1], [labels, 8400, .32]] as const) {
+    assert.ok(Math.abs(area(batch) - expectedArea) < 1e-6)
+    checkGeometry(batch)
+    for (let i = 0; i < batch.positions.length; i += 3) {
+      const [x, y, z] = batch.positions.slice(i, i + 3)
+      assert.ok(Math.abs(z - (x / 10 + y / 20) - lift) < 1e-6)
+      assert.ok(x <= 30 + 1e-6 || x >= 70 - 1e-6 || y <= 30 + 1e-6 || y >= 70 - 1e-6)
+    }
+    for (let i = 0; i < batch.indices.length; i += 3) {
+      const vertices = batch.indices.slice(i, i + 3).map(index => ({ x: batch.positions[index * 3], y: batch.positions[index * 3 + 1], z: batch.positions[index * 3 + 2] }))
+      for (const x of [35, 50, 65]) for (const y of [35, 50, 65]) assert.equal(terrainTriangleHeightAt(vertices[0], vertices[1], vertices[2], { x, y }), undefined)
+    }
+  }
+  assert.deepEqual(Array.from(ground.positions), original)
+  for (let i = 0; i < labels.uvs.length; i += 2) {
+    assert.ok(Math.abs(labels.uvs[i] - labels.positions[i / 2 * 3] / 100) < 1e-8)
+    assert.ok(Math.abs(labels.uvs[i + 1] - labels.positions[i / 2 * 3 + 1] / 100) < 1e-8)
+  }
 })
 
 test('empty and degenerate features create no drawable geometry', () => {

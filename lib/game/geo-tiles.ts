@@ -10,13 +10,19 @@ import Pbf from 'pbf'
 import type { Scene } from '@babylonjs/core/scene'
 import { ELEVATION_TEMPLATE, LngLat, MercatorCoordinate, fetchVectorTile, tileAt, tileKey, tileURL, type TileAddress, type LngLatLike } from './geography'
 import { fromPoint, toPoint } from './theater'
-import { buildGeographicBatches, GEOGRAPHIC_LABEL_SIZE, GEOGRAPHIC_PALETTE, selectGeographicLabels, type GeographicBatch, type GeographicBatchKind } from './geo-tile-geometry'
+import { buildGeographicBatches, buildGeographicLabelBatch, GEOGRAPHIC_LABEL_SIZE, GEOGRAPHIC_PALETTE, selectGeographicLabels, type GeographicBatch, type GeographicBatchKind } from './geo-tile-geometry'
+import { ensureLodDither } from './babylon-lod-dither'
+import { LOD_TRANSITION_MS, lodDitherRange, type LodDitherRange } from './lod-transition'
 
 type Tile = { address: TileAddress; mesh: Mesh; features: Mesh[]; label?: { texture: DynamicTexture; material: PBRMaterial }; dem?: ImageData }
+type TileRetry = { address: TileAddress; attempts: number; nextAt: number }
+export const GEOGRAPHIC_TILE_RETRY_MS = 500
+export const GEOGRAPHIC_TILE_RETRY_MAX_MS = 8000
 export type GeographicTileEvent = { address: TileAddress; elevation: boolean; error?: Error }
 export type TerrainBounds = { minX: number; maxX: number; minY: number; maxY: number }
 type TerrainVertex={x:number;y:number;z:number}
 export function clippedTriangleRange(triangle:TerrainVertex[],bounds:TerrainBounds){
+  if(triangle.every(p=>p.x<bounds.minX)||triangle.every(p=>p.x>bounds.maxX)||triangle.every(p=>p.y<bounds.minY)||triangle.every(p=>p.y>bounds.maxY))return undefined
   let polygon=triangle
   const clips:[keyof Pick<TerrainVertex,'x'|'y'>,number,boolean][]=[['x',bounds.minX,true],['x',bounds.maxX,false],['y',bounds.minY,true],['y',bounds.maxY,false]]
   for(const[axis,edge,minimum]of clips){const input=polygon;polygon=[];for(let i=0;i<input.length;i++){const a=input[i],b=input[(i+1)%input.length],aIn=minimum?a[axis]>=edge:a[axis]<=edge,bIn=minimum?b[axis]>=edge:b[axis]<=edge;if(aIn)polygon.push(a);if(aIn!==bIn){const t=(edge-a[axis])/(b[axis]-a[axis]);polygon.push({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,z:a.z+(b.z-a.z)*t})}}if(!polygon.length)return undefined}
@@ -27,20 +33,34 @@ export const terrainTriangleHeightAt=(a:TerrainVertex,b:TerrainVertex,c:TerrainV
 export function uploadGeographicTexture(texture: Pick<DynamicTexture, 'update'>) { texture.update(true) }
 /** Tile row zero is north; after Babylon's Y inversion it belongs at the top of the mesh (v=1). */
 export function geographicTileUV(column: number, row: number, resolution: number): [number, number] { return [column / resolution, 1 - row / resolution] }
+export function geographicZoomLevel(zoom: number, previous?: number) {
+  const target = Math.max(7, Math.min(14, Math.floor(zoom) - 1))
+  if (previous !== undefined && (target > previous && zoom < previous + 2.08 || target < previous && zoom > previous + .92)) return previous
+  return target
+}
 /** Bounded geographic tile cache with one shared-material mesh per visual role. */
 export class GeographicTiles {
   private tiles = new Map<string, Tile>()
   private wanted = new Set<string>()
   private pending = new Map<string, AbortController>()
+  private retries = new Map<string, TileRetry>()
+  private retryTimer?: ReturnType<typeof setTimeout>
   private queued: TileAddress[] = []
   private disposed = false
   private signature = ''
   private terrain = false
   private labels = true
   private materials = new Map<keyof typeof GEOGRAPHIC_PALETTE, PBRMaterial>()
+  private displayZoom?: number
+  private requestedZoom?: number
+  private swap?: { from: number; to: number; started?: number }
+  get transitioning() { return this.swap?.started !== undefined }
   constructor(private scene: Scene, private changed: (event: GeographicTileEvent) => void) {}
   update(center: LngLatLike, zoom: number, terrain: boolean, labels: boolean) {
-    const address = tileAt(center, Math.max(7, Math.min(14, Math.floor(zoom) - 1)))
+    this.advanceLod(performance.now())
+    // Finish one pair before a new zoom request can introduce a third level.
+    if (this.transitioning && terrain === this.terrain && labels === this.labels) return
+    const address = tileAt(center, geographicZoomLevel(zoom, this.requestedZoom))
     const signature = `${tileKey(address)}:${terrain}:${labels}`
     if (signature === this.signature) return
     this.signature = signature
@@ -49,19 +69,71 @@ export class GeographicTiles {
       this.tiles.clear()
       for (const request of this.pending.values()) request.abort()
       this.pending.clear()
+      this.retries.clear()
+      this.displayZoom = undefined; this.swap = undefined
     }
+    this.displayZoom ??= address.z
+    this.requestedZoom = address.z
+    this.swap = this.displayZoom === address.z ? undefined : { from: this.displayZoom, to: address.z }
+    for (const [key, tile] of this.tiles) if (tile.address.z !== this.displayZoom && tile.address.z !== address.z) { this.disposeTile(tile); this.tiles.delete(key) }
     this.terrain = terrain; this.labels = labels; this.wanted.clear(); this.queued = []
     const radius = 3, extent = 2 ** address.z
     for (let y = -radius; y <= radius; y++) for (let x = -radius; x <= radius; x++) {
       const tile = { z: address.z, x: (address.x + x + extent) % extent, y: address.y + y }
       if (tile.y < 0 || tile.y >= extent) continue
-      this.wanted.add(tileKey(tile)); if (!this.tiles.has(tileKey(tile)) && !this.pending.has(tileKey(tile))) this.queued.push(tile)
+      const key = tileKey(tile)
+      this.wanted.add(key); if (!this.tiles.has(key) && !this.pending.has(key) && (!this.retries.has(key) || this.retries.get(key)!.nextAt === Infinity)) this.queued.push(tile)
     }
     this.queued.sort((a, b) => Math.hypot(a.x - address.x, a.y - address.y) - Math.hypot(b.x - address.x, b.y - address.y))
-    // Retain the previous zoom until the replacement center arrives, avoiding an empty frame.
+    // Keep the displayed zoom until all requested replacement tiles are ready.
     for (const [key, tile] of this.tiles) if (!this.wanted.has(key) && tile.address.z === address.z) { this.disposeTile(tile); this.tiles.delete(key) }
     for (const [key, request] of this.pending) if (!this.wanted.has(key)) { request.abort(); this.pending.delete(key) }
+    for (const key of this.retries.keys()) if (!this.wanted.has(key)) this.retries.delete(key)
+    this.scheduleRetries()
     this.pump()
+    this.startLodIfReady()
+  }
+  private setTileCoverage(tile: Tile, range: LodDitherRange) {
+    for (const mesh of [tile.mesh, ...tile.features]) {
+      mesh.metadata = { ...mesh.metadata, gridLodRange: range }
+      mesh.setEnabled(range[0] < range[1])
+    }
+  }
+  private startLodIfReady() {
+    if (!this.swap || this.swap.started !== undefined || ![...this.wanted].every(key => this.tiles.has(key))) return
+    this.swap.started = performance.now()
+    this.advanceLod(this.swap.started)
+  }
+  private advanceLod(now: number) {
+    const swap = this.swap
+    if (!swap || swap.started === undefined) return
+    const t = Math.max(0, Math.min(1, (now - swap.started) / LOD_TRANSITION_MS)), coverage = t * t * (3 - 2 * t)
+    for (const tile of this.tiles.values()) this.setTileCoverage(tile, lodDitherRange(coverage, tile.address.z === swap.to))
+    if (t < 1) return
+    let retiredElevation = false
+    for (const [key, tile] of this.tiles) if (tile.address.z !== swap.to) { retiredElevation ||= !!tile.dem; this.disposeTile(tile); this.tiles.delete(key) }
+    this.displayZoom = swap.to; this.swap = undefined
+    const replacement = this.tiles.values().next().value as Tile | undefined
+    // Terrain queries must use the replacement after the old DEM tiles leave the cache.
+    if (replacement) this.changed({ address: replacement.address, elevation: retiredElevation || !!replacement.dem })
+  }
+  private scheduleRetries() {
+    if (this.retryTimer !== undefined) { clearTimeout(this.retryTimer); this.retryTimer = undefined }
+    if (this.disposed) return
+    const nextAt = Math.min(...[...this.retries.values()].map(retry => retry.nextAt))
+    if (!Number.isFinite(nextAt)) return
+    // Retry without a camera update. Use one timer and the same four-request limit.
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = undefined
+      const now = performance.now()
+      for (const [key, retry] of this.retries) {
+        if (retry.nextAt > now || !this.wanted.has(key) || this.pending.has(key)) continue
+        retry.nextAt = Infinity
+        this.queued.push(retry.address)
+      }
+      this.pump()
+      this.scheduleRetries()
+    }, Math.max(0, nextAt - performance.now()))
   }
   private pump() {
     while (!this.disposed && this.pending.size < 4 && this.queued.length) {
@@ -69,11 +141,17 @@ export class GeographicTiles {
       this.pending.set(key, controller)
       this.load(tile, terrain, labels, controller.signal).then(result => {
         if (this.disposed || controller.signal.aborted || !this.wanted.has(key)) { this.disposeTile(result); return }
+        this.retries.delete(key)
+        this.scheduleRetries()
         this.tiles.set(key, result)
-        for (const [oldKey, old] of this.tiles) if (old.address.z !== tile.z) { this.disposeTile(old); this.tiles.delete(oldKey) }
+        this.setTileCoverage(result, this.swap ? [0, 0] : [0, 1])
+        this.startLodIfReady()
         this.changed({ address: tile, elevation: !!result.dem })
       }).catch(error => {
-        if (!controller.signal.aborted) {
+        if (!this.disposed && !controller.signal.aborted && this.wanted.has(key)) {
+          const attempts = Math.min(5, (this.retries.get(key)?.attempts ?? 0) + 1)
+          this.retries.set(key, { address: tile, attempts, nextAt: performance.now() + Math.min(GEOGRAPHIC_TILE_RETRY_MAX_MS, GEOGRAPHIC_TILE_RETRY_MS * 2 ** (attempts - 1)) })
+          this.scheduleRetries()
           const failure = error instanceof Error ? error : new Error(String(error))
           console.warn('Geographic tile unavailable', key, failure)
           this.changed({ address: tile, elevation: false, error: failure })
@@ -112,9 +190,11 @@ export class GeographicTiles {
         texture.hasAlpha = true; uploadGeographicTexture(texture)
         const material = new PBRMaterial(`geography-labels-${tileKey(address)}`, this.scene)
         material.albedoTexture = texture; material.useAlphaFromAlbedoTexture = true; material.transparencyMode = Material.MATERIAL_ALPHABLEND; material.disableDepthWrite = true; material.backFaceCulling = false; material.unlit = true; material.albedoColor = Color3.White()
+        ensureLodDither(material)
         tile.label = { texture, material }
-        const labelMesh = this.featureMesh(`labels-${tileKey(address)}`, { positions: positions.map((value, index) => index % 3 === 2 ? value + .32 : value), indices, colors: [] }, material)
-        labelMesh.setVerticesData(VertexBuffer.UVKind, uvs); tile.features.push(labelMesh)
+        const labelBatch = buildGeographicLabelBatch({ positions, resolution })
+        const labelMesh = this.featureMesh(`labels-${tileKey(address)}`, labelBatch, material)
+        labelMesh.setVerticesData(VertexBuffer.UVKind, labelBatch.uvs); tile.features.push(labelMesh)
       }
       return tile
     } catch (error) { this.disposeTile(tile); throw error }
@@ -124,6 +204,7 @@ export class GeographicTiles {
     if (!material) {
       material = new PBRMaterial(`geography-${kind}`, this.scene)
       material.albedoColor = Color3.FromHexString(GEOGRAPHIC_PALETTE[kind]).toLinearSpace(); material.roughness = .95; material.metallic = 0; material.backFaceCulling = false; material.unlit = true
+      ensureLodDither(material)
       this.materials.set(kind, material)
     }
     return material
@@ -162,11 +243,12 @@ export class GeographicTiles {
     let high=-Infinity,low=Infinity
     for(const tile of this.tiles.values()){
       const positions=tile.mesh.getVerticesData(VertexBuffer.PositionKind),indices=tile.mesh.getIndices();if(!tile.dem||!positions||!indices)continue
+      if(positions[0]>bounds.maxX||positions[positions.length-3]<bounds.minX||positions[1]<bounds.minY||positions[positions.length-2]>bounds.maxY)continue
       for(let i=0;i<indices.length;i+=3){const triangle=[indices[i],indices[i+1],indices[i+2]].map(index=>({x:positions[index*3],y:positions[index*3+1],z:positions[index*3+2]})),range=clippedTriangleRange(triangle,bounds);if(range){high=Math.max(high,range.high);low=Math.min(low,range.low)}}
     }
     return Number.isFinite(high)&&Number.isFinite(low)?{high,low}:undefined
   }
   get elevationReady() { return [...this.tiles.values()].some(tile => !!tile.dem) }
   private disposeTile(tile: Tile) { tile.mesh.dispose(); for (const mesh of tile.features) mesh.dispose(); tile.label?.material.dispose(); tile.label?.texture.dispose() }
-  dispose() { this.disposed = true; for (const controller of this.pending.values()) controller.abort(); this.pending.clear(); for (const tile of this.tiles.values()) this.disposeTile(tile); this.tiles.clear(); for (const material of this.materials.values()) material.dispose(); this.materials.clear() }
+  dispose() { this.disposed = true; if (this.retryTimer !== undefined) clearTimeout(this.retryTimer); this.retryTimer = undefined; this.retries.clear(); for (const controller of this.pending.values()) controller.abort(); this.pending.clear(); for (const tile of this.tiles.values()) this.disposeTile(tile); this.tiles.clear(); for (const material of this.materials.values()) material.dispose(); this.materials.clear() }
 }

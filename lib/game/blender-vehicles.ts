@@ -8,6 +8,8 @@ import tank from './generated/tank.json'
 import troop from './generated/troop_transport.json'
 import apc from './generated/apc.json'
 import cannonApc from './generated/cannon_apc.json'
+import apcLod1 from './generated/apc_lod1.json'
+import cannonApcLod1 from './generated/cannon_apc_lod1.json'
 import amphibiousApc from './generated/amphibious_apc.json'
 import cargo from './generated/vtol_cargo.json'
 import attack from './generated/vtol_attack.json'
@@ -20,6 +22,7 @@ import landingCraft from './generated/landing_craft.json'
 import aircraftCarrier from './generated/aircraft_carrier.json'
 import missileCruiser from './generated/missile_cruiser.json'
 import { attachVehicleEffects } from './vehicle-effects'
+import { LodTransition, type ModelLodState } from './lod-transition'
 
 type Part = { q: string; n: number; s: number; i: string; palette: number[][]; indices?: number[]; uv?: number[]; normals?: number[]; texture?: string; factionVertices?: number[] }
 export type PackedVehiclePart = Part
@@ -39,6 +42,7 @@ function bytes(value: string) {
   for (let i = 0; i < decoded.length; i++) result[i] = decoded.charCodeAt(i)
   return result
 }
+const lowAssets: Partial<Record<Role, Asset>> = { APC: apcLod1, CANNON_APC: cannonApcLod1 }
 
 function geometry(parts: Part[], side?: Side) {
   const g = new T.BufferGeometry()
@@ -53,23 +57,24 @@ function geometry(parts: Part[], side?: Side) {
       if (value & 0x4000) value -= 0x8000
       partPositions.push(value * part.s)
     }
-    // Each packed part is smoothed on its own and only then concatenated: hull, turret and
-    // coincident markings are separate surfaces and must not weld into each other. Note the
-    // legacy packed JSON has no normal channel; 'n' is a position component count.
+    // Keep each part separate during normal generation. Preserve all authored normals.
     const source = new T.BufferGeometry().setAttribute('position', new T.Float32BufferAttribute(partPositions, 3))
     if (part.indices) source.setIndex(part.indices)
-    if (part.normals) source.setAttribute('normal', new T.Float32BufferAttribute(part.normals, 3))
-    else if (part.indices) source.computeVertexNormals()
-    else computeAngleNormals(source)
-    const partNormals = source.getAttribute('normal'), offset = positions.length / 3
-    if (indexed) for (const index of part.indices || Array.from({length: part.n / 3}, (_, i) => i)) triangles.push(offset + index)
-    if (textured) uvs.push(...(part.uv || new Array(part.n / 3 * 2).fill(0)))
-    positions.push(...partPositions)
-    for (let i = 0; i < partNormals.count; i++) normals.push(partNormals.getX(i), partNormals.getY(i), partNormals.getZ(i))
     const indices = bytes(part.i), vertices = part.n / 3
     const faction = side && part.factionVertices ? new Set(part.factionVertices) : undefined
     const factionColor = side ? new T.Color(SIDE_COLOR[side]).toArray() : undefined
-    for (let vertex = 0; vertex < vertices; vertex++) colors.push(...(faction?.has(vertex) ? factionColor! : part.palette[(indices[vertex >> 1] >> ((vertex & 1) * 4)) & 15]))
+    const partColors: number[] = []
+    for (let vertex = 0; vertex < vertices; vertex++) partColors.push(...(faction?.has(vertex) ? factionColor! : part.palette[(indices[vertex >> 1] >> ((vertex & 1) * 4)) & 15]))
+    source.setAttribute('color', new T.Float32BufferAttribute(partColors, 3))
+    if (textured) source.setAttribute('uv', new T.Float32BufferAttribute(part.uv || new Array(vertices * 2).fill(0), 2))
+    if (part.normals) source.setAttribute('normal', new T.Float32BufferAttribute(part.normals, 3))
+    const shaded = part.normals ? source : computeAngleNormals(source)
+    const count = shaded.getAttribute('position').count, offset = positions.length / 3
+    if (indexed) for (const index of shaded.index?.array || Array.from({ length: count }, (_, i) => i)) triangles.push(offset + index)
+    for (const [name, values] of [['position', positions], ['normal', normals], ['color', colors], ...(textured ? [['uv', uvs]] : [])] as [string, number[]][]) {
+      for (const value of shaded.getAttribute(name).array) values.push(value)
+    }
+    if (shaded !== source) shaded.dispose()
     source.dispose()
   }
   g.setAttribute('position', new T.Float32BufferAttribute(positions, 3))
@@ -101,15 +106,24 @@ export function blenderVehicleGeometry(role: Role, side: Side, attachment = fals
 /** Keep each animated propeller around its actual hub, independent of fuselage origin. */
 export function createBlenderVehicle(role: Role, side: Side) {
   const root = new T.Group(); root.name = role
+  const lowAsset = lowAssets[role]
+  const lod: ModelLodState | undefined = lowAsset ? { transition: new LodTransition(), span: 7.4, detail: 1 } : undefined
+  if (lod) root.userData.modelLodRoot = lod
   const texture = Object.values(assets[role]!).find(part => part.texture)?.texture
-  const material = new T.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, flatShading: !texture, roughness: .85, map: texture ? assetPath(texture) : undefined })
+  const material = new T.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, flatShading: false, roughness: .85, map: texture ? assetPath(texture) : undefined })
   root.userData.materials = [material]
   const flashMaterial = role==='CAS_FIGHTER'?new T.MeshStandardMaterial({color:'#ffffff',vertexColors:true,emissive:'#ffb526',emissiveIntensity:4,flatShading:true,roughness:1,toneMapped:false}):material
   if(flashMaterial!==material)root.userData.materials.push(flashMaterial)
   const rig=vehicleRig(role)!, groups:Record<string,T.Group>={}
   for(const [name,node] of Object.entries(rig.nodes)){const g=new T.Group();g.name=name;groups[name]=g;g.position.set(...node.pivot as [number,number,number])}
   for(const [name,node] of Object.entries(rig.nodes)){const g=groups[name];if(node.parent){const p=rig.nodes[node.parent].pivot;g.position.set(node.pivot[0]-p[0],node.pivot[1]-p[1],node.pivot[2]-p[2]);groups[node.parent].add(g)}else root.add(g)}
-  for(const [part,data] of Object.entries(assets[role]!)){const g=geometry([data],side),p=rig.nodes[part]?.pivot||[0,0,0];g.translate(-p[0],-p[1],-p[2]);const mesh=new T.Mesh(g,rig.nodes[part]?.kind==='muzzle_flash'?flashMaterial:material);mesh.name=part+'_mesh';(groups[part]||root).add(mesh)}
+  for(const [part,data] of Object.entries(assets[role]!)){const g=geometry([data],side),p=rig.nodes[part]?.pivot||[0,0,0];g.translate(-p[0],-p[1],-p[2]);const mesh=new T.Mesh(g,rig.nodes[part]?.kind==='muzzle_flash'?flashMaterial:material);mesh.name=part+'_mesh';(groups[part]||root).add(mesh)
+    if (lod && lowAsset?.[part]) {
+      mesh.userData.modelLod = lod
+      // The renderer owns the low geometry. Both levels use the same rig matrix.
+      mesh.userData.createLodGeometry = () => geometry([lowAsset[part]], side).translate(-p[0], -p[1], -p[2])
+    }
+  }
   poseVehicleClip(root,'idle',0)
   for(const seat of rig.seats||[]){const marker=new T.Group();marker.name=seat.name;marker.position.set(...seat.position as [number,number,number]);marker.rotation.z=seat.yaw;marker.userData={...seat};root.add(marker)}
   root.userData.blenderVehicle = true

@@ -10,7 +10,7 @@ import { SoldierBatch, vehicleGeometry } from './unit-models'
 import { createAircraft, animateAircraft, disposeModel } from './aircraft-models'
 import { createSupportModel, isSupportModel, animateSupport } from './support-models'
 import type { Unit } from './types'
-import { airfieldPlatform, baseSurfaceElevation, createBase, conformBase, type BaseElevation } from './base-models'
+import { airfieldPlatform, baseSurfaceElevation, createBase, groundBase, type BaseElevation } from './base-models'
 import { createObjectiveFacilities, objectiveFacilitySignature } from './objective-models'
 import { ModularBuildingRenderer } from './modular-building-renderer'
 import type { GeometryPacket } from './types'
@@ -22,8 +22,10 @@ export class BattlefieldRenderer {
   private frustum = new T.Frustum()
   private bounds = new T.Sphere()
   private visibleUnits = new Set<string>()
+  private terrainRevision = 0
   private terrainChanged = (event: { sourceId?: string; isSourceLoaded?: boolean }) => {
-    if (event.sourceId === 'elevation' && event.isSourceLoaded) {
+    if (event.sourceId === 'openmaptiles' && event.isSourceLoaded) {
+      this.terrainRevision++
       this.ground.clear()
     }
   }
@@ -34,7 +36,7 @@ export class BattlefieldRenderer {
     return this.frustum.intersectsSphere(this.bounds)
   }
   corpseBatches: Record<Side,SoldierBatch[]> = {BLU:[],RED:[]};
-  aircraft=new Map<string,T.Group>();objectiveFacilities=new Map<string,T.Group>();bases:{model:T.Group;point:{x:number;y:number;id:string};elevation?:BaseElevation}[]=[];buildings:ModularBuildingRenderer
+  aircraft=new Map<string,T.Group>();objectiveFacilities=new Map<string,T.Group>();bases:{model:T.Group;point:{x:number;y:number;id:string};elevation?:BaseElevation;terrainRevision?:number}[]=[];buildings:ModularBuildingRenderer
   ready:Promise<void>;scene=new T.Scene();camera=new T.Camera();transform=new T.Matrix4();dummy=new T.Object3D();groups=new Map<string,T.InstancedMesh>();soldiers:Record<Side,SoldierBatch>;effects=new Map<string,T.InstancedMesh>();combatLights:T.PointLight[]=[];disposed=false;previous=0;report=0;frames:number[]=[];ground=new Map<string,{x:number;y:number;z:number;time:number}>();snapshotTime=-1;arrival=0
   readonly vehicleBreakup = new BattlefieldVehicleBreakup(this.scene)
   constructor(public map:GeographicMap,_canvas:HTMLCanvasElement|null,public getState:()=>BattleState,public getSettings:()=>{graphics:Graphics;perspective:Perspective;selected:string|null;active?:boolean},public onFPS:(n:number)=>void){
@@ -81,17 +83,7 @@ export class BattlefieldRenderer {
       }
       const { model, point } = base
       const terrain=!!this.map.getTerrain()
-      // Source events and camera target elevation can change repeatedly; accept one complete footprint sample only.
-      if(terrain&&!base.elevation&&this.map.isSourceLoaded('elevation')){
-        // Lock the complete planned airfield footprint once, so a later tier-three
-        // runway expansion inherits the same grade without moving an active base.
-        const platform=airfieldPlatform(kind==='AIRFIELD'?3:model.userData.tier),width=kind==='MOB'?MOB_YARD.halfWidth*2:platform.width,depth=kind==='MOB'?MOB_YARD.maxY-MOB_YARD.minY:platform.depth,offsetX=kind==='AIRFIELD'?platform.x:0,offsetY=kind==='MOB'?(MOB_YARD.maxY+MOB_YARD.minY)/2:0
-        const range=this.map.queryTerrainRange({minX:point.x+offsetX-width/2,maxX:point.x+offsetX+width/2,minY:point.y+offsetY-depth/2,maxY:point.y+offsetY+depth/2})
-        const sampled=range&&conformBase(model,undefined,range)
-        if(sampled){base.elevation=sampled;model.userData.elevationMode='locked'}
-      }
-      if(terrain&&base.elevation&&model.userData.elevationMode!=='locked'){conformBase(model,undefined,base.elevation);model.userData.elevationMode='locked'}
-      else if(!terrain&&model.userData.elevationMode!=='flat'){conformBase(model,undefined,{high:0,low:0});model.userData.elevationMode='flat'}
+      groundBase(base,terrain,this.terrainRevision,bounds=>this.map.queryTerrainRange(bounds))
       model.visible=graphics.models&&zoom>12&&(!terrain||!!base.elevation)&&(!performanceMode||nearby(point.x,point.y,model.name==='AIRFIELD'?650:Math.hypot(MOB_YARD.halfWidth,Math.max(Math.abs(MOB_YARD.minY),Math.abs(MOB_YARD.maxY)))))&&Math.hypot((lngLat(point)[0]-center.lng)*93650,(lngLat(point)[1]-center.lat)*111320)<3000;model.position.z=0;if(model.visible&&model.name==='MOB')animateMob(model,state,side,time)}
     const liveFacilities=new Set<string>()
     for(const objective of state.objectives){if(!Object.keys(objective.facilities||{}).length)continue;liveFacilities.add(objective.id);const signature=objectiveFacilitySignature(objective);let model=this.objectiveFacilities.get(objective.id);if(!model||model.userData.signature!==signature){if(model){this.scene.remove(model);disposeModel(model)}model=createObjectiveFacilities(objective);this.objectiveFacilities.set(objective.id,model);this.scene.add(model)}model.position.set(objective.x,objective.y,this.altitude({...objective,id:`objective-facility-${objective.id}`},now)+.08);model.visible=graphics.models&&zoom>12&&(!performanceMode||nearby(objective.x,objective.y,60))}for(const[id,model]of this.objectiveFacilities)if(!liveFacilities.has(id)){this.scene.remove(model);disposeModel(model);this.objectiveFacilities.delete(id)}

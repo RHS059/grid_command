@@ -1,5 +1,6 @@
 import earcut from 'earcut'
 import { Color3 } from '@babylonjs/core/Maths/math.color'
+import { INSTALLATION_EXCLUSIONS, type InstallationBounds } from './installation-footprints'
 
 export type TilePoint = { x: number; y: number }
 type TileFeature = { type: number; properties: Record<string, string | number | boolean>; loadGeometry(): TilePoint[][] }
@@ -86,12 +87,64 @@ function clip(polygon: TilePoint[], distance: (p: TilePoint) => number): TilePoi
   return result
 }
 
+const overlapsBounds = (polygon: TilePoint[], bounds: InstallationBounds) => polygon.length > 0
+  && Math.max(...polygon.map(p => p.x)) > bounds.minX && Math.min(...polygon.map(p => p.x)) < bounds.maxX
+  && Math.max(...polygon.map(p => p.y)) > bounds.minY && Math.min(...polygon.map(p => p.y)) < bounds.maxY
+const boundDistances = (bounds: InstallationBounds) => [
+  (p: TilePoint) => p.x - bounds.minX, (p: TilePoint) => bounds.maxX - p.x,
+  (p: TilePoint) => p.y - bounds.minY, (p: TilePoint) => bounds.maxY - p.y,
+]
+
+// Keep the convex parts outside each installation. Keep the terrain below them.
+function outsideInstallations(polygon: TilePoint[], exclusions: readonly InstallationBounds[]): TilePoint[][] {
+  let parts = [polygon]
+  for (const bounds of exclusions) {
+    parts = parts.flatMap(part => {
+      if (!overlapsBounds(part, bounds)) return [part]
+      const outside: TilePoint[][] = []
+      let inside = part
+      for (const distance of boundDistances(bounds)) {
+        const next = clip(inside, p => -distance(p))
+        if (next.length >= 3 && Math.abs(area(next)) > 1e-8) outside.push(next)
+        inside = clip(inside, distance)
+        if (inside.length < 3) break
+      }
+      return outside
+    })
+  }
+  return parts
+}
+
+/** Remove label surfaces above installations and keep the original terrain plane. */
+export function buildGeographicLabelBatch(terrain: TileTerrain, exclusions: readonly InstallationBounds[] = INSTALLATION_EXCLUSIONS) {
+  const batch = { ...emptyBatch(), uvs: [] as number[] }, { positions, resolution } = terrain, stride = resolution + 1
+  const minX = positions[0], maxX = positions[resolution * 3], maxY = positions[1], minY = positions[resolution * stride * 3 + 1]
+  const vertex = (index: number) => ({ x: positions[index * 3], y: positions[index * 3 + 1], z: positions[index * 3 + 2] })
+  for (let row = 0; row < resolution; row++) for (let column = 0; column < resolution; column++) {
+    const a = row * stride + column, b = a + stride
+    for (const source of [[a, b, a + 1], [a + 1, b, b + 1]]) {
+      const [p, q, r] = source.map(vertex), total = cross(p, q, r)
+      for (const polygon of outsideInstallations([p, q, r], exclusions)) {
+        const start = batch.positions.length / 3
+        for (const point of polygon) {
+          const z = (cross(point, q, r) * p.z + cross(p, point, r) * q.z + cross(p, q, point) * r.z) / total
+          batch.positions.push(point.x, point.y, z + .32)
+          batch.uvs.push((point.x - minX) / (maxX - minX), (point.y - minY) / (maxY - minY))
+        }
+        for (let i = 1; i < polygon.length - 1; i++) if (Math.abs(cross(polygon[0], polygon[i], polygon[i + 1])) > 1e-8) batch.indices.push(start, start + i, start + i + 1)
+      }
+    }
+  }
+  return batch
+}
+
 /** Batches are fixed by visual role, never by feature or individual building. */
-export function buildGeographicBatches(layers: GeographicLayers, terrain: TileTerrain): GeographicBatches {
+export function buildGeographicBatches(layers: GeographicLayers, terrain: TileTerrain, exclusions: readonly InstallationBounds[] = INSTALLATION_EXCLUSIONS): GeographicBatches {
   const batches: GeographicBatches = { water: emptyBatch(), roads: emptyBatch(), highways: emptyBatch(), buildings: emptyBatch(), edges: emptyBatch() }
   const { positions, resolution } = terrain, stride = resolution + 1
   const minX = positions[0], maxY = positions[1], maxX = positions[resolution * 3], minY = positions[resolution * stride * 3 + 1]
   const width = maxX - minX, height = maxY - minY, cellWidth = width / resolution, cellHeight = height / resolution
+  const tileExclusions = exclusions.filter(bounds => bounds.minX < maxX && bounds.maxX > minX && bounds.minY < maxY && bounds.maxY > minY)
   const texel = width / 512
   const worldPoint = (p: TilePoint, extent: number): TilePoint => ({ x: minX + p.x / extent * width, y: maxY - p.y / extent * height })
   const sample = (p: TilePoint) => {
@@ -101,12 +154,14 @@ export function buildGeographicBatches(layers: GeographicLayers, terrain: TileTe
     return u + v <= 1 ? nw + (ne - nw) * u + (sw - nw) * v : se + (sw - se) * (1 - u) + (ne - se) * (1 - v)
   }
   const emit = (batch: GeographicBatch, polygon: TilePoint[], elevation: (p: TilePoint) => number, color?: [number, number, number]) => {
-    if (polygon.length < 3) return
-    const start = batch.positions.length / 3
-    for (const p of polygon) { batch.positions.push(p.x, p.y, elevation(p)); if (color) batch.colors.push(...color, 1) }
-    for (let i = 1; i < polygon.length - 1; i++) {
-      const winding = cross(polygon[0], polygon[i], polygon[i + 1])
-      if (Math.abs(winding) > 1e-8) batch.indices.push(start, start + (winding > 0 ? i : i + 1), start + (winding > 0 ? i + 1 : i))
+    for (const part of outsideInstallations(polygon, tileExclusions)) {
+      if (part.length < 3) continue
+      const start = batch.positions.length / 3
+      for (const p of part) { batch.positions.push(p.x, p.y, elevation(p)); if (color) batch.colors.push(...color, 1) }
+      for (let i = 1; i < part.length - 1; i++) {
+        const winding = cross(part[0], part[i], part[i + 1])
+        if (Math.abs(winding) > 1e-8) batch.indices.push(start, start + (winding > 0 ? i : i + 1), start + (winding > 0 ? i + 1 : i))
+      }
     }
   }
   const clipToTile = (polygon: TilePoint[]) => clip(clip(clip(clip(polygon, p => p.x - minX), p => maxX - p.x), p => p.y - minY), p => maxY - p.y)
@@ -175,6 +230,15 @@ export function buildGeographicBatches(layers: GeographicLayers, terrain: TileTe
         const bottom = Math.max(0, numberProperty(feature.properties, 'render_min_height', 0)), buildingHeight = Math.max(bottom + 1, numberProperty(feature.properties, 'render_height', 6))
         for (const rings of geographicPolygons(paths)) {
           const { points, indices } = triangulate(rings)
+          const blocked = tileExclusions.some(bounds => {
+            if (!overlapsBounds(points, bounds)) return false
+            for (let i = 0; i < indices.length; i += 3) {
+              const intersection = boundDistances(bounds).reduce((polygon, distance) => clip(polygon, distance), [points[indices[i]], points[indices[i + 1]], points[indices[i + 2]]])
+              if (intersection.length >= 3 && Math.abs(area(intersection)) > 1e-8) return true
+            }
+            return false
+          })
+          if (blocked) continue
           const roof = points.reduce((highest, p) => Math.max(highest, sample(p)), -Infinity) + buildingHeight
           for (let i = 0; i < indices.length; i += 3) emit(batches.buildings, clipToTile([points[indices[i]], points[indices[i + 1]], points[indices[i + 2]]]), () => roof, BUILDING_ROOF)
           for (const ring of rings) {

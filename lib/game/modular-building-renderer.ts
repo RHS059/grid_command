@@ -5,6 +5,7 @@ import { createInteriorWindowMaterial } from './interior-window-material'
 import { createColoredBuildingMaterial, createWireSpriteMaterial } from './building-detail-material'
 import { BATTLE_BUILDINGS_ENABLED } from './geometry-loader'
 import type { GeometryPacket, Graphics } from './types'
+import { LodTransition } from './lod-transition'
 
 export class ModularBuildingRenderer {
   private features = new Map<string, GeometryPacket['features'][number]>()
@@ -17,6 +18,7 @@ export class ModularBuildingRenderer {
   private revealStarted = performance.now()
   private buildToken = 0
   private constructing = false
+  private detailTransition = new LodTransition()
   constructor(private scene: T.Scene) {
     if (!BATTLE_BUILDINGS_ENABLED) return
     for (const kind of Object.keys(BUILDING_PART_CAPACITY) as BuildingPartKind[]) {
@@ -88,7 +90,7 @@ export class ModularBuildingRenderer {
   }
   update(center: { x: number; y: number }, zoom: number, pitch: number, graphics: Graphics, terrain: boolean) {
     const smooth = (edge0: number, edge1: number, value: number) => { const t = Math.max(0, Math.min(1, (value - edge0) / (edge1 - edge0))); return t * t * (3 - 2 * t) }
-    const reveal = Math.min(1, (performance.now() - this.revealStarted) / 1100), globalFade = graphics.buildings ? smooth(8, 18, pitch) * smooth(14.6, 15.6, zoom) : 0, detailFade = smooth(16.4, 17.15, zoom)
+    const now = performance.now(), reveal = Math.min(1, (now - this.revealStarted) / 1100), globalFade = graphics.buildings ? smooth(8, 18, pitch) * smooth(14.6, 15.6, zoom) : 0, detailFade = this.detailTransition.update(zoom, 16.775, .06, now)
     for (const mesh of this.meshes.values()) { const uniforms = (mesh.material as T.ShaderMaterial).uniforms; if (uniforms.buildingGlobalFade) uniforms.buildingGlobalFade.value = globalFade; if (uniforms.buildingRevealProgress) uniforms.buildingRevealProgress.value = reveal; if (uniforms.buildingDetailFade) uniforms.buildingDetailFade.value = detailFade; if (uniforms.buildingFocus) uniforms.buildingFocus.value.set(center.x, center.y); mesh.visible = mesh.count > 0 && globalFade > .001 }
     if (this.constructing) return
     const signature = `${this.revision}`

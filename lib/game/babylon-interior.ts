@@ -4,7 +4,7 @@ import type { MaterialDefines } from '@babylonjs/core/Materials/materialDefines'
 import type { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
 /** Parallax room box shading stays inside the PBR pipeline, including reflections and shadows. */
 export class InteriorRoomPlugin extends MaterialPluginBase {
-  constructor(material: PBRMaterial) { super(material, 'GridInteriorRooms', 200, {}, true, true) }
+  constructor(material: PBRMaterial) { super(material, 'GridInteriorRooms', 200, {}, true, true); this.doNotSerialize = true }
   isCompatible(_language: ShaderLanguage) { return true }
   prepareDefinesBeforeAttributes(defines: MaterialDefines) { defines._needUVs = true }
   getAttributes(attributes: string[]) { attributes.push('roomData') }

@@ -2,13 +2,16 @@ import { createMobYard } from './mob-models'
 import { MOB_YARD } from './mob'
 import * as T from './scene-data'
 import { mergeGeometries } from './scene-data'
-import { SIDE_COLOR, type AirfieldTier, type Side } from './types'
+import { computeAngleNormals } from './geometry-normals'
+import { SIDE_COLOR, type AirfieldTier, type Point, type Side } from './types'
 import { RUNWAY } from './theater'
+import { airfieldPlatform, installationFootprint, type InstallationBounds } from './installation-footprints'
+export { airfieldPlatform } from './installation-footprints'
 
 export type BaseKind = 'MOB' | 'AIRFIELD'
 export type BaseElevation = { high: number; low: number }
+export type BaseGrounding = { model: T.Group; point: Point; elevation?: BaseElevation; terrainRevision?: number }
 export const BASE_GRADE_CLEARANCE=.1
-export const airfieldPlatform = (tier: AirfieldTier) => ({ width: tier === 3 ? 240 : 170, depth: RUNWAY.halfLength * 2, x: tier === 3 ? -35 : 0 })
 export function createBase(kind: BaseKind, side: Side, tier: AirfieldTier = 1) {
   const root = new T.Group(); root.name = kind; root.userData.tier = tier
   const colors = ['#65716a', '#18222b', '#a4afb4', SIDE_COLOR[side], '#293e4c']
@@ -23,7 +26,7 @@ export function createBase(kind: BaseKind, side: Side, tier: AirfieldTier = 1) {
     b(w * .7, .16, .55, x, y + d / 2 + .25, h - .8, 3)
   }
   if (kind === 'MOB') {
-    b(MOB_YARD.halfWidth*2,MOB_YARD.maxY-MOB_YARD.minY,.35,0,(MOB_YARD.maxY+MOB_YARD.minY)/2,-.2,2)
+    b(MOB_YARD.halfWidth*2,MOB_YARD.maxY-MOB_YARD.minY,.35,0,(MOB_YARD.maxY+MOB_YARD.minY)/2,-.175,2)
     root.add(createMobYard(tier,side))
     shelter(-16, -13, 27, 17, 7)
     for (let i = 0; i < 5; i++) b(2.3, .18, 1.6, -26 + i * 4.8, -21.6, 4, 4)
@@ -39,7 +42,7 @@ export function createBase(kind: BaseKind, side: Side, tier: AirfieldTier = 1) {
     b(14, 1, .05, 0, 29, .04, 1)
   } else {
     const platform = airfieldPlatform(tier)
-    b(platform.width, platform.depth, .45, platform.x, 0, -.3, 2)
+    b(platform.width, platform.depth, .45, platform.x, 0, -.225, 2)
     if (tier === 3) {
       const x = RUNWAY.x - RUNWAY.spacing
       b(32, 1200, .12, x, 0, .02, 1)
@@ -71,14 +74,12 @@ export function createBase(kind: BaseKind, side: Side, tier: AirfieldTier = 1) {
 }
 
 export function conformBase(root: T.Group, elevation?: (x: number, y: number) => number | undefined, locked?: BaseElevation) {
-  const platform = airfieldPlatform(root.userData.tier as AirfieldTier)
-  const width = root.name === 'MOB' ? MOB_YARD.halfWidth*2 : platform.width, depth = root.name === 'MOB' ? MOB_YARD.maxY-MOB_YARD.minY : platform.depth
-  const offset = root.name === 'AIRFIELD' ? platform.x : 0
-  const offsetY=root.name==='MOB'?(MOB_YARD.maxY+MOB_YARD.minY)/2:0
+  const footprint = installationFootprint(root.name as BaseKind, root.userData.tier as AirfieldTier)
   let high = locked?.high ?? -Infinity, low = locked?.low ?? Infinity
   if (!locked) {
     if (!elevation) return undefined
-    for (let x = -width / 2 + offset; x <= width / 2 + offset; x += width / 10) for (let y = -depth / 2+offsetY; y <= depth / 2+offsetY; y += depth / 24) {
+    for (let column = 0; column <= 10; column++) for (let row = 0; row <= 24; row++) {
+      const x = footprint.minX + (footprint.maxX - footprint.minX) * column / 10, y = footprint.minY + (footprint.maxY - footprint.minY) * row / 24
       const height = elevation(x, y)
       if (height === undefined || !Number.isFinite(height)) return undefined
       high = Math.max(high, height); low = Math.min(low, height)
@@ -92,10 +93,45 @@ export function conformBase(root: T.Group, elevation?: (x: number, y: number) =>
     const p = o.geometry.getAttribute('position')
     const original: Float32Array = o.userData.originalPositions ||= new Float32Array(p.array)
     for (let i = 0; i < p.count; i++) p.setZ(i, original[i * 3 + 2] + (original[i * 3 + 2] < -.3 ? low - 2 : deck))
-    p.needsUpdate = true; o.geometry.computeVertexNormals(); o.geometry.computeBoundingSphere()
+    // A rigid height shift does not change a normal. Rebuild only the skirt faces.
+    const skirtCorners: number[] = [], skirtPositions: number[] = []
+    for (let i = 0; i < p.count; i += 3) {
+      const below = [0, 1, 2].map(corner => original[(i + corner) * 3 + 2] < -.3)
+      if (below.every(value => value === below[0])) continue
+      for (let corner = i; corner < i + 3; corner++) {
+        skirtCorners.push(corner); skirtPositions.push(p.getX(corner), p.getY(corner), p.getZ(corner))
+      }
+    }
+    if (skirtCorners.length) {
+      const skirt = computeAngleNormals(new T.BufferGeometry().setAttribute('position', new T.Float32BufferAttribute(skirtPositions, 3)))
+      const rebuilt = skirt.getAttribute('normal'), normals = o.geometry.getAttribute('normal')
+      for (let i = 0; i < skirtCorners.length; i++) normals.setXYZ(skirtCorners[i], rebuilt.getX(i), rebuilt.getY(i), rebuilt.getZ(i))
+      normals.needsUpdate = true; skirt.dispose()
+    }
+    p.needsUpdate = true; o.geometry.computeBoundingSphere()
   })
   return { high, low }
 }
 
 export const baseSurfaceElevation=(kind:BaseKind,elevation:BaseElevation)=>elevation.high+BASE_GRADE_CLEARANCE+(kind==='AIRFIELD'?.08:0)
+
+export function groundBase(base: BaseGrounding, terrain: boolean, revision: number, rangeAt: (bounds: InstallationBounds) => BaseElevation | undefined) {
+  const { model, point } = base, kind = model.name as BaseKind
+  // A replacement terrain tile can change the highest point below the base.
+  if (terrain && base.terrainRevision !== revision) {
+    const range = rangeAt(installationFootprint(kind, 3, point))
+    if (range) {
+      if (!base.elevation || base.elevation.high !== range.high || base.elevation.low !== range.low) {
+        base.elevation = conformBase(model, undefined, range)
+        model.userData.elevationMode = 'locked'
+      }
+      base.terrainRevision = revision
+    }
+  }
+  if (terrain && base.elevation && model.userData.elevationMode !== 'locked') {
+    conformBase(model, undefined, base.elevation); model.userData.elevationMode = 'locked'
+  } else if (!terrain && model.userData.elevationMode !== 'flat') {
+    conformBase(model, undefined, { high: 0, low: 0 }); model.userData.elevationMode = 'flat'
+  }
+}
 

@@ -119,7 +119,7 @@ export class GeoMap {
     this.frame = requestAnimationFrame(this.loop)
     if (document.hidden || !this.runtime || this.options.container.clientWidth < 2 || this.options.container.clientHeight < 2) return
     if (this.animation) { const a = this.animation, progress = Math.min(1, (performance.now() - a.start) / a.duration), t = progress * progress * (3 - 2 * progress), target = a.to.center ? LngLat.convert(a.to.center) : a.from.center; this.apply({ center: [a.from.center.lng + (target.lng - a.from.center.lng) * t, a.from.center.lat + (target.lat - a.from.center.lat) * t], zoom: a.from.zoom + ((a.to.zoom ?? a.from.zoom) - a.from.zoom) * t, pitch: a.from.pitch + ((a.to.pitch ?? a.from.pitch) - a.from.pitch) * t, bearing: a.from.bearing + ((a.to.bearing ?? a.from.bearing) - a.from.bearing) * t }); if (progress === 1) this.animation = undefined; this.dirty = true }
-    if (!this.dirty) return
+    if (!this.dirty && !this.tiles?.transitioning) return
     this.dirty = false; this.camera(); this.tiles?.update(this.center, this.zoom, !!this.terrain, this.getLayer('road-labels')?.layout?.visibility !== 'none' && this.pitch < 15)
     this.draw?.(Array.from(this.runtime.getViewProjection().asArray()))
     if (this.graph) this.runtime.sync(this.graph)

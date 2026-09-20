@@ -30,8 +30,11 @@ import { InteriorRoomPlugin } from './babylon-interior'
 import { applyVehiclePbrMaps, createDestroyedMaterial, FURY_PBR_MAPS, hasDestroyedAppearance, type VehicleDamageState } from './babylon-destroyed'
 import type { Graphics } from './types'
 import { StartupDeadlineError, withStartupDeadline } from './startup-deadline'
+import { configureShadowNormalBias, fitStudioShadowDepth } from './shadow-shading'
+import { ensureLodDither } from './babylon-lod-dither'
+import { lodDitherRange, type LodDitherRange, type ModelLodState } from './lod-transition'
 
-type DrawRecord={mesh:Mesh;geometry:D.BufferGeometry;version:string;instanceVersion:string;castShadow:boolean;sectors?:Map<string,number[]>;sectorVersion?:string;instanceCount?:number;instanceBuffers?:Map<string,Float32Array>;instanceBoundsDirty?:boolean;world?:Matrix;worldValues?:number[]}
+type DrawRecord={mesh:Mesh;geometry:D.BufferGeometry;version:string;instanceVersion:string;castShadow:boolean;ownedGeometry?:boolean;sectors?:Map<string,number[]>;sectorVersion?:string;instanceCount?:number;instanceBuffers?:Map<string,Float32Array>;instanceBoundsDirty?:boolean;world?:Matrix;worldValues?:number[]}
 const WEBGPU_STARTUP_TIMEOUT_MS=10000
 const disposeWebGPUCandidate=(candidate:WebGPUEngine)=>{
   try{candidate.dispose()}
@@ -56,7 +59,8 @@ export function sanitizeFirefoxWGSL(code:string){
 }
 let firefoxWGSLPatched=false
 export const prepareFirefoxWGSL=()=>{
-  if(firefoxWGSLPatched||typeof navigator==='undefined'||!navigator.userAgent.includes('Firefox'))return
+  // Remove unused inputs on every backend to keep shadow shaders within device limits.
+  if(firefoxWGSLPatched)return
   firefoxWGSLPatched=true
   const prototype=WebGPUShaderProcessorWGSL.prototype,finalize=prototype.finalizeShaders
   prototype.finalizeShaders=function(vertexCode:string,fragmentCode:string){
@@ -146,10 +150,10 @@ export class BabylonRuntime {
     Matrix.FromArrayToRef(values,0,record.world)
     record.mesh.freezeWorldMatrix(record.world)
   }
-  private updateGeometry(record:DrawRecord,source:D.Mesh){
+  private updateGeometry(record:DrawRecord,source:D.Mesh,geometry=source.geometry){
     // Key on buffer identity as well as its version: swapping in a freshly built normal
     // buffer (which starts back at version 0) must still upload.
-    const geometry=source.geometry,version=Object.entries(geometry.attributes).filter(([n])=>['position','normal','uv','color'].includes(n)).map(([n,a])=>`${n}:${a.id}:${a.version}`).join(':')
+    const version=Object.entries(geometry.attributes).filter(([n])=>['position','normal','uv','color'].includes(n)).map(([n,a])=>`${n}:${a.id}:${a.version}`).join(':')
     if(record.geometry===geometry&&record.version===version)return
     record.geometry=geometry;record.version=version
     record.instanceBoundsDirty=true
@@ -165,7 +169,7 @@ export class BabylonRuntime {
     const metadata=source.geometry.attributes,material=Array.isArray(source.material)?source.material[0]:source.material
     const focus=material.uniforms.buildingFocus?.value as D.Vector2|undefined
     const colors=metadata.buildingColor||source.instanceColor
-    const detailed=(material.uniforms.buildingDetailFade?.value??1)>.5
+    const detailFade=Math.max(0,Math.min(1,material.uniforms.buildingDetailFade?.value??1)),detailed=detailFade===0?0:detailFade===1?1:2
     const roomData=metadata.roomData
     const version=`${source.count}:${source.instanceMatrix.id}:${source.instanceMatrix.version}:${colors?.id}:${colors?.version}:${roomData?.id}:${roomData?.version}:${metadata.buildingOrigin?.id}:${metadata.buildingOrigin?.version}:${metadata.buildingLod?.id}:${metadata.buildingLod?.version}:${focus?`${Math.round(focus.x/8)}:${Math.round(focus.y/8)}:${detailed}`:''}`
     if(version===record.instanceVersion&&!record.instanceBoundsDirty){if(record.instanceCount===0)record.mesh.setEnabled(false);return}
@@ -175,7 +179,7 @@ export class BabylonRuntime {
       const sectorVersion=`${source.count}:${metadata.buildingOrigin.id}:${metadata.buildingOrigin.version}`
       if(record.sectorVersion!==sectorVersion){const sectors=new Map<string,number[]>(),origins=metadata.buildingOrigin;for(let i=0;i<source.count;i++){const key=`${Math.floor(origins.getX(i)/200)}:${Math.floor(origins.getY(i)/200)}`,entries=sectors.get(key)||[];entries.push(i);sectors.set(key,entries)}record.sectors=sectors;record.sectorVersion=sectorVersion}
       selected=[];const x=Math.floor(focus.x/200),y=Math.floor(focus.y/200),origin=metadata.buildingOrigin,lod=metadata.buildingLod
-      for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)for(const index of record.sectors!.get(`${x+dx}:${y+dy}`)||[]){const detail=lod?.getX(index)||0;if(detail>.5&&!detailed||detail<-.5&&detailed)continue;if(Math.hypot(origin.getX(index)-focus.x,origin.getY(index)-focus.y)<220)selected.push(index)}
+      for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)for(const index of record.sectors!.get(`${x+dx}:${y+dy}`)||[]){const detail=lod?.getX(index)||0;if(detail>.5&&detailed===0||detail<-.5&&detailed===1)continue;if(Math.hypot(origin.getX(index)-focus.x,origin.getY(index)-focus.y)<220)selected.push(index)}
     }
     const count=selected?.length??source.count,countChanged=record.instanceCount!==count;record.instanceCount=count
     if(count===0){record.mesh.thinInstanceCount=0;record.mesh.setEnabled(false);return}
@@ -200,9 +204,36 @@ export class BabylonRuntime {
     else if(record.instanceBuffers.delete('color'))record.mesh.thinInstanceSetBuffer('color',null,4)
     if(roomData)upload('roomData',4,(index,component)=>roomData.array[index*4+component])
     else if(record.instanceBuffers.delete('roomData'))record.mesh.thinInstanceSetBuffer('roomData',null,4)
+    if(metadata.buildingLod)upload('buildingLod',1,index=>metadata.buildingLod.getX(index))
+    else if(record.instanceBuffers.delete('buildingLod'))record.mesh.thinInstanceSetBuffer('buildingLod',null,1)
     record.mesh.thinInstanceCount=count
     if(moved||countChanged||record.instanceBoundsDirty)record.mesh.thinInstanceRefreshBoundingInfo(!!record.instanceBoundsDirty)
     record.instanceBoundsDirty=false
+  }
+  private syncDraw(object:D.Mesh,root:D.Scene,visible:boolean,live:Set<number>,low=false){
+    const key=low?-object.id:object.id,lod=object.userData.modelLod as ModelLodState|undefined
+    const range:LodDitherRange=lod?lodDitherRange(lod.detail,!low):[0,1]
+    let record=this.draws.get(key)
+    // Defer low geometry until its first use. Keep it for later transitions.
+    if(low&&!record&&(!visible||range[0]===range[1]))return
+    live.add(key)
+    if(!record){const mesh=new Mesh(`${object.name||`model-${object.id}`}${low?'-lod1':''}`,this.scene);mesh.sideOrientation=Material.CounterClockWiseSideOrientation;mesh.alwaysSelectAsActiveMesh=!object.frustumCulled;record={mesh,geometry:low?object.userData.createLodGeometry():object.geometry,version:'',instanceVersion:'',castShadow:false,ownedGeometry:low};this.draws.set(key,record)}
+    const vehicleDamage=damageState(object),enabled=visible&&range[0]<range[1]&&(!(object instanceof D.InstancedMesh)||object.count>0)&&(vehicleDamage?.destruction??0)<1
+    record.mesh.setEnabled(enabled)
+    if(!enabled)return
+    this.updateGeometry(record,object,low?record.geometry:object.geometry)
+    const source=Array.isArray(object.material)?object.material[0]:object.material
+    const material=this.damagedMaterial(this.getMaterial(source),hasDestroyedAppearance(object))
+    record.mesh.material=material
+    const collider=colliderState(object)
+    record.mesh.metadata={...record.mesh.metadata,gridVehicleDamage:vehicleDamage,gridVehicleCollider:collider,gridLodRange:range,gridLodDetail:source.uniforms.buildingDetailFade?.value??1}
+    record.mesh.isPickable=!low&&(!collider||collider.enabled)&&(vehicleDamage?.destruction??0)<1
+    record.mesh.receiveShadows=!object.userData.vehicleEffect&&(root.profile==='studio'?object.receiveShadow:true)
+    this.updateWorld(record,object)
+    if(object instanceof D.InstancedMesh)this.updateInstances(record,object)
+    if(lod||object.geometry.attributes.buildingLod)ensureLodDither(material)
+    const wantsCaster=!object.userData.vehicleEffect&&!object.userData.disableShadow&&(root.profile==='studio'?object.castShadow:true)
+    if(wantsCaster!==record.castShadow){record.castShadow=wantsCaster;if(this.shadows){if(wantsCaster&&!this.casters.has(key)){this.shadows.addShadowCaster(record.mesh);this.casters.add(key)}else if(!wantsCaster&&this.casters.has(key)){this.shadows.removeShadowCaster(record.mesh);this.casters.delete(key)}}}
   }
   private syncNative(source:D.Object3D){
     let record=this.native.get(source.id)
@@ -249,33 +280,29 @@ export class BabylonRuntime {
     this.profile=root.profile
     this.refreshedMaterials.clear()
     root.updateMatrixWorld(true)
+    const now=performance.now()
     const live=new Set<number>(),nativeLive=new Set<number>(),lightLive=new Set<number>()
     root.traverse(object=>{if(object instanceof D.HemisphereLight||object instanceof D.DirectionalLight||object instanceof D.PointLight)lightLive.add(object.id)})
     for(const[id,light]of this.lights)if(!lightLive.has(id)){if(light instanceof PointLight&&this.clustered.isSupported)this.clustered.removeLight(light);if(light===this.sun){this.shadows?.dispose();this.shadows=null;this.sun=null}light.dispose();this.lights.delete(id)}
     const visit=(object:D.Object3D,parentVisible:boolean)=>{
       const visible=parentVisible&&object.visible
+      const modelLod=object.userData.modelLodRoot as ModelLodState|undefined
+      if(modelLod){
+        const world=object.matrixWorld.elements,distance=Math.max(.1,Math.hypot(world[12]-this.camera.position.x,world[13]-this.camera.position.y,world[14]-this.camera.position.z))
+        const scale=Math.max(Math.hypot(world[0],world[1],world[2]),Math.hypot(world[4],world[5],world[6]),Math.hypot(world[8],world[9],world[10]))
+        const pixels=modelLod.span*scale*this.engine.getRenderHeight()/(2*Math.tan(this.camera.fov/2)*distance)
+        modelLod.detail=modelLod.transition.update(pixels,96,8,now)
+      }
       if(object.userData.nativeAssetURL){nativeLive.add(object.id);this.syncNative(object);this.native.get(object.id)!.pivot.setEnabled(visible)}
-      if(object instanceof D.Mesh&&object.geometry.attributes.position?.count){live.add(object.id);let record=this.draws.get(object.id);if(!record){const mesh=new Mesh(object.name||`model-${object.id}`,this.scene);mesh.sideOrientation=Material.CounterClockWiseSideOrientation;mesh.alwaysSelectAsActiveMesh=!object.frustumCulled;record={mesh,geometry:object.geometry,version:'',instanceVersion:'',castShadow:false};this.draws.set(object.id,record)}const vehicleDamage=damageState(object);record.mesh.setEnabled(visible&&(!(object instanceof D.InstancedMesh)||object.count>0)&&(vehicleDamage?.destruction??0)<1);if(visible){this.updateGeometry(record,object);const source=Array.isArray(object.material)?object.material[0]:object.material;record.mesh.material=this.damagedMaterial(this.getMaterial(source),hasDestroyedAppearance(object));const collider=colliderState(object);record.mesh.metadata={...record.mesh.metadata,gridVehicleDamage:vehicleDamage,gridVehicleCollider:collider};record.mesh.isPickable=(!collider||collider.enabled)&&(vehicleDamage?.destruction??0)<1;
-        // Legacy/battlefield scenes keep every mesh casting+receiving, as before. Only a
-        // 'studio' profile honors the mesh's own explicit castShadow/receiveShadow flags.
-        record.mesh.receiveShadows=!object.userData.vehicleEffect&&(root.profile==='studio'?object.receiveShadow:true)
-        this.updateWorld(record,object);if(object instanceof D.InstancedMesh)this.updateInstances(record,object)
-        const wantsCaster=!object.userData.vehicleEffect&&!object.userData.disableShadow&&(root.profile==='studio'?object.castShadow:true)
-        if(wantsCaster!==record.castShadow){record.castShadow=wantsCaster;if(this.shadows){if(wantsCaster&&!this.casters.has(object.id)){this.shadows.addShadowCaster(record.mesh);this.casters.add(object.id)}else if(!wantsCaster&&this.casters.has(object.id)){this.shadows.removeShadowCaster(record.mesh);this.casters.delete(object.id)}}}
-      }}
+      if(object instanceof D.Mesh&&object.geometry.attributes.position?.count){this.syncDraw(object,root,visible,live);if(object.userData.createLodGeometry)this.syncDraw(object,root,visible,live,true)}
       if(object instanceof D.HemisphereLight||object instanceof D.DirectionalLight||object instanceof D.PointLight){let light=this.lights.get(object.id);if(!light){if(object instanceof D.HemisphereLight)light=new HemisphericLight(object.name,new Vector3(0,0,1),this.scene);else if(object instanceof D.PointLight){light=new PointLight(object.name,Vector3.Zero(),this.scene);if(this.clustered.isSupported)this.clustered.addLight(light)}else{light=new DirectionalLight(object.name,new Vector3(.5,-.3,-1),this.scene)
         // The shadow owner is chosen explicitly by castShadow, never by traversal order,
         // so fill/rim (or any other non-shadow-owning directional) never displaces the key/sun.
         if(!this.sun&&object.castShadow&&CascadedShadowGenerator.IsSupported){this.sun=light;const studio=root.profile==='studio'
           this.shadows=new CascadedShadowGenerator(1024,light,true,this.camera);this.shadows.numCascades=studio?1:3;this.shadows.stabilizeCascades=!studio;this.shadows.lambda=.7;this.shadows.usePercentageCloserFiltering=true;this.shadows.bias=studio?.0005:.0002
-          // One depth bias cannot cover grazing light: the depth slope across a single
-          // shadow texel exceeds it, so a lit surface stripes itself. normalBias offsets
-          // along the normal in proportion to the light angle, which is what removes it.
-          if(studio)this.shadows.normalBias=.02
-          // A single small preview subject has no fixed size to hardcode a shadow-frustum
-          // distance for; let Babylon fit near/far to what's actually on screen instead of
-          // reusing battlefield's 8000-unit CSM distance at studio scale.
-          if(studio)this.shadows.autoCalcDepthBounds=true;else this.shadows.shadowMaxZ=8000
+          // Scale the normal offset with each cascade to prevent surface stripes.
+          configureShadowNormalBias(this.shadows)
+          if(!studio)this.shadows.shadowMaxZ=8000
           for(const[id,record]of this.draws)if(record.castShadow){this.shadows.addShadowCaster(record.mesh);this.casters.add(id)}
         }}this.lights.set(object.id,light)}light.intensity=visible?object.intensity:0;light.diffuse=color(object.color);if(light instanceof HemisphericLight&&object instanceof D.HemisphereLight)light.groundColor=color(object.groundColor);if(light instanceof PointLight&&object instanceof D.PointLight){light.position.copyFromFloats(object.position.x,object.position.y,object.position.z);light.range=object.distance||50}if(light instanceof DirectionalLight&&object instanceof D.DirectionalLight){
         light.position.copyFromFloats(object.position.x,object.position.y,object.position.z)
@@ -287,12 +314,13 @@ export class BabylonRuntime {
       for(const child of object.children)visit(child,visible)
     }
     visit(root,true)
-    for(const[id,record]of this.draws)if(!live.has(id)){record.mesh.dispose();this.draws.delete(id);this.casters.delete(id)}
+    for(const[id,record]of this.draws)if(!live.has(id)){record.mesh.dispose();if(record.ownedGeometry)record.geometry.dispose();this.draws.delete(id);this.casters.delete(id)}
     for(const[id,record]of this.native)if(!nativeLive.has(id)){record.source.traverse(node=>this.nativeNodes.delete(node.id));if(record.entries)for(const root of record.entries.rootNodes)for(const node of [root,...root.getDescendants(false)])if(node instanceof Mesh){const original=this.nativeOriginalMaterials.get(node);if(original){this.destroyedMaterials.get(original)?.dispose();this.destroyedMaterials.delete(original);this.nativeOriginalMaterials.delete(node)}}record.entries?.dispose();record.pivot.dispose();this.native.delete(id)}
     for(const[source,material]of this.materials)if(source.disposed){this.destroyedMaterials.get(material)?.dispose();this.destroyedMaterials.delete(material);material.dispose();this.materials.delete(source)}
+    if(root.profile==='studio'&&this.shadows)fitStudioShadowDepth(this.shadows,this.camera)
     if(root.background){const background=color(root.background);this.scene.clearColor=new Color4(background.r,background.g,background.b,1)}
   }
   render(){if(this.disposed)return;this.engine.beginFrame();try{this.scene.render()}finally{this.engine.endFrame()}}
-  dispose(){if(this.disposed)return;this.disposed=true;this.effects.dispose();this.scene.dispose();this.engine.dispose();this.draws.clear();this.materials.clear();this.refreshedMaterials.clear();this.textures.clear();this.destroyedMaterials.clear();this.nativeOriginalMaterials.clear();this.native.clear();this.nativeNodes.clear();this.casters.clear()}
+  dispose(){if(this.disposed)return;this.disposed=true;this.effects.dispose();this.scene.dispose();this.engine.dispose();for(const record of this.draws.values())if(record.ownedGeometry)record.geometry.dispose();this.draws.clear();this.materials.clear();this.refreshedMaterials.clear();this.textures.clear();this.destroyedMaterials.clear();this.nativeOriginalMaterials.clear();this.native.clear();this.nativeNodes.clear();this.casters.clear()}
 }
 
