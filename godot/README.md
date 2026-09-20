@@ -23,6 +23,12 @@ This Godot 4.7.2 project tests a native desktop version of Grid Command with the
 
 The workflow uses a free standard GitHub runner. It downloads the official Godot 4.7.2 editor and export templates for each build. No local Godot installation is required to play the result.
 
+## Updates
+
+Use **CHECK FOR UPDATES** in the mission panel. Normal content releases download only changed scripts, scenes, shaders, textures, and models as a Godot resource pack from the fixed GitHub release origin, verified with SHA-256. The game mounts the pack and reloads the mission in the same process while keeping unit state, orders, selection, camera position, pause state, and simulation speed.
+
+Changes to the executable, engine, extensions, updater, or startup configuration cannot be replaced safely inside a running process. The same screen opens the new Windows build for those releases, and the replacement takes effect on the next launch.
+
 ## Local development
 
 Open `project.godot` with Godot 4.7.2. Imported files and builds stay outside source control.

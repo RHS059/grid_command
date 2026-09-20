@@ -48,7 +48,10 @@ func _ready() -> void:
 	layer.add_child(hud)
 	_create_order_marker()
 	select_unit(units[0], false)
-	if "--smoke-test" in OS.get_cmdline_user_args():
+	var snapshot := UpdateService.take_session_snapshot()
+	if not snapshot.is_empty():
+		restore_session_state(snapshot)
+	if "--smoke-test" in OS.get_cmdline_user_args() and not UpdateService.smoke_finished:
 		_run_smoke_test.call_deferred()
 
 func _create_environment() -> void:
@@ -420,5 +423,71 @@ func _run_smoke_test() -> void:
 	assert(paused, "Pause must stop the simulation.")
 	set_speed(2.0)
 	assert(not paused and speed == 2.0, "Speed must resume the simulation.")
+	var saved := export_session_state()
+	var saved_position := units[0].position
+	units[0].position = Vector3(75, 0, 75)
+	elapsed = 12345.0
+	restore_session_state(saved)
+	assert(units[0].position == saved_position and elapsed == saved["elapsed"], "An update must keep unit and mission state.")
+	if not UpdateService.run_smoke_tests():
+		push_error("The deterministic update smoke test failed.")
+		get_tree().quit(1)
+		return
 	print("GRID_COMMAND_SMOKE_OK: scene, 13 units, navigation, movement, selection, hold, pause, speed")
 	get_tree().quit(0)
+
+func export_session_state() -> Dictionary:
+	var records: Array[Dictionary] = []
+	var selected: Array[String] = []
+	for unit in units:
+		records.append({"call_sign": unit.call_sign, "kind": unit.kind, "team": unit.team, "position": unit.position, "rotation": unit.rotation, "health": unit.health, "is_alive": unit.is_alive, "route": unit.route.duplicate(), "order": unit.order, "cooldown": unit.cooldown, "target": unit.attack_target.call_sign if is_instance_valid(unit.attack_target) else ""})
+	for unit in selected_units:
+		selected.append(unit.call_sign)
+	return {"schema": 1, "elapsed": elapsed, "capture": capture, "hold_time": hold_time, "ai_time": ai_time, "mission_state": mission_state, "paused": paused, "speed": speed, "command_mode": command_mode, "shadow_enabled": shadow_enabled, "fresnel_enabled": fresnel_enabled, "units": records, "selected": selected, "camera": {"focus": camera.focus, "distance": camera.distance, "target_distance": camera.target_distance, "yaw": camera.yaw, "pitch": camera.pitch}}
+
+func restore_session_state(snapshot: Dictionary) -> void:
+	if snapshot.get("schema", 0) != 1:
+		notify("The update is active. This version starts a new mission.")
+		return
+	elapsed = float(snapshot.get("elapsed", 0.0))
+	capture = float(snapshot.get("capture", 0.0))
+	hold_time = float(snapshot.get("hold_time", 0.0))
+	ai_time = float(snapshot.get("ai_time", 3.0))
+	mission_state = str(snapshot.get("mission_state", "ACTIVE"))
+	command_mode = str(snapshot.get("command_mode", "ADVANCE"))
+	set_shadows(bool(snapshot.get("shadow_enabled", true)))
+	set_fresnel(bool(snapshot.get("fresnel_enabled", true)))
+	clear_selection()
+	var by_name: Dictionary = {}
+	for unit in units:
+		by_name[unit.call_sign] = unit
+	for record in snapshot.get("units", []):
+		var unit: CombatUnit = by_name.get(str(record.get("call_sign", "")))
+		if unit == null or unit.kind != record.get("kind", "") or unit.team != record.get("team", -1):
+			continue
+		unit.position = record.get("position", unit.position)
+		unit.rotation = record.get("rotation", unit.rotation)
+		unit.health = clampf(float(record.get("health", unit.max_health)), 0.0, unit.max_health)
+		if not bool(record.get("is_alive", true)):
+			unit.take_damage(unit.max_health)
+		else:
+			unit.route = record.get("route", PackedVector3Array())
+			unit.order = str(record.get("order", "READY"))
+			unit.cooldown = float(record.get("cooldown", 0.0))
+			unit.attack_target = by_name.get(str(record.get("target", "")))
+	for call_sign in snapshot.get("selected", []):
+		var unit: CombatUnit = by_name.get(str(call_sign))
+		if unit != null and unit.is_alive:
+			selected_units.append(unit)
+			unit.set_selected(true)
+	var camera_state: Dictionary = snapshot.get("camera", {})
+	camera.focus = camera_state.get("focus", camera.focus)
+	camera.distance = float(camera_state.get("distance", camera.distance))
+	camera.target_distance = float(camera_state.get("target_distance", camera.target_distance))
+	camera.yaw = float(camera_state.get("yaw", camera.yaw))
+	camera.pitch = float(camera_state.get("pitch", camera.pitch))
+	paused = false
+	set_speed(float(snapshot.get("speed", 1.0)))
+	if bool(snapshot.get("paused", false)):
+		toggle_pause()
+	notify("The update is active. The mission was kept.")

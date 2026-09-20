@@ -23,6 +23,11 @@ var pause_banner: Label
 var speed_buttons: Array[Button] = []
 var refresh := 0.0
 var map_control: MiniMap
+var update_status: Label
+var update_version: Label
+var update_check_button: Button
+var update_apply_button: Button
+var update_native_button: Button
 
 class MiniMap extends Control:
 	var world: Node3D
@@ -196,6 +201,28 @@ func _build_mission_panel() -> void:
 	column.add_child(count_label)
 	column.add_child(_button("SELECT ALL BLUE", world.select_all_blue, 240))
 	column.add_child(_button("CONTROLS  [H]", toggle_help, 240))
+	column.add_child(HSeparator.new())
+	update_version = _label("APP VERSION " + UpdateService.current_version, 11, MUTED)
+	column.add_child(update_version)
+	update_check_button = _button("CHECK FOR UPDATES", UpdateService.check_for_updates, 240)
+	column.add_child(update_check_button)
+	update_apply_button = _button("DOWNLOAD AND APPLY", UpdateService.apply_update, 240)
+	column.add_child(update_apply_button)
+	update_native_button = _button("OPEN APP DOWNLOAD", UpdateService.open_native_download, 240)
+	column.add_child(update_native_button)
+	update_status = _label("", 12, MUTED)
+	update_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	update_status.custom_minimum_size.x = 240
+	column.add_child(update_status)
+	UpdateService.status_changed.connect(_update_update_controls)
+	_update_update_controls()
+
+func _update_update_controls() -> void:
+	update_status.text = UpdateService.status_text
+	update_version.text = "APP VERSION " + UpdateService.current_version
+	update_check_button.disabled = UpdateService.is_busy()
+	update_apply_button.visible = UpdateService.phase == "available"
+	update_native_button.visible = UpdateService.phase == "restart_required"
 
 func _progress(color: Color) -> ProgressBar:
 	var bar := ProgressBar.new()

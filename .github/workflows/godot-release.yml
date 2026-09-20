@@ -1,0 +1,126 @@
+name: Release Godot Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "godot/**"
+      - ".github/workflows/godot-release.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: godot-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  GODOT_VERSION: "4.7.2"
+  PROJECT_DIR: godot
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version and skip an existing release
+        id: version
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^config\/version="\([^"]*\)"/\1/p' "$PROJECT_DIR/project.godot")"
+          test -n "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=godot-v$version" >> "$GITHUB_OUTPUT"
+          if gh release view "godot-v$version" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Find previous Godot release
+        if: steps.version.outputs.exists != 'true'
+        id: previous
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$(gh release list --limit 100 --json tagName --jq '[.[].tagName | select(startswith("godot-v"))][0] // ""')"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if [[ -n "$tag" ]]; then
+            gh release download "$tag" --pattern godot-update.json --output "$RUNNER_TEMP/previous-manifest.json" || true
+            mkdir -p "$RUNNER_TEMP/previous"
+            gh release download "$tag" --pattern GridCommand-Windows-x86_64.zip --output "$RUNNER_TEMP/previous-build.zip"
+            unzip -q "$RUNNER_TEMP/previous-build.zip" -d "$RUNNER_TEMP/previous"
+          fi
+
+      - name: Download Godot and export templates
+        if: steps.version.outputs.exists != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          mkdir -p "$RUNNER_TEMP/godot" "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          curl --fail --location --retry 3 "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip" -o "$RUNNER_TEMP/godot/editor.zip"
+          curl --fail --location --retry 3 "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz" -o "$RUNNER_TEMP/godot/templates.tpz"
+          unzip -q "$RUNNER_TEMP/godot/editor.zip" -d "$RUNNER_TEMP/godot"
+          unzip -q "$RUNNER_TEMP/godot/templates.tpz" -d "$RUNNER_TEMP/godot/templates"
+          cp -R "$RUNNER_TEMP/godot/templates/templates/." "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/"
+          chmod +x "$RUNNER_TEMP/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64"
+          echo "GODOT=$RUNNER_TEMP/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64" >> "$GITHUB_ENV"
+
+      - name: Plan release
+        if: steps.version.outputs.exists != 'true'
+        shell: bash
+        run: |
+          base_pack="$(find "$RUNNER_TEMP/previous" -name GridCommand.pck -print -quit 2>/dev/null || true)"
+          args=(--repo "$GITHUB_WORKSPACE" --project "$GITHUB_WORKSPACE/$PROJECT_DIR" --previous-ref "${{ steps.previous.outputs.tag }}" --output "$RUNNER_TEMP/release-plan.json")
+          [[ -n "$base_pack" ]] && args+=(--base-pack "$base_pack")
+          python3 "$PROJECT_DIR/tools/prepare_release.py" "${args[@]}"
+          cat "$RUNNER_TEMP/release-plan.json"
+
+      - name: Import, smoke test, and export
+        if: steps.version.outputs.exists != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$GODOT" --headless --path "$PROJECT_DIR" --import --quit
+          set -o pipefail
+          "$GODOT" --headless --path "$PROJECT_DIR" --quit-after 180 -- --smoke-test 2>&1 | tee "$RUNNER_TEMP/godot-smoke.log"
+          grep -F "GRID_COMMAND_SMOKE_OK" "$RUNNER_TEMP/godot-smoke.log"
+          grep -F "GRID_COMMAND_UPDATE_SMOKE_OK" "$RUNNER_TEMP/godot-smoke.log"
+          ! grep -E "SCRIPT ERROR|Parse Error" "$RUNNER_TEMP/godot-smoke.log"
+          mkdir -p "$PROJECT_DIR/build/windows" "$PROJECT_DIR/build/release"
+          "$GODOT" --headless --path "$PROJECT_DIR" --export-release "Windows Desktop" "build/windows/GridCommand.exe"
+          if jq -e '.live_patch' "$RUNNER_TEMP/release-plan.json" >/dev/null; then
+            "$GODOT" --headless --path "$PROJECT_DIR" --export-pack "Delta Patch" "build/release/update.pck"
+          fi
+          cd "$PROJECT_DIR/build"
+          zip -9 -r release/GridCommand-Windows-x86_64.zip windows
+
+      - name: Create update manifest
+        if: steps.version.outputs.exists != 'true'
+        shell: bash
+        run: |
+          args=(--plan "$RUNNER_TEMP/release-plan.json" --patch "$PROJECT_DIR/build/release/update.pck" --output "$PROJECT_DIR/build/release/godot-update.json")
+          if [[ -f "$RUNNER_TEMP/previous-manifest.json" ]]; then args+=(--previous-manifest "$RUNNER_TEMP/previous-manifest.json"); fi
+          python3 "$PROJECT_DIR/tools/finalize_release.py" "${args[@]}"
+          cp "$RUNNER_TEMP/release-plan.json" "$PROJECT_DIR/build/release/release-plan.json"
+
+      - name: Publish GitHub release
+        if: steps.version.outputs.exists != 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          assets=("$PROJECT_DIR/build/release/GridCommand-Windows-x86_64.zip" "$PROJECT_DIR/build/release/godot-update.json" "$PROJECT_DIR/build/release/release-plan.json")
+          [[ -f "$PROJECT_DIR/build/release/update.pck" ]] && assets+=("$PROJECT_DIR/build/release/update.pck" "$PROJECT_DIR/build/release/update.pck.sha256")
+          gh release create "${{ steps.version.outputs.tag }}" "${assets[@]}" --target "$GITHUB_SHA" --title "Grid Command Godot ${{ steps.version.outputs.version }}" --notes "Windows build and verified Godot update channel assets. See release-plan.json for live-patch compatibility."
