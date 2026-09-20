@@ -702,7 +702,7 @@ func _create_order_marker() -> void:
 	operation_root.add_child(marker)
 
 func _on_unit_fired(unit: CombatUnit, target: CombatUnit) -> void:
-	var start := unit.global_position + Vector3.UP * (unit.altitude + 0.011)
+	var start := unit.muzzle_position()
 	var end := target.global_position + Vector3.UP * (target.altitude + 0.01)
 	var beam := MeshInstance3D.new()
 	var mesh := CylinderMesh.new()

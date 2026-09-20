@@ -42,6 +42,7 @@ var phase := 0.0
 var imported_model := false
 var source_model: Node3D
 var vehicle_greebles: VehicleGreebles
+var tank_fire: TankFireEffects
 var personnel := 0
 var presentation_offset := Vector3.ZERO
 var presentation_yaw_offset := 0.0
@@ -62,6 +63,7 @@ func _ready() -> void:
 	visual.position.y = altitude + 0.0014
 	add_child(visual)
 	_create_model()
+	fired.connect(_present_shot)
 	_create_markers()
 	if kind == "fighter":
 		_create_exhaust()
@@ -157,6 +159,20 @@ func _create_model() -> void:
 				mat.roughness = maxf(mat.roughness, 0.60)
 				mat.metallic = minf(mat.metallic, 0.45)
 				mesh.set_surface_override_material(surface, mat)
+	if kind == "tank" and imported_model:
+		var content := source_model.get_parent() as Node3D
+		tank_fire = preload("res://scripts/tank_fire_effects.gd").new()
+		visual.add_child(tank_fire)
+		tank_fire.setup(content, source_model)
+
+func _present_shot(_unit: CombatUnit, _target: CombatUnit) -> void:
+	if is_alive and is_instance_valid(tank_fire):
+		tank_fire.fire()
+
+func muzzle_position() -> Vector3:
+	if is_instance_valid(tank_fire) and is_instance_valid(tank_fire.muzzle):
+		return tank_fire.muzzle.global_position
+	return global_position + Vector3.UP * (altitude + 0.011)
 
 func _filter_personnel_gear(node: Node) -> void:
 	if node is Node3D and str(node.name).begins_with("Gear_"):
@@ -478,6 +494,8 @@ func take_damage(amount: float) -> void:
 		team_marker.hide()
 		if exhaust != null:
 			exhaust.emitting = false
+		if is_instance_valid(tank_fire):
+			tank_fire.reset()
 		for mesh in visual_meshes:
 			mesh.material_overlay = null
 			mesh.material_override = TacticalMap.material(Color("3d4948"), 1.0)

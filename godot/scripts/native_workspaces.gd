@@ -16,6 +16,10 @@ var camera: Camera3D
 var model_root: Node3D
 var model: Node3D
 var preview_greebles: VehicleGreebles
+var preview_tank_fire: TankFireEffects
+var fire_cannon_button: Button
+var _previous_clip := ""
+var _previous_clip_time := -1.0
 var animation: AnimationPlayer
 var clips: OptionButton
 var model_title: Label
@@ -203,7 +207,7 @@ func _build_models() -> void:
 	_label(livery,"Livery")
 	_button(livery,"BLU",func(): _set_team(0))
 	_button(livery,"RED",func(): _set_team(1))
-	var controls := _panel(model_page,Rect2(-304,-340,288,324),true)
+	var controls := _panel(model_page,Rect2(-304,-378,288,362),true)
 	controls.get_parent().set_anchor(SIDE_TOP,1.0,true)
 	controls.get_parent().set_anchor(SIDE_BOTTOM,1.0,true)
 	var rotate := CheckBox.new()
@@ -211,6 +215,7 @@ func _build_models() -> void:
 	rotate.toggled.connect(func(value: bool): auto_rotate = value)
 	controls.add_child(rotate)
 	_button(controls,"Reset view",func(): yaw = 0.6; pitch = 0.32; distance = 5.0; _update_camera())
+	fire_cannon_button = _button(controls,"Fire cannon",_fire_preview_cannon)
 	_label(controls,"Animation")
 	clips = OptionButton.new()
 	controls.add_child(clips)
@@ -253,9 +258,16 @@ func _populate_catalog(category: String) -> void:
 
 func _load_model(id: String) -> void:
 	selected_model = id
-	if is_instance_valid(model):
+	if is_instance_valid(preview_tank_fire):
+		model_root.remove_child(preview_tank_fire)
+		preview_tank_fire.queue_free()
+	elif is_instance_valid(model):
 		model_root.remove_child(model)
 		model.queue_free()
+	preview_tank_fire = null
+	_previous_clip = ""
+	_previous_clip_time = -1.0
+	fire_cannon_button.visible = id == "TANK"
 	preview_greebles = null
 	animation = null
 	clips.clear()
@@ -290,7 +302,15 @@ func _load_model(id: String) -> void:
 		if clips.item_count > 0: animation.play(clips.get_item_text(0))
 	clips.disabled = clips.item_count == 0
 	_set_team(team)
+	if id == "TANK":
+		preview_tank_fire = preload("res://scripts/tank_fire_effects.gd").new()
+		model_root.add_child(preview_tank_fire)
+		preview_tank_fire.setup(model, model)
 	_update_camera()
+
+func _fire_preview_cannon() -> void:
+	if is_instance_valid(preview_tank_fire):
+		preview_tank_fire.fire()
 
 func _filter_gear(node: Node, role: String) -> void:
 	if node is Node3D and str(node.name).begins_with("Gear_"): node.visible = str(node.name) == "Gear_"+role
@@ -324,6 +344,7 @@ func _set_team(value: int) -> void:
 	if is_instance_valid(model): _apply_team(model)
 
 func _apply_team(node: Node) -> void:
+	if node.has_meta("tank_muzzle_flash"): return
 	if node is MeshInstance3D and DisplayServer.get_name() != "headless":
 		node.material_overlay = null if selected_model in ["MOB","AIRFIELD"] else material_overlay
 	for child in node.get_children(): _apply_team(child)
@@ -345,6 +366,13 @@ func _update_camera() -> void:
 
 func _process(delta: float) -> void:
 	if not visible: return
+	if model_page.visible and is_instance_valid(preview_tank_fire) and is_instance_valid(animation):
+		var clip := animation.current_animation
+		var clip_time := animation.current_animation_position
+		if animation.is_playing() and clip.to_lower() == "shoot" and (clip != _previous_clip or clip_time < _previous_clip_time):
+			_fire_preview_cannon()
+		_previous_clip = clip
+		_previous_clip_time = clip_time
 	if is_instance_valid(preview_greebles):
 		var driving := is_instance_valid(animation) and animation.is_playing() and "drive" in animation.current_animation.to_lower()
 		preview_greebles.set_activity(driving, delta)
