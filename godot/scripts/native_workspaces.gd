@@ -8,12 +8,14 @@ const MODEL_NAMES := {
   "FORKLIFT":"Supply forklift", "CARGO_PLANE":"Tactical cargo plane", "UAV_JAMMER":"UAV jammer", "AA_TEAM":"Anti-air launcher team", "TRANSPORT_HELI":"Troop transport helicopter", "HEAVY_LIFT_HELI":"Heavy-lift helicopter", "TROOP_TRUCK":"Light troop carrier",
   "RIFLE":"Rifle squad", "SCOUT":"Scout team", "MG":"Machine gun team", "AT":"Anti-tank team", "MORTAR":"Mortar team", "ENGINEER":"Combat engineer", "MEDIC":"Combat medic", "LOGISTICS":"Logistics team", "TANK":"Main battle tank", "PILOT":"Pilot", "COMMAND":"Command officer", "TRUCK":"Supply truck", "RECON_UAV":"Reconnaissance UAV", "APC":"Armored personnel carrier", "CANNON_APC":"Cannon APC", "IFV":"Infantry fighting vehicle", "CAS_FIGHTER":"CAS fighter", "JET":"FQ-44 Fury strike fighter", "ATTACK_HELI":"Attack helicopter", "MOB":"Main operating base", "AIRFIELD":"Airfield compound",}
 const MODEL_FILES := {"COMMAND":"soldier","RIFLE":"soldier","SCOUT":"soldier","MG":"soldier","AT":"soldier","MORTAR":"soldier","ENGINEER":"soldier","MEDIC":"soldier","LOGISTICS":"soldier","PILOT":"soldier","AA_TEAM":"soldier","TANK":"tank","APC":"apc","CANNON_APC":"cannon_apc","IFV":"ifv","AMPHIBIOUS_APC":"amphibious_apc","TROOP_TRUCK":"troop_transport","TRUCK":"truck","CAS_FIGHTER":"cas","JET":"fighter","ATTACK_HELI":"vtol_attack","TRANSPORT_HELI":"transport_heli","HEAVY_LIFT_HELI":"vtol_cargo","CARGO_PLANE":"cargo_plane","RECON_UAV":"recon_uav","AIRCRAFT_CARRIER":"aircraft_carrier","FRIGATE":"missile_cruiser","PATROL_BOAT":"patrol_boat","LANDING_CRAFT":"landing_craft","FORKLIFT":"forklift","UAV_JAMMER":"uav_jammer","MOB":"mob","AIRFIELD":"airfield"}
+const Z_UP_MODEL_FILES := ["fighter","troop_transport","vtol_attack","vtol_cargo"]
 var world
 var viewport: SubViewport
 var scene: Node3D
 var camera: Camera3D
 var model_root: Node3D
 var model: Node3D
+var preview_greebles: VehicleGreebles
 var animation: AnimationPlayer
 var clips: OptionButton
 var model_title: Label
@@ -254,6 +256,7 @@ func _load_model(id: String) -> void:
 	if is_instance_valid(model):
 		model_root.remove_child(model)
 		model.queue_free()
+	preview_greebles = null
 	animation = null
 	clips.clear()
 	var path := "res://assets/models/"+str(MODEL_FILES.get(id,id))+".glb"
@@ -265,12 +268,22 @@ func _load_model(id: String) -> void:
 		var packed: PackedScene = load(path)
 		model = packed.instantiate()
 	model_root.add_child(model)
-	if id == "JET": model.rotation_degrees.x = -90
+	# These Blender-authored GLBs retain their source Z-up axes. Rotate the
+	# complete vehicle once; this also keeps wheel and rotor child axes aligned.
+	if MODEL_FILES.get(id,"") in Z_UP_MODEL_FILES: model.rotation_degrees.x = -90
 	if MODEL_FILES.get(id,"") == "soldier": _filter_gear(model,id)
 	var bounds := _bounds(model,Transform3D.IDENTITY)
-	var factor := 3.0 / maxf(0.001,maxf(bounds.size.x,maxf(bounds.size.y,bounds.size.z)))
+	var span := maxf(0.001,maxf(bounds.size.x,maxf(bounds.size.y,bounds.size.z)))
+	var factor := 3.0 / span
 	model_root.scale = Vector3.ONE*factor
 	model_root.position = Vector3(-bounds.get_center().x,-bounds.position.y,-bounds.get_center().z)*factor
+	if id == "TANK":
+		preview_greebles = preload("res://scripts/vehicle_greebles.gd").new()
+		preview_greebles.build_tank_stowage()
+		# The gameplay library is authored in theater units; scale it back into
+		# this imported model's native span before the preview root is normalized.
+		preview_greebles.scale = Vector3.ONE*(span/0.095)
+		model.add_child(preview_greebles)
 	model_title.text = MODEL_NAMES[id]
 	_find_animation(model)
 	if animation:
@@ -334,6 +347,7 @@ func _update_camera() -> void:
 
 func _process(delta: float) -> void:
 	if not visible: return
+	if is_instance_valid(preview_greebles): preview_greebles.set_activity(false,auto_rotate,delta)
 	if model_page.visible and selected_model == "TRANSPORT_HELI" and is_instance_valid(model):
 		preload("res://scripts/browser_aircraft_models.gd").animate(model, delta)
 	if model_page.visible and auto_rotate:

@@ -57,9 +57,15 @@ static func create(kind: String, team: int = 0, tier: int = 1) -> Node3D:
 	root.set_meta("tier",tier)
 	root.set_meta("source_units","metres")
 	var side := Color("54b7ff") if team == 0 else Color("ee777b")
-	var palette: Array[Material] = []
-	for color in [Color("65716a"),Color("18222b"),Color("a4afb4"),side,Color("293e4c")]:
-		palette.append(_material(color,0.2 if palette.size() == 4 else 0.85,0.7 if palette.size() == 4 else 0.12))
+	# Keep the slabs and trim in the same concrete family. The old pale trim
+	# (#a4afb4) clipped almost white under the model-viewer key light.
+	var palette: Array[Material] = [
+		_material(Color("65716a"),0.94,0.03),
+		_material(Color("18222b"),0.92,0.04),
+		_material(Color("7b8582"),0.97,0.0),
+		_material(side,0.85,0.0),
+		_material(Color("293e4c"),0.2,0.7),
+	]
 	var b := Builder.new(root,palette)
 	if kind == "MOB":
 		b.box(160,180,0.35,0,50,-0.175,2,true)

@@ -1,0 +1,4 @@
+interface:
+  display_name: "PS1-PS2 Vehicle Textures"
+  short_description: "Chunky low-poly vehicle texture workflow"
+  default_prompt: "Use $ps1-ps2-vehicle-textures to repaint this vehicle atlas with chunky PS1-PS2-era detail."

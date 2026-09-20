@@ -7,6 +7,7 @@ signal destroyed(unit: CombatUnit)
 const FRESNEL = preload("res://shaders/unit_fresnel.gdshader")
 const BLUE := Color("66b9ec")
 const RED := Color("e98d79")
+const Z_UP_MODEL_FILES := ["fighter","troop_transport","vtol_attack","vtol_cargo"]
 const MODEL_LENGTH := {"command":0.025,"soldier":0.018,"tank":0.095,"apc":0.07,"ifv":0.075,"transport_heli":0.20,"cannon_apc":0.075,"troop_transport":0.07,"fighter":0.15,"cas":0.18,"vtol_attack":0.14,"vtol_cargo":0.20,"mec_lift":0.30,"cargo_plane":0.40,"recon_uav":0.06,"aircraft_carrier":3.30,"missile_cruiser":1.75,"patrol_boat":0.27,"landing_craft":0.46,"amphibious_apc":0.085,"truck":0.09,"forklift":0.035,"uav_jammer":0.03}
 
 var kind := "tank"
@@ -40,6 +41,7 @@ var anim_move := ""
 var phase := 0.0
 var imported_model := false
 var source_model: Node3D
+var vehicle_greebles: VehicleGreebles
 var personnel := 0
 var presentation_offset := Vector3.ZERO
 var presentation_yaw_offset := 0.0
@@ -65,6 +67,8 @@ func _ready() -> void:
 		_create_exhaust()
 
 func _process(delta: float) -> void:
+	if is_instance_valid(vehicle_greebles):
+		vehicle_greebles.set_activity(not route.is_empty(), is_instance_valid(attack_target), delta)
 	if kind == "transport_heli" and is_instance_valid(source_model):
 		preload("res://scripts/browser_aircraft_models.gd").animate(source_model, delta, is_alive)
 	# Simulation records advance at 20 Hz. Retain the previous rendered transform
@@ -110,7 +114,7 @@ func _create_model() -> void:
 		orient.add_child(model)
 		if source_kind == "soldier":
 			_filter_personnel_gear(model)
-		if kind == "fighter":
+		if source_kind in Z_UP_MODEL_FILES:
 			orient.rotation_degrees.x = -90.0
 		_collect_meshes(orient)
 		if not visual_meshes.is_empty():
@@ -131,6 +135,11 @@ func _create_model() -> void:
 		for part in visual_meshes:
 			part.scale *= 0.01
 			part.position *= 0.01
+	if kind == "tank":
+		vehicle_greebles = preload("res://scripts/vehicle_greebles.gd").new()
+		vehicle_greebles.build_tank_stowage()
+		visual.add_child(vehicle_greebles)
+		_collect_meshes(vehicle_greebles)
 	overlay = ShaderMaterial.new()
 	overlay.shader = FRESNEL
 	overlay.set_shader_parameter("rim_color", Color.WHITE)

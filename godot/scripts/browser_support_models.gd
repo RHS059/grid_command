@@ -132,6 +132,10 @@ static func material(color: String, roughness: float, metallic: float = .05) -> 
 	result.albedo_color = Color(color)
 	result.roughness = roughness
 	result.metallic = metallic
+	# The hand-built cab shell has thin, open joins around the windscreen.
+	# Render both sides so those joins cannot make the whole cabin disappear
+	# when viewed from the opposite winding after the browser-axis conversion.
+	result.cull_mode = BaseMaterial3D.CULL_DISABLED
 	return result
 
 static func box(parent: Node3D, size: Vector3, position: Vector3, mat: Material) -> MeshInstance3D:
