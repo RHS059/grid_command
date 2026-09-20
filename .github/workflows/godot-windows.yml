@@ -65,14 +65,17 @@ jobs:
         shell: bash
         run: |
           mkdir -p "$GITHUB_WORKSPACE/builds"
+          rm -f "$GITHUB_WORKSPACE/builds/GridCommand-Windows-x86_64.zip"
+          build_name="gridcomand-windows-x86_64_${GITHUB_RUN_ID}.zip"
           cd "$PROJECT_DIR/build"
-          zip -9 -r "$GITHUB_WORKSPACE/builds/GridCommand-Windows-x86_64.zip" windows
+          zip -9 -r "$GITHUB_WORKSPACE/builds/$build_name" windows
+          echo "BUILD_NAME=$build_name" >> "$GITHUB_ENV"
 
       - name: Upload playable build
         uses: actions/upload-artifact@v4
         with:
-          name: GridCommand-Windows-x86_64
-          path: builds/GridCommand-Windows-x86_64.zip
+          name: gridcomand-windows-x86_64_${{ github.run_id }}
+          path: builds/${{ env.BUILD_NAME }}
           if-no-files-found: error
           retention-days: 14
 
@@ -83,7 +86,7 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f builds/GridCommand-Windows-x86_64.zip
+          git add -A -f builds/
           if git diff --cached --quiet; then
             echo "The repository already contains this exact build."
             exit 0

@@ -1,5 +1,5 @@
 # Builds
 
-GitHub Actions writes packaged desktop builds to this directory on the runner before uploading them as downloadable workflow artifacts.
+Successful GitHub Actions runs commit Windows builds here.
 
-The current Windows artifact is named `GridCommand-Windows-x86_64.zip`. Extract it and run `GridCommand.exe`.
+Each archive is named `gridcomand-windows-x86_64_<action-run-id>.zip`. The action run ID uniquely identifies the GitHub Actions build that produced it. Extract the archive and run `GridCommand.exe`.
