@@ -94,8 +94,8 @@ func installation_rectangles() -> Array[Rect2]:
 	for side in ["BLU","RED"]:
 		var base: Vector3 = bases[side]
 		var air: Vector3 = airbases[side]
-		rectangles.append(Rect2(Vector2(base.x-0.85,base.z-0.45),Vector2(1.7,1.9)))
-		rectangles.append(Rect2(Vector2(air.x-1.4,air.z-6.2),Vector2(2.8,12.4)))
+		rectangles.append(Rect2(Vector2(base.x-0.83,base.z-1.43),Vector2(1.66,1.86)))
+		rectangles.append(Rect2(Vector2(air.x-1.58,air.z-6.03),Vector2(2.46,12.06)))
 	return rectangles
 
 func source_installation_rectangles() -> Array[Rect2]:
@@ -110,18 +110,15 @@ func _create_installations() -> void:
 	for side in ["BLU","RED"]:
 		var base: Vector3 = bases[side]
 		var air: Vector3 = airbases[side]
-		var color := Color("7dbcff") if side == "BLU" else Color("ff8080")
-		_box(base+Vector3(0,0.001,0.5),Vector3(1.6,0.002,1.8),"concrete")
-		_box(base+Vector3(-0.52,0.055,-0.18),Vector3(0.38,0.11,0.32),"container")
-		_box(base+Vector3(-0.2,0.025,0.2),Vector3(0.4,0.05,0.25),"wall")
-		for n in range(6):
-			_box(base+Vector3(0.15+float(n%3)*0.07,0.02,0.16+floor(n/3.0)*0.18),Vector3(0.06,0.04,0.12),"container")
-		# Two gantry supports and a beam at the browser's crane-yard coordinates.
-		for x in [0.10,0.40]: _box(base+Vector3(x,0.11,0.6),Vector3(0.012,0.22,0.02),"container")
-		_box(base+Vector3(0.25,0.22,0.6),Vector3(0.34,0.014,0.02),"container")
-		_box(air+Vector3(-0.48,0.001,0),Vector3(0.42,0.002,12.0),"runway")
-		for z in range(-5,6): _box(air+Vector3(-0.48,0.003,float(z)),Vector3(0.025,0.001,0.25),"stripe")
-		_box(air+Vector3(0.28,0.055,-1),Vector3(0.4,0.11,0.5),"wall")
+		var team := 0 if side == "BLU" else 1
+		var color := Color("7dbcff") if team == 0 else Color("ff8080")
+		for kind in ["MOB", "AIRFIELD"]:
+			var installation: Node3D = preload("res://scripts/browser_model_factory.gd").create(kind, team)
+			installation.name = side + "_" + kind
+			installation.scale = Vector3.ONE * 0.01
+			installation.position = (base if kind == "MOB" else air) + Vector3.UP * 0.001
+			installation.add_to_group("installation_models")
+			add_child(installation)
 		_create_map_label(side+" MOB",base+Vector3(0,0.008,-0.5),color,0.001)
 		_create_map_label(side+" AIRBASE",air+Vector3(0,0.008,6.4),color,0.001)
 

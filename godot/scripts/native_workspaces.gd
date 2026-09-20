@@ -257,11 +257,13 @@ func _load_model(id: String) -> void:
 	animation = null
 	clips.clear()
 	var path := "res://assets/models/"+str(MODEL_FILES.get(id,id))+".glb"
-	if not ResourceLoader.exists(path):
-		model_title.text = "Asset unavailable: "+id
-		return
-	var packed: PackedScene = load(path)
-	model = packed.instantiate()
+	model = preload("res://scripts/browser_model_factory.gd").create(id, team)
+	if model == null:
+		if not ResourceLoader.exists(path):
+			model_title.text = "Asset unavailable: "+id
+			return
+		var packed: PackedScene = load(path)
+		model = packed.instantiate()
 	model_root.add_child(model)
 	if id == "JET": model.rotation_degrees.x = -90
 	if MODEL_FILES.get(id,"") == "soldier": _filter_gear(model,id)
@@ -284,6 +286,7 @@ func _filter_gear(node: Node, role: String) -> void:
 	for child in node.get_children(): _filter_gear(child,role)
 
 func _bounds(node: Node3D, parent_transform: Transform3D) -> AABB:
+	if not node.visible: return AABB()
 	var transform := parent_transform*node.transform
 	var result := AABB()
 	if node is MeshInstance3D: result = transform*node.get_aabb()
@@ -298,15 +301,20 @@ func _find_animation(node: Node) -> void:
 	for child in node.get_children(): _find_animation(child)
 
 func _set_team(value: int) -> void:
+	var changed := team != value
 	team = value
+	if changed and selected_model in ["TRUCK","FORKLIFT","UAV_JAMMER","CARGO_PLANE","TRANSPORT_HELI","IFV","MOB","AIRFIELD"]:
+		_load_model(selected_model)
+		return
 	material_overlay = ShaderMaterial.new()
 	material_overlay.shader = load("res://shaders/unit_fresnel.gdshader")
-	material_overlay.set_shader_parameter("team_color",Color("66b9ec") if team == 0 else Color("e98d79"))
-	material_overlay.set_shader_parameter("strength",0.11)
+	material_overlay.set_shader_parameter("rim_color",Color.WHITE)
+	material_overlay.set_shader_parameter("strength",0.5)
 	if is_instance_valid(model): _apply_team(model)
 
 func _apply_team(node: Node) -> void:
-	if node is MeshInstance3D and DisplayServer.get_name() != "headless": node.material_overlay = material_overlay
+	if node is MeshInstance3D and DisplayServer.get_name() != "headless":
+		node.material_overlay = null if selected_model in ["MOB","AIRFIELD"] else material_overlay
 	for child in node.get_children(): _apply_team(child)
 
 func _orbit_input(event: InputEvent) -> void:
@@ -326,6 +334,8 @@ func _update_camera() -> void:
 
 func _process(delta: float) -> void:
 	if not visible: return
+	if model_page.visible and selected_model == "TRANSPORT_HELI" and is_instance_valid(model):
+		preload("res://scripts/browser_aircraft_models.gd").animate(model, delta)
 	if model_page.visible and auto_rotate:
 		yaw += delta*0.25
 		_update_camera()
@@ -1734,12 +1744,3 @@ const DEFAULT_SOUND_BANK := '''{
 
 
 '''
-
-
-
-
-
-
-
-
-

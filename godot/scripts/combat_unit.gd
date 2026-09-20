@@ -7,7 +7,7 @@ signal destroyed(unit: CombatUnit)
 const FRESNEL = preload("res://shaders/unit_fresnel.gdshader")
 const BLUE := Color("66b9ec")
 const RED := Color("e98d79")
-const MODEL_LENGTH := {"command":0.025,"soldier":0.018,"tank":0.095,"apc":0.07,"cannon_apc":0.075,"troop_transport":0.07,"fighter":0.15,"cas":0.18,"vtol_attack":0.14,"vtol_cargo":0.20,"mec_lift":0.30,"cargo_plane":0.40,"recon_uav":0.06,"aircraft_carrier":3.30,"missile_cruiser":1.75,"patrol_boat":0.27,"landing_craft":0.46,"amphibious_apc":0.085,"truck":0.09,"forklift":0.035,"uav_jammer":0.03}
+const MODEL_LENGTH := {"command":0.025,"soldier":0.018,"tank":0.095,"apc":0.07,"ifv":0.075,"transport_heli":0.20,"cannon_apc":0.075,"troop_transport":0.07,"fighter":0.15,"cas":0.18,"vtol_attack":0.14,"vtol_cargo":0.20,"mec_lift":0.30,"cargo_plane":0.40,"recon_uav":0.06,"aircraft_carrier":3.30,"missile_cruiser":1.75,"patrol_boat":0.27,"landing_craft":0.46,"amphibious_apc":0.085,"truck":0.09,"forklift":0.035,"uav_jammer":0.03}
 
 var kind := "tank"
 var role := "TANK"
@@ -39,6 +39,7 @@ var anim_idle := ""
 var anim_move := ""
 var phase := 0.0
 var imported_model := false
+var source_model: Node3D
 var personnel := 0
 var presentation_offset := Vector3.ZERO
 var presentation_yaw_offset := 0.0
@@ -64,6 +65,8 @@ func _ready() -> void:
 		_create_exhaust()
 
 func _process(delta: float) -> void:
+	if kind == "transport_heli" and is_instance_valid(source_model):
+		preload("res://scripts/browser_aircraft_models.gd").animate(source_model, delta, is_alive)
 	# Simulation records advance at 20 Hz. Retain the previous rendered transform
 	# and consume that offset during the next fixed interval, matching the
 	# browser's DisplayPoses interpolation instead of visibly stepping units.
@@ -90,8 +93,8 @@ func presentation_heading() -> float:
 func _create_model() -> void:
 	var source_kind := "soldier" if kind == "command" else kind
 	var path := "res://assets/models/" + source_kind + ".glb"
-	var model: Node3D
-	if ResourceLoader.exists(path):
+	var model: Node3D = preload("res://scripts/browser_model_factory.gd").create(role, team)
+	if model == null and ResourceLoader.exists(path):
 		var resource := load(path)
 		if resource is PackedScene:
 			var candidate: Node = resource.instantiate()
@@ -100,6 +103,7 @@ func _create_model() -> void:
 			else:
 				candidate.free()
 	if model != null:
+		source_model = model
 		var orient := Node3D.new()
 		orient.name = "SourceAxisCorrection"
 		visual.add_child(orient)
@@ -129,8 +133,8 @@ func _create_model() -> void:
 			part.position *= 0.01
 	overlay = ShaderMaterial.new()
 	overlay.shader = FRESNEL
-	overlay.set_shader_parameter("team_color", BLUE if team == 0 else RED)
-	overlay.set_shader_parameter("strength", 0.11)
+	overlay.set_shader_parameter("rim_color", Color.WHITE)
+	overlay.set_shader_parameter("strength", 0.5)
 	for mesh in visual_meshes:
 		mesh.layers = 2 if team == 0 else 4
 		# The dummy renderer has no shader material storage in headless runs.
@@ -158,6 +162,7 @@ func _collect_meshes(node: Node) -> void:
 		_collect_meshes(child)
 
 func _model_bounds(node: Node3D, parent_transform: Transform3D) -> AABB:
+	if not node.visible: return AABB()
 	var combined := parent_transform * node.transform
 	var result := AABB()
 	var has_bounds := false
@@ -302,7 +307,7 @@ func set_selected(value: bool) -> void:
 	selected = value
 	selection_ring.visible = selected and is_alive
 	if overlay != null:
-		overlay.set_shader_parameter("strength", 0.17 if selected else 0.10)
+		overlay.set_shader_parameter("strength", 0.5)
 
 func move_to(destination: Vector3, attack_move: bool = true) -> bool:
 	if not is_alive or role == "COMMAND" or float(stats["speed"]) <= 0.0:

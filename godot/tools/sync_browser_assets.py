@@ -36,7 +36,7 @@ def main() -> None:
     parser.add_argument("--destination", type=Path, required=True)
     args = parser.parse_args()
     args.destination.mkdir(parents=True, exist_ok=True)
-    for name in ASSETS:
+    for name in sorted(set(ASSETS) | {p.name for p in args.source.iterdir() if p.is_file() and p.suffix.lower() in {".glb", ".gltf", ".bin", ".png", ".jpg", ".jpeg", ".webp", ".json"}}):
         source = args.source / name
         destination = args.destination / name
         if not source.is_file():

@@ -301,7 +301,7 @@ func _sync_core_visuals() -> void:
 			visual_core_units[id] = unit
 
 func _visual_kind_for_role(role: String) -> String:
-	return {"COMMAND":"command","TANK":"tank","APC":"apc","CANNON_APC":"cannon_apc","IFV":"cannon_apc","AMPHIBIOUS_APC":"amphibious_apc","TROOP_TRUCK":"troop_transport","TRUCK":"truck","CAS_FIGHTER":"cas","JET":"fighter","ATTACK_HELI":"vtol_attack","TRANSPORT_HELI":"vtol_cargo","HEAVY_LIFT_HELI":"mec_lift","CARGO_PLANE":"cargo_plane","RECON_UAV":"recon_uav","AIRCRAFT_CARRIER":"aircraft_carrier","FRIGATE":"missile_cruiser","PATROL_BOAT":"patrol_boat","LANDING_CRAFT":"landing_craft","FORKLIFT":"forklift","UAV_JAMMER":"uav_jammer"}.get(role,"soldier")
+	return {"COMMAND":"command","TANK":"tank","APC":"apc","CANNON_APC":"cannon_apc","IFV":"ifv","AMPHIBIOUS_APC":"amphibious_apc","TROOP_TRUCK":"troop_transport","TRUCK":"truck","CAS_FIGHTER":"cas","JET":"fighter","ATTACK_HELI":"vtol_attack","TRANSPORT_HELI":"transport_heli","HEAVY_LIFT_HELI":"vtol_cargo","CARGO_PLANE":"cargo_plane","RECON_UAV":"recon_uav","AIRCRAFT_CARRIER":"aircraft_carrier","FRIGATE":"missile_cruiser","PATROL_BOAT":"patrol_boat","LANDING_CRAFT":"landing_craft","FORKLIFT":"forklift","UAV_JAMMER":"uav_jammer"}.get(role,"soldier")
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -534,7 +534,7 @@ func set_graphics_setting(key: String, value: Variant) -> void:
 	show_grid = bool(graphics_settings["grid"]) and not performance
 	get_viewport().scaling_3d_scale = 1.0 if performance else {"performance":1.0,"balanced":1.5,"high":2.0}.get(graphics_settings["quality"],1.0)
 	for node in map.get_children():
-		if node is MultiMeshInstance3D: node.visible = bool(graphics_settings["models"])
+		if node is MultiMeshInstance3D or node.is_in_group("installation_models"): node.visible = bool(graphics_settings["models"])
 	_apply_model_visibility()
 	hud.queue_redraw()
 
