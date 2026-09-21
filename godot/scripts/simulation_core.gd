@@ -118,7 +118,7 @@ func setup(theater_objectives: Array) -> void:
 	time = 0.0; next_plan = 30.0; next_supply = 30.0; next_income = 5.0; next_ground_logistics = 1.0; serial = 0
 	territory_hold = {"BLU":0.0,"RED":0.0}; winner = ""
 	for side in ["BLU","RED"]:
-		forces[side] = {"sp":2000,"manpower":120,"tempo":58,"queue":[],"casualties":0,"action":"ASSEMBLE","target":"J" if side == "BLU" else "A","purchase":"Awaiting first requisition","delivered":0,"hold":false}
+		forces[side] = {"sp":2000,"manpower":120,"tempo":58,"queue":[],"casualties":0,"action":"ASSEMBLE","target":"J" if side == "BLU" else "A","purchase":"Awaiting first requisition","purchase_notice":"Awaiting first requisition","delivered":0,"hold":false}
 		depots[side] = {"airfield":{"fuel":0.0,"ammo":0.0,"repair":0.0},"pending":{"fuel":0.0,"ammo":0.0,"repair":0.0},"mob":{"fuel":0.0,"ammo":0.0,"repair":0.0}}
 		airfields[side] = {"tier":1,"upgrade":{}}
 		mobs[side] = {"tier":1,"upgrade":{}}
@@ -300,6 +300,7 @@ func procure(side: String, role: String) -> bool:
 		var economy := fuel_economy(side,role)
 		if float(economy["available"]) < 0.0:
 			forces[side]["purchase"] = "Fuel command holds %s · %d fuel short of commissioning reserve" % [role.replace("_"," "),ceili(-float(economy["available"]))]
+			forces[side]["purchase_notice"] = forces[side]["purchase"]
 			return false
 	forces[side]["sp"] -= cost
 	forces[side]["manpower"] -= members
@@ -308,6 +309,7 @@ func procure(side: String, role: String) -> bool:
 	if not is_vehicle(role) and tier >= 2: delay /= 1.5
 	forces[side]["queue"].append({"role":role,"due":time+delay,"id":side+"-"+str(serial)})
 	forces[side]["purchase"] = "%s · %d SP · %ds" % [role.replace("_"," "),cost,ceili(delay)]
+	forces[side]["purchase_notice"] = forces[side]["purchase"]
 	return true
 
 func upgrade_airfield(side: String) -> bool:
@@ -317,6 +319,7 @@ func upgrade_airfield(side: String) -> bool:
 	forces[side]["sp"] -= cost
 	state["upgrade"] = {"tier":int(state["tier"])+1,"due":time+(60.0 if state["tier"] == 1 else 90.0)}
 	forces[side]["purchase"] = "AIRFIELD TIER %d upgrading" % state["upgrade"]["tier"]
+	forces[side]["purchase_notice"] = forces[side]["purchase"]
 	return true
 
 func upgrade_mob(side: String) -> bool:
@@ -326,6 +329,7 @@ func upgrade_mob(side: String) -> bool:
 	forces[side]["sp"] -= cost
 	state["upgrade"] = {"tier":int(state["tier"])+1,"due":time+(90.0 if state["tier"] == 1 else 150.0)}
 	forces[side]["purchase"] = "MOB LEVEL %d upgrading" % state["upgrade"]["tier"]
+	forces[side]["purchase_notice"] = forces[side]["purchase"]
 	return true
 
 func build_facility(side: String, objective_id: String, kind: String) -> bool:
@@ -605,6 +609,7 @@ func _process_queues() -> void:
 			units[side].append(delivered)
 			forces[side]["delivered"] += 1
 			forces[side]["purchase"] = str(item["role"]).replace("_"," ") + " delivered"
+			forces[side]["purchase_notice"] = forces[side]["purchase"]
 			log_event(side,forces[side]["purchase"],"logistics")
 		forces[side]["queue"] = kept
 

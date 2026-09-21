@@ -277,7 +277,12 @@ func _plan_side(core, side: String, now: float) -> Dictionary:
 	# Match the browser fronts' eligibility rule. A finite ownership penalty
 	# cannot exclude secured objectives on a theater wider than that penalty.
 	# Keep the score ledger, but expand only toward unowned/contested reports.
-	var targets: Array = scores.keys().filter(func(id: String) -> bool: return command["objectives"][id]["owner"] != side or command["objectives"][id]["contested"])
+	# Use the authoritative objective owner for the local commander. Reports are
+	# delayed for enemy contacts, but a commander must never keep issuing orders
+	# to a friendly objective because its last radio report is stale.
+	var targets: Array = scores.keys().filter(func(id: String) -> bool:
+		var owner := str(core.objectives.get(id, {}).get("owner", command["objectives"][id].get("owner", "")))
+		return owner != side or command["objectives"][id]["contested"])
 	var all_secured := targets.is_empty() and not scores.is_empty()
 	if all_secured:
 		targets = scores.keys()
@@ -341,7 +346,11 @@ func _apply_plan(core, side: String, plan: Dictionary, now: float) -> void:
 		core.forces[side]["action"] = plan["action"]
 		core.forces[side]["target"] = plan["target"]
 		core.forces[side]["cycles"] = int(core.forces[side].get("cycles", 0)) + 1
-		core.log_event(side,"%s objective %s. %s" % [plan["action"],plan["target"],core.forces[side].get("purchase","")],"command")
+		var notice := str(core.forces[side].get("purchase_notice", ""))
+		var order_text := "%s objective %s" % [plan["action"], plan["target"]]
+		if not notice.is_empty(): order_text += ". " + notice
+		core.log_event(side,order_text,"command")
+		core.forces[side]["purchase_notice"] = ""
 	var objective: Dictionary = core.objectives.get(plan["target"], {})
 	var target_position := _vector2(objective.get("position", Vector3.ZERO))
 	for formation in command["formations"]:
