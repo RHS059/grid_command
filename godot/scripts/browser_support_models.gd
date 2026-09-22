@@ -4,6 +4,7 @@ class_name BrowserSupportModels
 ## Browser dimensions are preserved; browser (x,y,z) maps to native (x,z,-y).
 
 static func create(role: String, team: int = 0) -> Node3D:
+	palette_team = 1 if team == 1 else 0
 	var root := Node3D.new()
 	root.name = role.to_lower()
 	var body := material("#73765a", 0.9)
@@ -37,12 +38,15 @@ static func create(role: String, team: int = 0) -> Node3D:
 			box(pallet,Vector3(.07,1.15,.85),Vector3(0,2,1),dark)
 			box(pallet,Vector3(1.25,.04,.24),Vector3(0,2.56,1),mark)
 			box(root,Vector3(1,.03,.25),Vector3(0,-1.36,1.2),mark)
-		"TRUCK":
+		"TRUCK", "FUEL_TRUCK", "TROOP_HEMTT", "MEDICAL_HEMTT", "REPAIR_HEMTT", "FOB_HEMTT":
+			# Base HEMTT: cab, chassis, wheels and bare deck. Rear bodies attach below.
 			box(root,Vector3(2.45,9.2,.28),Vector3(0,-.25,.95),dark)
 			box(root,Vector3(2.6,5.4,.18),Vector3(0,-1.9,1.38),metal)
 			shell(root,[[1.1,2.15,2.2,3.05],[1.7,2.65,2.65,3.1],[3.05,2.5,1.85,2.9],[3.2,2.25,1.65,2.86]],body)
-			for x in [-.62,.62]:
-				box(root,Vector3(1.08,.035,.98),Vector3(x,3.96,2.49),glass).rotate_x(.31)
+			# Windscreen panes lie on the sloped front face (y falls .444 per unit z).
+			var screen_normal := Vector3(0,.406,-.914)
+			for x in [-.52,.52]:
+				cab_pane(root,Vector3(x,4.057,2.554),.9,.86,Vector3(-1,0,0),screen_normal,1)
 			box(root,Vector3(2.7,.2,.23),Vector3(0,4.43,1.48),metal)
 			box(root,Vector3(1.35,.06,.35),Vector3(0,4.33,1.79),dark)
 			for i in range(4):
@@ -51,7 +55,7 @@ static func create(role: String, team: int = 0) -> Node3D:
 				for y in [3.1,1.55,-2.5,-4.1]:
 					wheel(root,sign_value*1.35,y,.7,.69,dark,metal)
 					box(root,Vector3(.5,1.5,.1),Vector3(sign_value*1.15,y,1.43),body)
-				box(root,Vector3(.025,1,.7),Vector3(sign_value*1.28,2.95,2.48),glass)
+				cab_pane(root,Vector3(sign_value*1.29,2.95,2.48),1.0,.7,Vector3(0,0,-sign_value),Vector3(sign_value,0,0),0)
 				box(root,Vector3(.04,.9,.035),Vector3(sign_value*1.29,2.9,1.84),metal)
 				box(root,Vector3(.075,.23,.045),Vector3(sign_value*1.32,2.57,2),dark)
 				box(root,Vector3(.38,.62,.1),Vector3(sign_value*1.39,2.58,1.14),metal)
@@ -59,11 +63,21 @@ static func create(role: String, team: int = 0) -> Node3D:
 				box(root,Vector3(.09,.27,.4),Vector3(sign_value*1.65,3.5,2.68),glass)
 				for x in [sign_value*.95,sign_value*1.17]:
 					box(root,Vector3(.17,.045,.18),Vector3(x,4.43,1.83),metal)
-				box(root,Vector3(.055,.75,.2),Vector3(sign_value*1.33,1.02,1.83),mark)
+				box(root,Vector3(.05,.6,.18),Vector3(sign_value*1.31,2.65,1.72),mark)
 				rod(root,Vector3(sign_value*1.05,-.85,1.04),Vector3(sign_value*1.05,.55,1.04),.43,metal,10)
 				for y in [-.7,.4]:
 					box(root,Vector3(.88,.045,.65),Vector3(sign_value*1.05,y,1.03),dark)
 				box(root,Vector3(.08,.65,.55),Vector3(sign_value*1.35,-4.55,.75),dark)
+			if role.to_upper() != "TRUCK":
+				match role.to_upper():
+					"FUEL_TRUCK": fuel_body(root, body, dark, metal)
+					"TROOP_HEMTT": troop_body(root, body, dark, metal)
+					"MEDICAL_HEMTT": medical_body(root, body, dark, metal)
+					"REPAIR_HEMTT": repair_body(root, body, dark, metal)
+					"FOB_HEMTT": fob_body(root, body, dark, metal)
+				merge_stationary(root)
+				set_deployed(root, false)
+				return root
 			var cargo := container()
 			cargo.name = "truck-container-0"
 			cargo.position = point(Vector3(0,-1.9,2.7))
@@ -105,7 +119,9 @@ static func merge_stationary(parent: Node3D) -> void:
 	# Same material batching as the browser. Keep cargo, forks and trailers as nodes.
 	var batches: Dictionary = {}
 	for child in parent.get_children():
-		if child is MeshInstance3D:
+		# Hand-built ArrayMeshes (the cab shell) use a different vertex format
+		# than primitives and are dropped by append_from, so keep them separate.
+		if child is MeshInstance3D and child.mesh is PrimitiveMesh:
 			var mat: Material = child.material_override
 			if not batches.has(mat):
 				batches[mat] = []
@@ -116,27 +132,329 @@ static func merge_stationary(parent: Node3D) -> void:
 		var surface := SurfaceTool.new()
 		surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 		for child in batches[mat]:
-			surface.append_from(child.mesh,0,child.transform)
+			append_with_edges(surface, child.mesh, child.transform)
 			parent.remove_child(child)
 			child.free()
+		surface.generate_tangents()
 		var merged := MeshInstance3D.new()
 		merged.mesh = surface.commit()
 		merged.material_override = mat
 		parent.add_child(merged)
 
+## Copies a primitive into the batch and writes face-local edge coordinates to
+## UV2, which ps2_surface turns into dodge (worn edges) and burn (panel bands).
+static func append_with_edges(surface: SurfaceTool, mesh: PrimitiveMesh, xf: Transform3D) -> void:
+	var arrays := mesh.get_mesh_arrays()
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var uvs: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV]
+	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	var normal_basis := xf.basis.inverse().transposed()
+	for i in indices:
+		var uv := uvs[i]
+		var edge := uv
+		if mesh is BoxMesh:
+			edge = uv * Vector2(3, 2)
+		elif mesh is CylinderMesh:
+			if absf(normals[i].y) > .5:
+				var center := Vector2(.25 if uv.x < .5 else .75, .75)
+				edge = Vector2(.5 + uv.x - center.x, clampf((.25 - uv.distance_to(center)) * 2.0, 0.0, .5))
+			else:
+				edge = Vector2(.25 + uv.x * .5, uv.y * 2.0)
+		surface.set_normal((normal_basis * normals[i]).normalized())
+		surface.set_uv(uv)
+		surface.set_uv2(edge)
+		surface.add_vertex(xf * verts[i])
+
+## M978 HEMTT fuel servicing body: elliptical 2,500 gal tank, rear pump and
+## hose-reel module, top manholes with a catwalk and rails, ladder, extinguishers.
+static func fuel_body(root: Node3D, body: Material, dark: Material, metal: Material) -> void:
+	var hazard := material("#a8453a", 0.8)
+	var white := material("#c9c6b4", 0.85)
+	var red := material("#9b2f2a", 0.6, 0.1)
+	ellipse(root, Vector3(0,-1.35,2.4), 3.9, 1.2, .92, body)
+	for y in [.25,-1.35,-2.95]:
+		ellipse(root, Vector3(0,y,2.4), .09, 1.23, .95, metal)
+		box(root,Vector3(2.3,.35,.2),Vector3(0,y,1.55),dark)
+	box(root,Vector3(.75,3.5,.05),Vector3(0,-1.35,3.34),dark)
+	for y in [-.45,-2.25]:
+		rod(root,Vector3(0,y,3.3),Vector3(0,y,3.47),.3,metal,12)
+		rod(root,Vector3(0,y,3.47),Vector3(0,y,3.53),.33,dark,12)
+	for x in [-.52,.52]:
+		rod(root,Vector3(x,.45,3.78),Vector3(x,-3.15,3.78),.025,metal)
+		for y in [.45,-.75,-1.95,-3.15]:
+			rod(root,Vector3(x,y,3.34),Vector3(x,y,3.78),.025,metal)
+	box(root,Vector3(2.5,1.2,1.88),Vector3(0,-4.0,2.41),body)
+	box(root,Vector3(2.52,.06,.06),Vector3(0,-4.0,3.36),metal)
+	for x in [-.6,.6]:
+		box(root,Vector3(1.1,.04,1.6),Vector3(x,-4.61,2.4),metal)
+		box(root,Vector3(.12,.05,.05),Vector3(x*.25,-4.64,2.4),dark)
+	box(root,Vector3(.03,.05,1.7),Vector3(0,-4.63,2.4),dark)
+	for sign_value in [-1.0,1.0]:
+		box(root,Vector3(.04,.95,1.5),Vector3(sign_value*1.26,-4.0,2.4),metal)
+		for i in range(4):
+			box(root,Vector3(.05,.7,.04),Vector3(sign_value*1.28,-4.0,2.85-i*.1),dark)
+		box(root,Vector3(.03,.9,.5),Vector3(sign_value*1.21,-1.35,2.45),hazard)
+		box(root,Vector3(.035,.55,.08),Vector3(sign_value*1.215,-1.35,2.45),white)
+		rod(root,Vector3(sign_value*1.3,.5,1.55),Vector3(sign_value*1.3,.5,2.1),.09,red,10)
+		box(root,Vector3(.22,.08,.04),Vector3(sign_value*1.26,.5,1.85),dark)
+	box(root,Vector3(.7,.03,.4),Vector3(.6,-4.64,3.0),hazard)
+	for x in [-1.05,-.7]:
+		rod(root,Vector3(x,-4.68,.95),Vector3(x,-4.68,3.36),.03,metal)
+	for i in range(8):
+		rod(root,Vector3(-1.05,-4.68,1.1+i*.3),Vector3(-.7,-4.68,1.1+i*.3),.02,metal)
+	rod(root,Vector3(.9,-4.66,1.3),Vector3(.9,-4.66,1.75),.06,dark,8)
+
+## Deployable bodies keep "stowed" and "deployed" child nodes.
+static func set_deployed(root: Node3D, deployed: bool) -> void:
+	for state in ["stowed", "deployed"]:
+		var node := root.get_node_or_null(state)
+		if node != null: node.visible = (state == "deployed") == deployed
+
+static func state_node(root: Node3D, state: String) -> Node3D:
+	var node := Node3D.new()
+	node.name = state
+	root.add_child(node)
+	return node
+
+## Large troop transport: drop-side cargo bed under a canvas cover on bows,
+## rear flap rolled up over benches, tailgate and boarding ladder.
+static func troop_body(root: Node3D, body: Material, dark: Material, metal: Material) -> void:
+	var canvas := material("#66654a", 0.95)
+	for s in [-1.0,1.0]:
+		box(root,Vector3(.08,5.1,.55),Vector3(s*1.26,-1.95,1.74),body)
+		for i in range(6):
+			box(root,Vector3(.1,.07,.56),Vector3(s*1.28,.5-i*.98,1.74),metal)
+		box(root,Vector3(.03,5.0,.05),Vector3(s*1.295,-1.95,2.12),dark)
+		for i in range(5):
+			box(root,Vector3(.03,.07,1.25),Vector3(s*1.29,.3-i*1.12,2.66),dark)
+	box(root,Vector3(2.52,.08,1.9),Vector3(0,.58,2.42),body)
+	box(root,Vector3(2.56,5.0,1.25),Vector3(0,-1.95,2.66),canvas)
+	ellipse(root,Vector3(0,-1.95,3.28),5.0,1.28,.38,canvas)
+	for i in range(5):
+		ellipse(root,Vector3(0,.3-i*1.12,3.28),.07,1.3,.4,dark)
+	box(root,Vector3(2.2,.04,1.1),Vector3(0,-4.46,2.62),dark)
+	rod(root,Vector3(-1.15,-4.5,3.22),Vector3(1.15,-4.5,3.22),.11,canvas,8)
+	for s in [-1.0,1.0]:
+		box(root,Vector3(.42,.05,.07),Vector3(s*.78,-4.47,2.1),metal)
+		rod(root,Vector3(s*.3,-4.62,.7),Vector3(s*.3,-4.62,1.5),.025,metal)
+	box(root,Vector3(2.52,.08,.55),Vector3(0,-4.52,1.74),body)
+	for i in range(3):
+		rod(root,Vector3(-.3,-4.62,.8+i*.25),Vector3(.3,-4.62,.8+i*.25),.02,metal)
+
+## Medical: shelter with red crosses and roof AC. Deployed: side awning,
+## tent walls, two litters and the rear stair.
+static func medical_body(root: Node3D, body: Material, dark: Material, metal: Material) -> void:
+	var white := material("#c9c6b4", 0.85)
+	var red := material("#a8302a", 0.8)
+	var canvas := material("#66654a", 0.95)
+	box(root,Vector3(2.5,4.7,2.25),Vector3(0,-2.1,2.6),body)
+	box(root,Vector3(2.56,4.76,.08),Vector3(0,-2.1,3.73),metal)
+	for x in [-1.26,1.26]:
+		for y in [.25,-4.45]:
+			box(root,Vector3(.08,.08,2.25),Vector3(x,y,2.6),metal)
+	for s in [-1.0,1.0]:
+		red_cross(root,Vector3(s*1.26,-2.1,2.75),1.1,Vector3(s,0,0),white,red)
+	red_cross(root,Vector3(0,-2.1,3.78),1.4,Vector3(0,0,1),white,red)
+	red_cross(root,Vector3(.6,-4.47,3.0),.75,Vector3(0,1,0),white,red)
+	box(root,Vector3(1.0,.04,1.9),Vector3(-.55,-4.47,2.45),metal)
+	box(root,Vector3(.05,.05,.2),Vector3(-.15,-4.5,2.4),dark)
+	box(root,Vector3(1.2,.35,.7),Vector3(0,.42,3.2),metal)
+	for i in range(4):
+		box(root,Vector3(1.0,.03,.04),Vector3(0,.61,2.98+i*.13),dark)
+	var deployed := state_node(root,"deployed")
+	var awning := box(deployed,Vector3(2.6,4.3,.05),Vector3(2.55,-2.1,3.45),canvas)
+	awning.rotate_z(-.18)
+	for y in [-.05,-4.15]:
+		box(deployed,Vector3(2.5,.03,3.05),Vector3(2.5,y,1.72),canvas)
+		rod(deployed,Vector3(3.8,y,0),Vector3(3.8,y,3.2),.03,metal)
+	red_cross(deployed,Vector3(2.55,-2.1,3.49),.9,Vector3(0,0,1),white,red)
+	for y in [-1.2,-3.0]:
+		box(deployed,Vector3(.6,1.9,.06),Vector3(2.5,y,.55),canvas)
+		for dy in [-.85,.85]:
+			rod(deployed,Vector3(2.5,y+dy,0),Vector3(2.5,y+dy,.55),.02,metal)
+	for i in range(3):
+		box(deployed,Vector3(.9,.3,.05),Vector3(-.55,-4.75-i*.28,1.2-i*.35),metal)
+
+static func red_cross(parent: Node3D, center: Vector3, size: float, facing: Vector3, white: Material, red: Material) -> void:
+	# facing is the browser axis the panel faces (x side, y rear, z roof).
+	var thin := Vector3(.03,.03,.03)
+	var plate := Vector3(size,size,size) * (Vector3.ONE - facing.abs()) + thin * facing.abs()
+	box(parent,plate,center,white)
+	var long := size*.72
+	var short := size*.22
+	var lift := facing*.006
+	var axes: Array = [Vector3(1,0,0),Vector3(0,1,0),Vector3(0,0,1)].filter(func(a): return a != facing.abs())
+	box(parent,axes[0]*long + axes[1]*short + facing.abs()*.035,center+lift,red)
+	box(parent,axes[0]*short + axes[1]*long + facing.abs()*.035,center+lift,red)
+
+## Vehicle repair / recovery (M984 wrecker): crane on a pedestal, side tool
+## lockers, rear underlift. Deployed: boom raised with outriggers down.
+static func repair_body(root: Node3D, body: Material, dark: Material, metal: Material) -> void:
+	var yellow := material("#c9a227", 0.8)
+	var amber := material("#e0902a", 0.4)
+	for s in [-1.0,1.0]:
+		box(root,Vector3(.55,3.3,.85),Vector3(s*.98,-2.6,1.9),body)
+		for i in range(3):
+			box(root,Vector3(.03,.95,.7),Vector3(s*1.26,-1.5-i*1.1,1.9),metal)
+			box(root,Vector3(.04,.2,.05),Vector3(s*1.28,-1.5-i*1.1,2.1),dark)
+	rod(root,Vector3(0,-.1,1.47),Vector3(0,-.1,2.15),.45,metal,16)
+	box(root,Vector3(1.0,1.0,.5),Vector3(0,-.1,2.35),body)
+	rod(root,Vector3(0,-.1,2.6),Vector3(0,-.1,2.8),.07,amber,8)
+	box(root,Vector3(.5,1.0,.3),Vector3(0,-5.0,.95),metal)
+	box(root,Vector3(1.6,.22,.22),Vector3(0,-5.45,.95),yellow)
+	for i in range(6):
+		box(root,Vector3(.2,.03,.2),Vector3(-1.1+i*.44,-4.94,1.18),dark if i % 2 == 0 else yellow)
+	var stowed := state_node(root,"stowed")
+	box(stowed,Vector3(.45,4.3,.45),Vector3(0,-2.35,2.83),body)
+	rod(stowed,Vector3(0,-.5,2.45),Vector3(0,-1.6,2.7),.09,metal,8)
+	box(stowed,Vector3(.3,.25,.4),Vector3(0,-4.45,2.45),dark)
+	var deployed := state_node(root,"deployed")
+	var pivot := Node3D.new()
+	pivot.name = "boom-pivot"
+	pivot.position = point(Vector3(0,-.1,2.6))
+	pivot.rotate_x(-.62)
+	deployed.add_child(pivot)
+	box(pivot,Vector3(.45,4.6,.45),Vector3(0,-2.3,.2),body)
+	box(pivot,Vector3(.36,1.6,.36),Vector3(0,-4.9,.2),metal)
+	rod(deployed,Vector3(0,-.5,2.45),Vector3(0,-1.35,3.35),.09,metal,8)
+	rod(deployed,Vector3(0,-3.7,5.2),Vector3(0,-3.7,2.4),.015,dark,4)
+	box(deployed,Vector3(.3,.25,.4),Vector3(0,-3.7,2.3),dark)
+	for s in [-1.0,1.0]:
+		box(deployed,Vector3(.9,.22,.22),Vector3(s*1.6,-3.9,1.05),yellow)
+		box(deployed,Vector3(.2,.2,.9),Vector3(s*2.0,-3.9,.55),metal)
+		box(deployed,Vector3(.6,.6,.08),Vector3(s*2.0,-3.9,.04),dark)
+
+## FOB: expandable command shelter with generator, mast and dish. Deployed:
+## side expansions out, mast raised with guys, dish open, camo net overhead.
+static func fob_body(root: Node3D, body: Material, dark: Material, metal: Material) -> void:
+	var net := material("#4b5638", 0.95)
+	box(root,Vector3(2.45,4.3,2.25),Vector3(0,-2.35,2.6),body)
+	box(root,Vector3(2.5,4.35,.08),Vector3(0,-2.35,3.73),metal)
+	for s in [-1.0,1.0]:
+		for i in range(5):
+			box(root,Vector3(.03,.03,2.2),Vector3(s*1.23,-.4-i*.9,2.6),dark)
+	box(root,Vector3(1.0,.04,1.9),Vector3(.5,-4.51,2.45),metal)
+	box(root,Vector3(1.9,.5,.8),Vector3(0,.5,1.87),metal)
+	for i in range(5):
+		box(root,Vector3(.04,.52,.6),Vector3(-.8+i*.4,.5,1.87),dark)
+	rod(root,Vector3(.7,.5,2.27),Vector3(.7,.5,2.7),.05,dark,6)
+	rod(root,Vector3(-.9,-4.2,3.73),Vector3(-.9,-4.2,4.7),.08,metal,8)
+	var stowed := state_node(root,"stowed")
+	ellipse(stowed,Vector3(.5,-3.3,3.82),.12,.45,.45,metal)
+	var deployed := state_node(root,"deployed")
+	for s in [-1.0,1.0]:
+		box(deployed,Vector3(1.5,3.9,2.05),Vector3(s*1.97,-2.35,2.55),body)
+		box(deployed,Vector3(1.55,3.95,.06),Vector3(s*1.97,-2.35,3.6),metal)
+		for y in [-.5,-4.2]:
+			rod(deployed,Vector3(s*2.62,y,0),Vector3(s*2.62,y,1.52),.04,metal)
+		box(deployed,Vector3(.03,.8,.5),Vector3(s*2.73,-1.6,2.8),dark)
+	rod(deployed,Vector3(-.9,-4.2,4.7),Vector3(-.9,-4.2,10.5),.05,metal,8)
+	for a in [Vector3(-3.5,-1.0,0),Vector3(2.5,-1.0,0),Vector3(-.9,-7.5,0)]:
+		rod(deployed,Vector3(-.9,-4.2,9.5),a,.012,dark,4)
+	box(deployed,Vector3(.8,.05,.05),Vector3(-.9,-4.2,10.3),metal)
+	var dish := MeshInstance3D.new()
+	var dish_mesh := CylinderMesh.new()
+	dish_mesh.top_radius = .55
+	dish_mesh.bottom_radius = .2
+	dish_mesh.height = .18
+	dish_mesh.radial_segments = 16
+	dish.mesh = dish_mesh
+	dish.material_override = metal
+	dish.position = point(Vector3(.5,-3.3,4.25))
+	dish.rotate_x(.7)
+	deployed.add_child(dish)
+	rod(deployed,Vector3(.5,-3.3,3.77),Vector3(.5,-3.3,4.15),.05,metal,6)
+	box(deployed,Vector3(7.5,6.0,.04),Vector3(0,-2.35,4.35),net)
+	for x in [-3.6,3.6]:
+		for y in [.5,-5.2]:
+			rod(deployed,Vector3(x,y,0),Vector3(x,y,4.33),.03,metal)
+
+static var cab_glass: Dictionary = {}
+
+## Interior-mapped cab window. center is browser space; axes are native.
+static func cab_pane(parent: Node3D, center: Vector3, width: float, height: float, right: Vector3, normal: Vector3, kind: int) -> void:
+	var key := "%d:%.2f" % [kind, width/height]
+	if not cab_glass.has(key):
+		var mat := ShaderMaterial.new()
+		mat.shader = preload("res://shaders/cab_interior.gdshader")
+		mat.set_shader_parameter("aspect", width/height)
+		mat.set_shader_parameter("kind", kind)
+		mat.set_shader_parameter("depth", 1.6 if kind == 1 else 2.6)
+		cab_glass[key] = mat
+	var mesh := QuadMesh.new()
+	mesh.size = Vector2(width, height)
+	var node := MeshInstance3D.new()
+	node.mesh = mesh
+	node.material_override = cab_glass[key]
+	node.transform = Transform3D(Basis(right, normal.cross(right), normal), point(center))
+	parent.add_child(node)
+
+static func ellipse(parent: Node3D, center: Vector3, length: float, rx: float, rz: float, mat: Material) -> void:
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = 1.0
+	mesh.bottom_radius = 1.0
+	mesh.height = 1.0
+	mesh.radial_segments = 20
+	mesh.rings = 1
+	var node := MeshInstance3D.new()
+	node.mesh = mesh
+	node.material_override = mat
+	node.transform = Transform3D(Basis(Vector3.RIGHT, PI/2.0) * Basis.from_scale(Vector3(rx,length,rz)), point(center))
+	parent.add_child(node)
+
 static func point(p: Vector3) -> Vector3:
 	return Vector3(p.x,p.z,-p.y)
 
-static func material(color: String, roughness: float, metallic: float = .05) -> StandardMaterial3D:
-	var result := StandardMaterial3D.new()
-	result.albedo_color = Color(color)
-	result.roughness = roughness
-	result.metallic = metallic
-	# The hand-built cab shell has thin, open joins around the windscreen.
-	# Render both sides so those joins cannot make the whole cabin disappear
-	# when viewed from the opposite winding after the browser-axis conversion.
-	result.cull_mode = BaseMaterial3D.CULL_DISABLED
+static var surface_cache: Dictionary = {}
+static var palette_team := 0
+const ATLAS_TILES := {"#73765a": Vector4(0,0,.5,.5), "#262c29": Vector4(.5,0,.5,.5), "#565f51": Vector4(0,.5,.5,.5), "#66654a": Vector4(.5,.5,.5,.5)}
+## Team palette swaps for the grey atlas: BLU leans tan / flat dark earth,
+## RED leans deeper pine. Keys are the neutral palette colours of each tile.
+const TEAM_PALETTES := {
+	0: {"#73765a": "#78725a", "#262c29": "#2a2b26", "#565f51": "#5a5c4e", "#66654a": "#6b6749"},
+	1: {"#73765a": "#5f6c50", "#262c29": "#232b26", "#565f51": "#4f5a4c", "#66654a": "#5d6345"},
+}
+
+## Shadow, base and highlight for a base colour: shadows cool, highlights warm.
+static func ramp(mid: Color) -> Array[Color]:
+	return [(mid * .42).lerp(Color("#1b2226"), .2), mid, mid.lightened(.3).lerp(Color("#d8d0a8"), .12)]
+
+## PS2-era painted surface. Palette colours map to their atlas tile and the
+## team's palette swap; any other colour (markings, decals) ramps the body
+## tile's grey detail through that colour.
+static func material(color: String, roughness: float, metallic: float = .05) -> Material:
+	var key := "%d:%s:%.2f:%.2f" % [palette_team, color, roughness, metallic]
+	if surface_cache.has(key):
+		return surface_cache[key]
+	var result := ShaderMaterial.new()
+	result.shader = preload("res://shaders/ps2_surface.gdshader")
+	result.set_shader_parameter("atlas", preload("res://assets/textures/vehicles/hemtt_atlas.png"))
+	result.set_shader_parameter("region", ATLAS_TILES.get(color, ATLAS_TILES["#73765a"]))
+	var colors := ramp(Color(TEAM_PALETTES[palette_team].get(color, color)))
+	result.set_shader_parameter("ramp_dark", colors[0])
+	result.set_shader_parameter("ramp_mid", colors[1])
+	result.set_shader_parameter("ramp_light", colors[2])
+	result.set_shader_parameter("roughness_value", roughness)
+	result.set_shader_parameter("metallic_value", metallic)
+	surface_cache[key] = result
 	return result
+
+static var tire_materials: Dictionary = {}
+
+## Shared 512 tire sheet laid out for CylinderMesh UVs: tread band on top,
+## both wheel faces below. The rim is painted in the team's body colour.
+static func tire() -> Material:
+	if not tire_materials.has(palette_team):
+		var result := ShaderMaterial.new()
+		result.shader = preload("res://shaders/ps2_tire.gdshader")
+		result.set_shader_parameter("sheet", preload("res://assets/textures/vehicles/hemtt_tire.png"))
+		var colors := ramp(Color(TEAM_PALETTES[palette_team]["#73765a"]).darkened(.12))
+		result.set_shader_parameter("ramp_dark", colors[0])
+		result.set_shader_parameter("ramp_mid", colors[1])
+		result.set_shader_parameter("ramp_light", colors[2])
+		tire_materials[palette_team] = result
+	return tire_materials[palette_team]
 
 static func box(parent: Node3D, size: Vector3, position: Vector3, mat: Material) -> MeshInstance3D:
 	var mesh := BoxMesh.new()
@@ -162,8 +480,23 @@ static func rod(parent: Node3D, a: Vector3, b: Vector3, radius: float, mat: Mate
 	parent.add_child(node)
 
 static func wheel(parent: Node3D, x: float, y: float, z: float, radius: float, dark: Material, metal: Material) -> void:
-	rod(parent,Vector3(x-.15,y,z),Vector3(x+.15,y,z),radius,dark,16)
-	box(parent,Vector3(.05,.3,.3),Vector3(x*1.02,y,z),metal)
+	# Military off-road tire: textured carcass (tread band, sidewall and painted
+	# rim with bolts from the tire sheet), raised chevron blocks, protruding hub
+	# and CTIS cap on the outboard face.
+	var out := signf(x) if x != 0.0 else 1.0
+	var width := .34
+	rod(parent,Vector3(x-width*.5,y,z),Vector3(x+width*.5,y,z),radius*.93,tire(),24)
+	rod(parent,Vector3(x-width*.38,y,z),Vector3(x+width*.38,y,z),radius*.97,tire(),24)
+	var blocks := 22
+	for i in range(blocks):
+		for lane in [-1.0,1.0]:
+			var a := TAU*(float(i)+(.5 if lane > 0.0 else 0.0))/float(blocks)
+			var block := box(parent,Vector3(width*.44,.15,.07),Vector3(x+lane*width*.24,y+sin(a)*radius*.97,z+cos(a)*radius*.97),dark)
+			block.rotate_x(-a)
+			block.rotate_object_local(Vector3.UP,lane*.35)
+	var face := x+out*width*.5
+	rod(parent,Vector3(face,y,z),Vector3(face+out*.06,y,z),radius*.22,metal,12)
+	rod(parent,Vector3(face+out*.06,y,z),Vector3(face+out*.1,y,z),radius*.09,dark,8)
 
 static func container() -> Node3D:
 	var root := Node3D.new()
@@ -198,19 +531,23 @@ static func shell(parent: Node3D, rings: Array, mat: Material) -> void:
 	for r in range(sections.size()-1):
 		for i in range(8):
 			var n := (i+1)%8
-			triangle(surface,sections[r][i],sections[r][n],sections[r+1][n])
-			triangle(surface,sections[r][i],sections[r+1][n],sections[r+1][i])
+			triangle(surface,sections[r][i],sections[r][n],sections[r+1][n],[Vector2(0,0),Vector2(1,0),Vector2(1,1)])
+			triangle(surface,sections[r][i],sections[r+1][n],sections[r+1][i],[Vector2(0,0),Vector2(1,1),Vector2(0,1)])
+	var fan := [Vector2(.5,.5),Vector2(.5,.5),Vector2(.5,.5)]
 	for i in range(1,7):
-		triangle(surface,sections[0][0],sections[0][i+1],sections[0][i])
-		triangle(surface,sections[-1][0],sections[-1][i],sections[-1][i+1])
+		triangle(surface,sections[0][0],sections[0][i+1],sections[0][i],fan)
+		triangle(surface,sections[-1][0],sections[-1][i],sections[-1][i+1],fan)
 	surface.generate_normals()
 	var node := MeshInstance3D.new()
 	node.mesh = surface.commit()
 	node.material_override = mat
 	parent.add_child(node)
 
-static func triangle(surface: SurfaceTool, a: Vector3, b: Vector3, c: Vector3) -> void:
+static func triangle(surface: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, edge: Array = [Vector2(.5,.5),Vector2(.5,.5),Vector2(.5,.5)]) -> void:
 	# Godot uses clockwise front faces; browser source uses counterclockwise.
+	surface.set_uv2(edge[2])
 	surface.add_vertex(c)
+	surface.set_uv2(edge[1])
 	surface.add_vertex(b)
+	surface.set_uv2(edge[0])
 	surface.add_vertex(a)
