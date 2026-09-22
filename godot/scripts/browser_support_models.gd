@@ -4,6 +4,7 @@ class_name BrowserSupportModels
 ## Browser dimensions are preserved; browser (x,y,z) maps to native (x,z,-y).
 
 static func create(role: String, team: int = 0) -> Node3D:
+	palette_team = 1 if team == 1 else 0
 	var root := Node3D.new()
 	root.name = role.to_lower()
 	var body := material("#73765a", 0.9)
@@ -406,36 +407,54 @@ static func point(p: Vector3) -> Vector3:
 	return Vector3(p.x,p.z,-p.y)
 
 static var surface_cache: Dictionary = {}
+static var palette_team := 0
 const ATLAS_TILES := {"#73765a": Vector4(0,0,.5,.5), "#262c29": Vector4(.5,0,.5,.5), "#565f51": Vector4(0,.5,.5,.5), "#66654a": Vector4(.5,.5,.5,.5)}
+## Team palette swaps for the grey atlas: BLU leans tan / flat dark earth,
+## RED leans deeper pine. Keys are the neutral palette colours of each tile.
+const TEAM_PALETTES := {
+	0: {"#73765a": "#78725a", "#262c29": "#2a2b26", "#565f51": "#5a5c4e", "#66654a": "#6b6749"},
+	1: {"#73765a": "#5f6c50", "#262c29": "#232b26", "#565f51": "#4f5a4c", "#66654a": "#5d6345"},
+}
 
-## PS2-era painted surface. Palette colours map to their atlas tile; any other
-## colour (markings, decals) tints the body tile's grime.
+## Shadow, base and highlight for a base colour: shadows cool, highlights warm.
+static func ramp(mid: Color) -> Array[Color]:
+	return [(mid * .42).lerp(Color("#1b2226"), .2), mid, mid.lightened(.3).lerp(Color("#d8d0a8"), .12)]
+
+## PS2-era painted surface. Palette colours map to their atlas tile and the
+## team's palette swap; any other colour (markings, decals) ramps the body
+## tile's grey detail through that colour.
 static func material(color: String, roughness: float, metallic: float = .05) -> Material:
-	var key := "%s:%.2f:%.2f" % [color, roughness, metallic]
+	var key := "%d:%s:%.2f:%.2f" % [palette_team, color, roughness, metallic]
 	if surface_cache.has(key):
 		return surface_cache[key]
 	var result := ShaderMaterial.new()
 	result.shader = preload("res://shaders/ps2_surface.gdshader")
 	result.set_shader_parameter("atlas", preload("res://assets/textures/vehicles/hemtt_atlas.png"))
 	result.set_shader_parameter("region", ATLAS_TILES.get(color, ATLAS_TILES["#73765a"]))
-	result.set_shader_parameter("tint_mode", not ATLAS_TILES.has(color))
-	result.set_shader_parameter("tint", Color(color))
+	var colors := ramp(Color(TEAM_PALETTES[palette_team].get(color, color)))
+	result.set_shader_parameter("ramp_dark", colors[0])
+	result.set_shader_parameter("ramp_mid", colors[1])
+	result.set_shader_parameter("ramp_light", colors[2])
 	result.set_shader_parameter("roughness_value", roughness)
 	result.set_shader_parameter("metallic_value", metallic)
 	surface_cache[key] = result
 	return result
 
-static var tire_material: StandardMaterial3D
+static var tire_materials: Dictionary = {}
 
 ## Shared 512 tire sheet laid out for CylinderMesh UVs: tread band on top,
-## both wheel faces (sidewall and painted rim) below.
-static func tire() -> StandardMaterial3D:
-	if tire_material == null:
-		tire_material = StandardMaterial3D.new()
-		tire_material.albedo_texture = preload("res://assets/textures/vehicles/hemtt_tire.png")
-		tire_material.roughness = 0.95
-		tire_material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	return tire_material
+## both wheel faces below. The rim is painted in the team's body colour.
+static func tire() -> Material:
+	if not tire_materials.has(palette_team):
+		var result := ShaderMaterial.new()
+		result.shader = preload("res://shaders/ps2_tire.gdshader")
+		result.set_shader_parameter("sheet", preload("res://assets/textures/vehicles/hemtt_tire.png"))
+		var colors := ramp(Color(TEAM_PALETTES[palette_team]["#73765a"]).darkened(.12))
+		result.set_shader_parameter("ramp_dark", colors[0])
+		result.set_shader_parameter("ramp_mid", colors[1])
+		result.set_shader_parameter("ramp_light", colors[2])
+		tire_materials[palette_team] = result
+	return tire_materials[palette_team]
 
 static func box(parent: Node3D, size: Vector3, position: Vector3, mat: Material) -> MeshInstance3D:
 	var mesh := BoxMesh.new()
