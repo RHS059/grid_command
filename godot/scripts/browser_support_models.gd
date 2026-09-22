@@ -131,13 +131,39 @@ static func merge_stationary(parent: Node3D) -> void:
 		var surface := SurfaceTool.new()
 		surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 		for child in batches[mat]:
-			surface.append_from(child.mesh,0,child.transform)
+			append_with_edges(surface, child.mesh, child.transform)
 			parent.remove_child(child)
 			child.free()
+		surface.generate_tangents()
 		var merged := MeshInstance3D.new()
 		merged.mesh = surface.commit()
 		merged.material_override = mat
 		parent.add_child(merged)
+
+## Copies a primitive into the batch and writes face-local edge coordinates to
+## UV2, which ps2_surface turns into dodge (worn edges) and burn (panel bands).
+static func append_with_edges(surface: SurfaceTool, mesh: PrimitiveMesh, xf: Transform3D) -> void:
+	var arrays := mesh.get_mesh_arrays()
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var uvs: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV]
+	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	var normal_basis := xf.basis.inverse().transposed()
+	for i in indices:
+		var uv := uvs[i]
+		var edge := uv
+		if mesh is BoxMesh:
+			edge = uv * Vector2(3, 2)
+		elif mesh is CylinderMesh:
+			if absf(normals[i].y) > .5:
+				var center := Vector2(.25 if uv.x < .5 else .75, .75)
+				edge = Vector2(.5 + uv.x - center.x, clampf((.25 - uv.distance_to(center)) * 2.0, 0.0, .5))
+			else:
+				edge = Vector2(.25 + uv.x * .5, uv.y * 2.0)
+		surface.set_normal((normal_basis * normals[i]).normalized())
+		surface.set_uv(uv)
+		surface.set_uv2(edge)
+		surface.add_vertex(xf * verts[i])
 
 ## M978 HEMTT fuel servicing body: elliptical 2,500 gal tank, rear pump and
 ## hose-reel module, top manholes with a catwalk and rails, ladder, extinguishers.
@@ -379,16 +405,37 @@ static func ellipse(parent: Node3D, center: Vector3, length: float, rx: float, r
 static func point(p: Vector3) -> Vector3:
 	return Vector3(p.x,p.z,-p.y)
 
-static func material(color: String, roughness: float, metallic: float = .05) -> StandardMaterial3D:
-	var result := StandardMaterial3D.new()
-	result.albedo_color = Color(color)
-	result.roughness = roughness
-	result.metallic = metallic
-	# The hand-built cab shell has thin, open joins around the windscreen.
-	# Render both sides so those joins cannot make the whole cabin disappear
-	# when viewed from the opposite winding after the browser-axis conversion.
-	result.cull_mode = BaseMaterial3D.CULL_DISABLED
+static var surface_cache: Dictionary = {}
+const ATLAS_TILES := {"#73765a": Vector4(0,0,.5,.5), "#262c29": Vector4(.5,0,.5,.5), "#565f51": Vector4(0,.5,.5,.5), "#66654a": Vector4(.5,.5,.5,.5)}
+
+## PS2-era painted surface. Palette colours map to their atlas tile; any other
+## colour (markings, decals) tints the body tile's grime.
+static func material(color: String, roughness: float, metallic: float = .05) -> Material:
+	var key := "%s:%.2f:%.2f" % [color, roughness, metallic]
+	if surface_cache.has(key):
+		return surface_cache[key]
+	var result := ShaderMaterial.new()
+	result.shader = preload("res://shaders/ps2_surface.gdshader")
+	result.set_shader_parameter("atlas", preload("res://assets/textures/vehicles/hemtt_atlas.png"))
+	result.set_shader_parameter("region", ATLAS_TILES.get(color, ATLAS_TILES["#73765a"]))
+	result.set_shader_parameter("tint_mode", not ATLAS_TILES.has(color))
+	result.set_shader_parameter("tint", Color(color))
+	result.set_shader_parameter("roughness_value", roughness)
+	result.set_shader_parameter("metallic_value", metallic)
+	surface_cache[key] = result
 	return result
+
+static var tire_material: StandardMaterial3D
+
+## Shared 512 tire sheet laid out for CylinderMesh UVs: tread band on top,
+## both wheel faces (sidewall and painted rim) below.
+static func tire() -> StandardMaterial3D:
+	if tire_material == null:
+		tire_material = StandardMaterial3D.new()
+		tire_material.albedo_texture = preload("res://assets/textures/vehicles/hemtt_tire.png")
+		tire_material.roughness = 0.95
+		tire_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	return tire_material
 
 static func box(parent: Node3D, size: Vector3, position: Vector3, mat: Material) -> MeshInstance3D:
 	var mesh := BoxMesh.new()
@@ -414,12 +461,13 @@ static func rod(parent: Node3D, a: Vector3, b: Vector3, radius: float, mat: Mate
 	parent.add_child(node)
 
 static func wheel(parent: Node3D, x: float, y: float, z: float, radius: float, dark: Material, metal: Material) -> void:
-	# Military off-road tire: carcass, sidewall bulge, directional chevron tread,
-	# recessed rim, hub with lug nuts and a CTIS cap on the outboard face.
+	# Military off-road tire: textured carcass (tread band, sidewall and painted
+	# rim with bolts from the tire sheet), raised chevron blocks, protruding hub
+	# and CTIS cap on the outboard face.
 	var out := signf(x) if x != 0.0 else 1.0
 	var width := .34
-	rod(parent,Vector3(x-width*.5,y,z),Vector3(x+width*.5,y,z),radius*.93,dark,24)
-	rod(parent,Vector3(x-width*.38,y,z),Vector3(x+width*.38,y,z),radius*.97,dark,24)
+	rod(parent,Vector3(x-width*.5,y,z),Vector3(x+width*.5,y,z),radius*.93,tire(),24)
+	rod(parent,Vector3(x-width*.38,y,z),Vector3(x+width*.38,y,z),radius*.97,tire(),24)
 	var blocks := 22
 	for i in range(blocks):
 		for lane in [-1.0,1.0]:
@@ -428,12 +476,7 @@ static func wheel(parent: Node3D, x: float, y: float, z: float, radius: float, d
 			block.rotate_x(-a)
 			block.rotate_object_local(Vector3.UP,lane*.35)
 	var face := x+out*width*.5
-	rod(parent,Vector3(face-out*.02,y,z),Vector3(face+out*.01,y,z),radius*.6,metal,16)
-	rod(parent,Vector3(face,y,z),Vector3(face+out*.02,y,z),radius*.5,dark,16)
-	rod(parent,Vector3(face,y,z),Vector3(face+out*.06,y,z),radius*.24,metal,12)
-	for i in range(8):
-		var a := TAU*float(i)/8.0
-		rod(parent,Vector3(face,y+sin(a)*radius*.33,z+cos(a)*radius*.33),Vector3(face+out*.05,y+sin(a)*radius*.33,z+cos(a)*radius*.33),.025,metal,6)
+	rod(parent,Vector3(face,y,z),Vector3(face+out*.06,y,z),radius*.22,metal,12)
 	rod(parent,Vector3(face+out*.06,y,z),Vector3(face+out*.1,y,z),radius*.09,dark,8)
 
 static func container() -> Node3D:
@@ -469,19 +512,23 @@ static func shell(parent: Node3D, rings: Array, mat: Material) -> void:
 	for r in range(sections.size()-1):
 		for i in range(8):
 			var n := (i+1)%8
-			triangle(surface,sections[r][i],sections[r][n],sections[r+1][n])
-			triangle(surface,sections[r][i],sections[r+1][n],sections[r+1][i])
+			triangle(surface,sections[r][i],sections[r][n],sections[r+1][n],[Vector2(0,0),Vector2(1,0),Vector2(1,1)])
+			triangle(surface,sections[r][i],sections[r+1][n],sections[r+1][i],[Vector2(0,0),Vector2(1,1),Vector2(0,1)])
+	var fan := [Vector2(.5,.5),Vector2(.5,.5),Vector2(.5,.5)]
 	for i in range(1,7):
-		triangle(surface,sections[0][0],sections[0][i+1],sections[0][i])
-		triangle(surface,sections[-1][0],sections[-1][i],sections[-1][i+1])
+		triangle(surface,sections[0][0],sections[0][i+1],sections[0][i],fan)
+		triangle(surface,sections[-1][0],sections[-1][i],sections[-1][i+1],fan)
 	surface.generate_normals()
 	var node := MeshInstance3D.new()
 	node.mesh = surface.commit()
 	node.material_override = mat
 	parent.add_child(node)
 
-static func triangle(surface: SurfaceTool, a: Vector3, b: Vector3, c: Vector3) -> void:
+static func triangle(surface: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, edge: Array = [Vector2(.5,.5),Vector2(.5,.5),Vector2(.5,.5)]) -> void:
 	# Godot uses clockwise front faces; browser source uses counterclockwise.
+	surface.set_uv2(edge[2])
 	surface.add_vertex(c)
+	surface.set_uv2(edge[1])
 	surface.add_vertex(b)
+	surface.set_uv2(edge[0])
 	surface.add_vertex(a)
