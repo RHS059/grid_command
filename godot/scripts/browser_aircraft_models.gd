@@ -13,9 +13,10 @@ var flat := false
 static func create(role: String, team: int = 0) -> Node3D:
 	var builder := BrowserAircraftModels.new()
 	builder.root = Node3D.new(); builder.root.name = role
-	builder.body = builder.material("777868" if role == "TRANSPORT_HELI" else "b1b7b4",0.88,0.08)
+	# Faction paint is shared by airframes; glazing and fittings retain their own values.
+	builder.body = builder.material("a58d68" if team == 0 else "4b6046",0.9,0.0)
 	builder.dark = builder.material("272e30",0.9)
-	builder.glass = builder.material("344b59",0.3,0.2)
+	builder.glass = builder.material("344b59",0.55,0.0)
 	builder.metal = builder.material("555f60",0.8)
 	builder.mark = builder.material("54b7ff" if team == 0 else "ee777b",0.85)
 	if role == "CARGO_PLANE": builder.cargo_plane()
@@ -214,3 +215,4 @@ func transport_heli() -> void:
 		rail([s*1.05,0.1,1.5],[s*1.5,0.25,0.45],0.09); wheel(s*1.5,0.25,0.4); box(0.055,0.5,0.22,s*1.26,-1.7,1.85,mark)
 	wheel(0,-7.3,0.23); rail([0,0,3.3],[0,0,4.2],0.13); rotor("main-rotor",0,0,4.25,7.1,4)
 	var tail:=rotor("tail-rotor",0.2,-8.8,4.2,1,4); tail.rotation.z=-PI/2
+

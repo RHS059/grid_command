@@ -112,6 +112,9 @@ func _create_model() -> void:
 		source_model = model
 		if source_kind == "tank":
 			preload("res://scripts/tank_material.gd").apply(model)
+		preload("res://scripts/ground_vehicle_material.gd").apply(model, team, source_kind)
+		preload("res://scripts/air_naval_material.gd").apply(model, source_kind, team)
+		if source_kind == "tank":
 			vehicle_greebles = preload("res://scripts/vehicle_greebles.gd").new()
 			model.add_child(vehicle_greebles)
 			vehicle_greebles.build_tank_stowage(model)
@@ -507,3 +510,4 @@ func take_damage(amount: float) -> void:
 func set_fresnel(enabled: bool) -> void:
 	for mesh in visual_meshes:
 		mesh.material_overlay = overlay if enabled and is_alive and DisplayServer.get_name() != "headless" else null
+

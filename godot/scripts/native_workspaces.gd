@@ -282,6 +282,9 @@ func _load_model(id: String) -> void:
 	model_root.add_child(model)
 	if id == "TANK":
 		preload("res://scripts/tank_material.gd").apply(model)
+	preload("res://scripts/ground_vehicle_material.gd").apply(model, team, str(MODEL_FILES.get(id, id)))
+	preload("res://scripts/air_naval_material.gd").apply(model, str(MODEL_FILES.get(id, id)), team)
+	if id == "TANK":
 		preview_greebles = preload("res://scripts/vehicle_greebles.gd").new()
 		model.add_child(preview_greebles)
 		preview_greebles.build_tank_stowage(model)
@@ -1786,3 +1789,4 @@ const DEFAULT_SOUND_BANK := '''{
 
 
 '''
+

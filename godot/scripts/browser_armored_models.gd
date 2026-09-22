@@ -8,8 +8,10 @@ var rubber: StandardMaterial3D
 
 static func create(role: String,team: int=0) -> Node3D:
 	var b:=BrowserArmoredModels.new(); b.root=Node3D.new(); b.root.name=role; b.flat=false
-	b.sand=b.material("b29a70",0.85,0.08); b.body=b.sand
-	b.light=b.material("c4ad82",0.85,0.08); b.shade=b.material("897956",0.85,0.08); b.rubber=b.material("282c29",0.85,0.08)
+	var palette = preload("res://scripts/ground_vehicle_material.gd")
+	var faction := clampi(team,0,1)
+	b.sand=b.material(palette.BODY[faction].to_html(false),0.9,0.0); b.body=b.sand
+	b.light=b.material(palette.LIGHT[faction].to_html(false),0.9,0.0); b.shade=b.material(palette.SHADE[faction].to_html(false),0.9,0.0); b.rubber=b.material("282c29",0.95,0.0)
 	b.metal=b.material("54574d",0.85,0.08); b.glass=b.material("384b49",0.85,0.08); b.dark=b.rubber
 	b.mark=b.material("54b7ff" if team==0 else "ee777b",0.85,0.08)
 	b.hull_ifv(); b.bake(b.root)
@@ -74,3 +76,4 @@ func turret_ifv() -> void:
 		for z in [2.4,2.6]: rail([x,-0.85,z],[x,0.27,z],0.085,rubber)
 	for x in [-1,1]:
 		for i in range(3): rail([x*0.73,0.25+i*0.18,2.37],[x*0.95,0.42+i*0.18,2.58],0.047,shade)
+
