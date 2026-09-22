@@ -1,6 +1,9 @@
 """Paints the PS2-era HEMTT textures: a 512 atlas (body, chassis, metal,
-canvas tiles, all seamless, 64-colour indexed like PS2 CLUT textures) and a
+canvas tiles, all seamless) and a
 512 tire sheet laid out for Godot's CylinderMesh UVs (tread band on top, two wheel faces below).
+Both sheets are palette-free: the atlas stores grey detail where 128 is each
+tile's base colour, and the tire stores grey with a rim mask in alpha.
+Team palettes (Street Fighter style swaps) are applied in the shaders.
 Deterministic: python3 tools/paint_hemtt_textures.py"""
 import numpy as np
 from PIL import Image
@@ -58,7 +61,16 @@ atlas[:256, :256] = tile("#73765a", 10, streak=0.26, wear=0.5)          # body p
 atlas[:256, 256:] = tile("#262c29", 20, streak=0.12, seams=False)        # chassis / rubber-dark
 atlas[256:, :256] = tile("#565f51", 30, streak=0.2, wear=0.6)          # metal
 atlas[256:, 256:] = tile("#66654a", 40, seams=False, weave=True)         # canvas
-Image.fromarray(atlas.astype(np.uint8)).quantize(64, dither=Image.Dither.NONE).save(OUT + "hemtt_atlas.png", optimize=True)
+def to_grey(rgb, base):
+    # Luminance relative to the tile's base colour; 128 maps to the palette's mid.
+    lum = rgb @ np.array([.299, .587, .114])
+    return np.clip(lum / (hexrgb(base) @ np.array([.299, .587, .114])) * 128, 0, 255)
+
+grey = np.zeros((512, 512))
+for (ys, xs), base in (((slice(0, 256), slice(0, 256)), "#73765a"), ((slice(0, 256), slice(256, 512)), "#262c29"),
+                       ((slice(256, 512), slice(0, 256)), "#565f51"), ((slice(256, 512), slice(256, 512)), "#66654a")):
+    grey[ys, xs] = to_grey(atlas[ys, xs], base)
+Image.fromarray((np.round(grey / 6) * 6).clip(0, 255).astype(np.uint8), "L").save(OUT + "hemtt_atlas.png", optimize=True)
 
 # Tire sheet. Top half: tread band (u = around, v = across width).
 tire = np.zeros((512, 512, 3)) + hexrgb("#262a27")
@@ -101,14 +113,19 @@ def face(cx, cy):
         vy = cy + np.sin(k * np.pi / 3 + .3) * .5 * 128
         rim[np.hypot(xx - vx, yy - vy) < 7] = hexrgb("#1c1f1c")
     col = np.where((r < .645)[..., None], rim, side)
+    rim_mask[m & (r < .645)] = 255
     grime = np.clip(noise(512, 6, 80 + cx), -2, 2)
     col *= (1 + 0.07 * grime)[..., None]
     col += (np.clip(r - .8, 0, .2) * 5 * np.clip(grime + 1, 0, 2) * 10)[..., None] * hexrgb("#8a7a5a") / 128
     out[m] = col[m]
     return out, m
 
+rim_mask = np.zeros((512, 512))
 for cx in (128, 384):
     f, m = face(cx, 384)
     tire[m] = f[m]
-Image.fromarray(np.clip(tire, 0, 255).astype(np.uint8)).quantize(64, dither=Image.Dither.NONE).save(OUT + "hemtt_tire.png", optimize=True)
+# Rubber greys are relative to #24282a, rim greys to the rim paint #5f6249.
+tire_grey = np.where(rim_mask > 0, to_grey(tire, "#5f6249"), to_grey(tire, "#24282a"))
+sheet = np.stack([(np.round(tire_grey / 8) * 8).clip(0, 255), rim_mask], -1).astype(np.uint8)
+Image.fromarray(sheet, "LA").save(OUT + "hemtt_tire.png", optimize=True)
 print("painted", OUT)
