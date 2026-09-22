@@ -564,7 +564,11 @@ func _update_command_orders() -> void:
 			if unit.team != team or not unit.is_alive or unit.role == "COMMAND": continue
 			var record: Dictionary = unit.core_record
 			if force["hold"] or force["action"] == "HOLD": unit.hold(); continue
-			if record["service"] != "READY": unit.order = record["service"]; continue
+			if record.get("refuel_run", false): _continue_refuel_run(side, unit); continue
+			if record["service"] != "READY":
+				if unit.role in ["TROOP_TRUCK","TRANSPORT_HELI"] and record["service"] == "AWAITING FUEL / AMMO" and not record["at_base"]: _start_refuel_run(side, unit)
+				else: unit.order = record["service"]
+				continue
 			if record["transport"].has("carrier"): continue
 			if unit.role in ["TROOP_TRUCK","TRANSPORT_HELI"]:
 				var passengers: Array = record["transport"].get("passengers",[])
@@ -576,7 +580,7 @@ func _update_command_orders() -> void:
 					if unit.position.distance_to(target) < 0.7:
 						unit.hold(); record["moving"] = false
 						for id in passengers.duplicate(): core.dismount(side,id)
-					elif unit.route.is_empty() or unit.route[-1].distance_to(target) > 0.12: unit.move_to(target,false)
+					elif (unit.route.is_empty() or unit.route[-1].distance_to(target) > 0.12) and not unit.move_to(target,false) and unit.order.begins_with("MISSION FUEL") and not record["at_base"]: _start_refuel_run(side, unit)
 				else:
 					var pickup: CombatUnit
 					var nearest := INF
@@ -590,7 +594,7 @@ func _update_command_orders() -> void:
 							unit.hold(); record["moving"] = false
 							pickup.hold()
 							core.embark(side,str(pickup.core_record["id"]),str(record["id"]))
-						elif unit.route.is_empty(): unit.move_to(pickup.position,false)
+						elif unit.route.is_empty() and not unit.move_to(pickup.position,false) and unit.order.begins_with("MISSION FUEL") and not record["at_base"]: _start_refuel_run(side, unit)
 				continue
 			var mission: Dictionary = record.get("command_mission", {})
 			if mission.is_empty():
@@ -618,6 +622,29 @@ func _update_command_orders() -> void:
 			if (unit.route.is_empty() or unit.route[-1].distance_to(mission_target) > 0.12) and unit.position.distance_to(mission_target) > 0.12:
 				unit.move_to(mission_target, task == "ASSAULT")
 			unit.order = "%s · OBJ %s" % [task, str(mission.get("target", force["target"]))]
+
+# A transport stranded forward below its next leg's fuel requirement would never
+# move again: service only happens at base. Unload, drive home, top off, resume.
+func _start_refuel_run(side: String, unit: CombatUnit) -> void:
+	unit.core_record["refuel_run"] = true
+	_continue_refuel_run(side, unit)
+
+func _continue_refuel_run(side: String, unit: CombatUnit) -> void:
+	var record: Dictionary = unit.core_record
+	var passengers: Array = record["transport"].get("passengers",[])
+	if not passengers.is_empty():
+		unit.hold(); record["moving"] = false
+		for id in passengers.duplicate():
+			if core._unit(side,id).get("transport",{}).get("phase","") != "dismounting": core.dismount(side,id)
+		unit.order = "UNLOADING TO REFUEL"
+		return
+	if record["at_base"]:
+		unit.hold(); record["moving"] = false
+		unit.order = "REFUELING"
+		if float(record["fuel"]) >= 90.0 or float(core.depots[side]["airfield" if unit.airborne else "mob"]["fuel"]) < 1.0: record["refuel_run"] = false
+		return
+	if unit.route.is_empty(): unit.move_to(map.airbases[side] if unit.airborne else map.bases[side], false, false)
+	unit.order = "RETURNING TO REFUEL"
 
 func carrier_action(action: String) -> void:
 	if selected_units.is_empty(): return
