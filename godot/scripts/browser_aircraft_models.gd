@@ -9,12 +9,23 @@ var glass: StandardMaterial3D
 var metal: StandardMaterial3D
 var mark: StandardMaterial3D
 var flat := false
+var large_body_material: ShaderMaterial
 
 static func create(role: String, team: int = 0) -> Node3D:
 	var builder := BrowserAircraftModels.new()
 	builder.root = Node3D.new(); builder.root.name = role
 	# Faction paint is shared by airframes; glazing and fittings retain their own values.
 	builder.body = builder.material("a58d68" if team == 0 else "4b6046",0.9,0.0)
+	builder.large_body_material = ShaderMaterial.new()
+	builder.large_body_material.shader = preload("res://shaders/ps2_surface.gdshader")
+	builder.large_body_material.set_shader_parameter("atlas", preload("res://assets/textures/vehicles/hemtt_atlas.png"))
+	var paint := builder.body.albedo_color
+	builder.large_body_material.set_shader_parameter("ramp_mid", paint)
+	builder.large_body_material.set_shader_parameter("ramp_dark", paint.darkened(0.24))
+	builder.large_body_material.set_shader_parameter("ramp_light", paint.lightened(0.12))
+	builder.large_body_material.set_shader_parameter("tiles_per_unit", 0.18)
+	builder.large_body_material.set_shader_parameter("roughness_value", 0.9)
+	builder.large_body_material.set_shader_parameter("metallic_value", 0.0)
 	builder.dark = builder.material("272e30",0.9)
 	builder.glass = builder.material("344b59",0.55,0.0)
 	builder.metal = builder.material("555f60",0.8)
@@ -32,6 +43,12 @@ func point(v: Array) -> Vector3:
 
 func add_mesh(mesh: Mesh, mat: Material = null, parent: Node3D = null, transform: Transform3D = Transform3D.IDENTITY) -> MeshInstance3D:
 	var object := MeshInstance3D.new(); object.mesh = mesh; object.material_override = body if mat == null else mat; object.transform = transform
+	# Large airframe shells receive the shared painted atlas; small parts, glass,
+	# rotors and markings stay on their separate clean material contracts.
+	var size := mesh.get_aabb().size
+	var area := size.x*size.y + size.y*size.z + size.x*size.z
+	if large_body_material != null and object.material_override == body and area > 3.0:
+		object.material_override = large_body_material
 	(root if parent == null else parent).add_child(object)
 	return object
 

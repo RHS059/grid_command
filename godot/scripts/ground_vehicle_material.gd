@@ -22,11 +22,11 @@ static func _apply_surfaces(root: Node, team: int, kind: String) -> void:
 				continue
 			var material := ShaderMaterial.new()
 			material.shader = preload("res://shaders/ground_vehicle_palette.gdshader")
-			material.set_shader_parameter("albedo_map", source.albedo_texture)
+			material.set_shader_parameter("albedo_map", source.albedo_texture if kind == "tank" else preload("res://assets/models/stryker_albedo.png"))
 			material.set_shader_parameter("source_tint", source.albedo_color)
 			material.set_shader_parameter("paint_mid", BODY[team])
 			# The existing tank atlas is tan; the Stryker atlas is dark olive.
-			material.set_shader_parameter("source_mid", Color("ae9061") if kind == "tank" else Color("30381f"))
+			material.set_shader_parameter("source_mid", Color("ae9061") if kind == "tank" else Color("50573a"))
 			material.set_shader_parameter("uv_scale", Vector2(source.uv1_scale.x, source.uv1_scale.y))
 			material.set_shader_parameter("uv_offset", Vector2(source.uv1_offset.x, source.uv1_offset.y))
 			root.set_surface_override_material(surface, material)

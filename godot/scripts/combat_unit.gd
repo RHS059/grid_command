@@ -114,6 +114,7 @@ func _create_model() -> void:
 			preload("res://scripts/tank_material.gd").apply(model)
 		preload("res://scripts/ground_vehicle_material.gd").apply(model, team, source_kind)
 		preload("res://scripts/air_naval_material.gd").apply(model, source_kind, team)
+		preload("res://scripts/naval_material.gd").apply(model, source_kind, team)
 		if source_kind == "tank":
 			vehicle_greebles = preload("res://scripts/vehicle_greebles.gd").new()
 			model.add_child(vehicle_greebles)
