@@ -141,6 +141,7 @@ func _test_expansion_and_base_defense() -> void:
 	director._ensure_objectives(core, "BLU")
 	var known: Dictionary = director.sides["BLU"]["objectives"]
 	known["HOME"]["owner"] = "BLU"
+	core.objectives["HOME"]["owner"] = "BLU"
 	for index in range(6):
 		var unit: Dictionary = core.make_unit("BLU", "RIFLE", "guard-%d" % index)
 		unit["position"] = Vector3(float(index), 0, 0)
@@ -163,6 +164,7 @@ func _test_expansion_and_base_defense() -> void:
 	guard["ammo"] = 0.0
 	assert(not director._plan_side(core, "BLU", 60.0)["reserve_ids"].has("guard-0"), "An empty-ammunition squad cannot satisfy base defense.")
 	known["FAR"]["owner"] = "BLU"
+	core.objectives["FAR"]["owner"] = "BLU"
 	var hold: Dictionary = director._plan_side(core, "BLU", 90.0)
 	assert(hold["posture"] == "HOLD" and hold["action"] == "HOLD", "All reported objectives secured must hold positions for territorial victory.")
 	assert(director._task_for(guard, hold) == "HOLD")
@@ -170,4 +172,6 @@ func _test_expansion_and_base_defense() -> void:
 	assert(director._plan_side(core, "BLU", 120.0)["target"] == "FAR", "A contested friendly objective must reopen the offensive plan.")
 	known["FAR"]["contested"] = false
 	known["FAR"]["owner"] = "RED"
+	core.objectives["FAR"]["owner"] = "RED"
 	assert(director._plan_side(core, "BLU", 150.0)["target"] == "FAR", "A lost objective must reopen the offensive plan.")
+
