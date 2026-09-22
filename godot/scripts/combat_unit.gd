@@ -334,7 +334,7 @@ func set_selected(value: bool) -> void:
 	if overlay != null:
 		overlay.set_shader_parameter("strength", 0.5)
 
-func move_to(destination: Vector3, attack_move: bool = true) -> bool:
+func move_to(destination: Vector3, attack_move: bool = true, check_fuel: bool = true) -> bool:
 	if not is_alive or role == "COMMAND" or float(stats["speed"]) <= 0.0:
 		return false
 	if role in SimulationCore.NAVAL:
@@ -356,7 +356,7 @@ func move_to(destination: Vector3, attack_move: bool = true) -> bool:
 		order = "ADVANCE" if attack_move else "MOVE"
 		return true
 	attack_target = null
-	if SimulationCore.is_vehicle(role) and not core_record.is_empty():
+	if check_fuel and SimulationCore.is_vehicle(role) and not core_record.is_empty():
 		var required := position.distance_to(destination)*100.0/float(SimulationCore.OPERATIONAL_RANGE.get(role,100000))*100.0*2.7+15.0
 		if float(core_record.get("fuel",0)) < required:
 			order = "MISSION FUEL REQUIRED %d%%" % ceili(required)
@@ -394,7 +394,7 @@ func tick(delta: float, units: Array[CombatUnit], elapsed: float) -> void:
 	visual.visible = not mounted
 	team_marker.visible = not mounted
 	if mounted: return
-	var can_operate: bool = not SimulationCore.is_vehicle(role) or (float(core_record.get("fuel",100)) > 0 and core_record.get("service","READY") == "READY")
+	var can_operate: bool = not SimulationCore.is_vehicle(role) or (float(core_record.get("fuel",100)) > 0 and (core_record.get("service","READY") == "READY" or core_record.get("refuel_run",false)))
 	var deck_phase: String = core_record.get("maritime",{}).get("phase","moving")
 	var can_move: bool = can_operate and (role != "AIRCRAFT_CARRIER" or deck_phase == "moving")
 	if role == "AIRCRAFT_CARRIER":
