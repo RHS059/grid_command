@@ -40,10 +40,11 @@ func _render() -> void:
 	camera.current = true
 	DirAccess.make_dir_recursive_absolute("res://build/support-model-review")
 	for role in roles:
-		# ROLE:deployed renders a deployable body in its deployed state.
+		# ROLE:deployed renders a deployable body deployed; ROLE:red renders the RED palette.
 		var parts: PackedStringArray = str(role).split(":")
-		var model: Node3D = preload("res://scripts/browser_model_factory.gd").create(parts[0], 0)
-		if parts.size() > 1: BrowserSupportModels.set_deployed(model, parts[1] == "deployed")
+		var team := 1 if "red" in parts else 0
+		var model: Node3D = preload("res://scripts/browser_model_factory.gd").create(parts[0], team)
+		if "deployed" in parts: BrowserSupportModels.set_deployed(model, true)
 		scene.add_child(model)
 		for view in [["front_left", Vector3(-10, 6, -9), Vector3(0, 1.6, 0.5), 13.0], ["rear_right", Vector3(9, 6, 10), Vector3(0, 1.6, 0.5), 13.0], ["side", Vector3(-14, 2.2, 0), Vector3(0, 1.6, 0.5), 13.0], ["top", Vector3(-0.01, 16, 0), Vector3(0, 1.6, 0.5), 13.0], ["wheel", Vector3(-6, 2.2, -1.2), Vector3(-1.35, 0.7, -2.3), 4.2], ["cab", Vector3(-3.2, 3.4, -9), Vector3(0, 2.3, -3.2), 4.6], ["cab_side", Vector3(-7, 3.0, -1.5), Vector3(0, 2.4, -3.0), 4.6], ["far", Vector3(-30, 24, -26), Vector3(0, 1.6, 0), 40.0]]:
 			camera.position = view[1]
