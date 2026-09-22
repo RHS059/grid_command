@@ -20,10 +20,16 @@ export class InteriorRoomPlugin extends MaterialPluginBase {
     if (shaderType !== 'fragment') return null
     return gpu ? {
       CUSTOM_FRAGMENT_DEFINITIONS: `varying gridRoom: vec4f; varying gridUV: vec2f; varying gridRight: vec3f; varying gridUp: vec3f;
+fn gridCab(h:vec3f,kind:f32)->vec3f {
+ var c=vec3f(.27,.28,.24);if(h.y<.01){c=vec3f(.10,.10,.09);}else if(h.y>.99){c=vec3f(.40,.40,.35);}
+ let back=step(.99,h.z);let seat=back*(step(.22,h.x)*step(h.x,.78)*step(h.y,.6)+step(.36,h.x)*step(h.x,.64)*step(.66,h.y)*step(h.y,.82));
+ c=mix(c,vec3f(.30,.22,.14)*(.7+.5*h.y),min(seat,1.));if(kind>10.5){c=mix(c,vec3f(.06,.065,.06),step(h.y,.28)*step(h.z,.4));}
+ return c*(.75+.25*h.y);
+}
 fn gridRoomColor(uv:vec2f,rd:vec3f,room:vec4f)->vec3f {
  let span=max(1.,room.y);let origin=vec3f((uv.x+room.z)/span,uv.y,0.001);let ray=vec3f(rd.x/span,rd.y,max(.08,rd.z));
  let wall=select(vec3f(0.),vec3f(1.),ray>vec3f(0.));let t=(wall-origin)/select(vec3f(.00001),ray,abs(ray)>vec3f(.00001));let distance=min(min(t.x,t.y),t.z);let hit=origin+ray*distance;
- let family=room.x;var base=mix(vec3f(.16,.19,.20),vec3f(.45,.38,.27),fract(room.w*7.));base*=select(.7,1.15,hit.y>.01);base*=select(.7,1.,hit.z>.99);
+ let family=room.x;if(family>9.5){return gridCab(hit,family);}var base=mix(vec3f(.16,.19,.20),vec3f(.45,.38,.27),fract(room.w*7.));base*=select(.7,1.15,hit.y>.01);base*=select(.7,1.,hit.z>.99);
  let shelf=step(.68,hit.y)*step(.06,fract(hit.y*7.));let desk=step(hit.y,.38)*step(.15,hit.x)*step(hit.x,.84);
  if(family<2.){base=mix(base,vec3f(.24,.21,.16),desk);base+=vec3f(.16,.11,.05)*step(.77,hit.x)*step(.35,hit.y)*step(hit.y,.62);}
  else if(family<4.){base=mix(base,vec3f(.10,.15,.19),desk);base+=vec3f(.04,.15,.19)*step(.3,hit.x)*step(hit.x,.65)*step(.4,hit.y)*step(hit.y,.66);}
@@ -33,10 +39,15 @@ fn gridRoomColor(uv:vec2f,rd:vec3f,room:vec4f)->vec3f {
       CUSTOM_FRAGMENT_BEFORE_LIGHTS: `let gridEye=normalize(scene.vEyePosition.xyz-fragmentInputs.vPositionW);let gridOut=normalize(cross(fragmentInputs.gridRight,fragmentInputs.gridUp));let gridRay=vec3f(-dot(gridEye,fragmentInputs.gridRight),-dot(gridEye,fragmentInputs.gridUp),abs(dot(gridEye,gridOut)));let gridInterior=gridRoomColor(fragmentInputs.gridUV,gridRay,fragmentInputs.gridRoom);surfaceAlbedo=mix(gridInterior,surfaceAlbedo,.28);`,
     } : {
       CUSTOM_FRAGMENT_DEFINITIONS: `varying vec4 gridRoom; varying vec2 gridUV; varying vec3 gridRight; varying vec3 gridUp;
+vec3 gridCab(vec3 h,float kind){
+ vec3 c=h.y<.01?vec3(.10,.10,.09):h.y>.99?vec3(.40,.40,.35):vec3(.27,.28,.24);
+ float back=step(.99,h.z),seat=back*(step(.22,h.x)*step(h.x,.78)*step(h.y,.6)+step(.36,h.x)*step(h.x,.64)*step(.66,h.y)*step(h.y,.82));
+ c=mix(c,vec3(.30,.22,.14)*(.7+.5*h.y),min(seat,1.));if(kind>10.5)c=mix(c,vec3(.06,.065,.06),step(h.y,.28)*step(h.z,.4));
+ return c*(.75+.25*h.y);}
 vec3 gridRoomColor(vec2 uv,vec3 rd,vec4 room){
  float span=max(1.,room.y);vec3 origin=vec3((uv.x+room.z)/span,uv.y,.001);vec3 ray=vec3(rd.x/span,rd.y,max(.08,rd.z));
  vec3 wall=step(vec3(0.),ray);vec3 t=(wall-origin)/(mix(vec3(-1.),vec3(1.),step(vec3(0.),ray))*max(abs(ray),vec3(.00001)));float distance=min(min(t.x,t.y),t.z);vec3 hit=origin+ray*distance;
- float family=room.x;vec3 base=mix(vec3(.16,.19,.20),vec3(.45,.38,.27),fract(room.w*7.));base*=hit.y>.01?1.15:.7;base*=hit.z>.99?1.:.7;
+ float family=room.x;if(family>9.5)return gridCab(hit,family);vec3 base=mix(vec3(.16,.19,.20),vec3(.45,.38,.27),fract(room.w*7.));base*=hit.y>.01?1.15:.7;base*=hit.z>.99?1.:.7;
  float shelf=step(.68,hit.y)*step(.06,fract(hit.y*7.));float desk=step(hit.y,.38)*step(.15,hit.x)*step(hit.x,.84);
  if(family<2.){base=mix(base,vec3(.24,.21,.16),desk);base+=vec3(.16,.11,.05)*step(.77,hit.x)*step(.35,hit.y)*step(hit.y,.62);}
  else if(family<4.){base=mix(base,vec3(.10,.15,.19),desk);base+=vec3(.04,.15,.19)*step(.3,hit.x)*step(hit.x,.65)*step(.4,hit.y)*step(hit.y,.66);}

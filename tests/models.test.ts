@@ -6,6 +6,8 @@ import { MODEL_CATALOG, MODEL_NAMES } from '../lib/game/model-catalog'
 import { createAircraft, animateAircraft, disposeModel } from '../lib/game/aircraft-models'
 import { BASE_GRADE_CLEARANCE, baseSurfaceElevation, createBase, conformBase } from '../lib/game/base-models'
 import { soldierParts, vehicleGeometry } from '../lib/game/unit-models'
+import { HEMTT_VARIANTS } from '../lib/game/hemtt-model'
+import { createSupportModel } from '../lib/game/support-models'
 
 function finite(root: T.Object3D) {
   let vertices = 0
@@ -14,10 +16,17 @@ function finite(root: T.Object3D) {
   assert.ok(vertices > 0); assert.ok(!bounds.isEmpty()); assert.ok(bounds.getSize(new T.Vector3()).toArray().every(Number.isFinite))
 }
 test('model browser covers every catalog role and both compound types', () => {
-  assert.equal(new Set(MODEL_CATALOG).size, Object.keys(CATALOG).length + 2)
+  assert.equal(new Set(MODEL_CATALOG).size, Object.keys(CATALOG).length + 2 + HEMTT_VARIANTS.length)
   for (const role of Object.keys(CATALOG)) assert.ok(MODEL_CATALOG.includes(role as Role))
   for (const id of MODEL_CATALOG) assert.ok(MODEL_NAMES[id])
   assert.ok(MODEL_CATALOG.includes('MOB')); assert.ok(MODEL_CATALOG.includes('AIRFIELD'))
+})
+test('HEMTT variants build finite geometry with cab glass in both liveries', () => {
+  for (const role of ['TRUCK', ...HEMTT_VARIANTS] as const) for (const side of ['BLU', 'RED'] as Side[]) {
+    const model = createSupportModel(role, side); finite(model)
+    let panes = 0; model.traverse(o => { if (o instanceof T.Mesh && (o.material as T.Material).name === 'interior-window') panes++ })
+    assert.equal(panes, 4, role); disposeModel(model)
+  }
 })
 test('all production aircraft and compound models have finite geometry in both liveries', () => {
   for (const side of ['BLU', 'RED'] as Side[]) {
