@@ -40,7 +40,10 @@ func _render() -> void:
 	camera.current = true
 	DirAccess.make_dir_recursive_absolute("res://build/support-model-review")
 	for role in roles:
-		var model: Node3D = preload("res://scripts/browser_model_factory.gd").create(role, 0)
+		# ROLE:deployed renders a deployable body in its deployed state.
+		var parts: PackedStringArray = str(role).split(":")
+		var model: Node3D = preload("res://scripts/browser_model_factory.gd").create(parts[0], 0)
+		if parts.size() > 1: BrowserSupportModels.set_deployed(model, parts[1] == "deployed")
 		scene.add_child(model)
 		for view in [["front_left", Vector3(-10, 6, -9), Vector3(0, 1.6, 0.5), 13.0], ["rear_right", Vector3(9, 6, 10), Vector3(0, 1.6, 0.5), 13.0], ["side", Vector3(-14, 2.2, 0), Vector3(0, 1.6, 0.5), 13.0], ["top", Vector3(-0.01, 16, 0), Vector3(0, 1.6, 0.5), 13.0], ["wheel", Vector3(-6, 2.2, -1.2), Vector3(-1.35, 0.7, -2.3), 4.2], ["cab", Vector3(-3.2, 3.4, -9), Vector3(0, 2.3, -3.2), 4.6], ["cab_side", Vector3(-7, 3.0, -1.5), Vector3(0, 2.4, -3.0), 4.6]]:
 			camera.position = view[1]
@@ -48,7 +51,7 @@ func _render() -> void:
 			camera.look_at(view[2], Vector3.UP if view[0] != "top" else Vector3.FORWARD)
 			for frame in 3: await process_frame
 			await RenderingServer.frame_post_draw
-			root.get_texture().get_image().save_png("res://build/support-model-review/%s_%s.png" % [str(role).to_lower(), view[0]])
+			root.get_texture().get_image().save_png("res://build/support-model-review/%s_%s.png" % [str(role).to_lower().replace(":", "_"), view[0]])
 		model.queue_free()
 		await process_frame
 	print("GRID_COMMAND_SUPPORT_MODEL_RENDER_OK")
