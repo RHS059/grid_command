@@ -45,7 +45,7 @@ func _render() -> void:
 		var model: Node3D = preload("res://scripts/browser_model_factory.gd").create(parts[0], 0)
 		if parts.size() > 1: BrowserSupportModels.set_deployed(model, parts[1] == "deployed")
 		scene.add_child(model)
-		for view in [["front_left", Vector3(-10, 6, -9), Vector3(0, 1.6, 0.5), 13.0], ["rear_right", Vector3(9, 6, 10), Vector3(0, 1.6, 0.5), 13.0], ["side", Vector3(-14, 2.2, 0), Vector3(0, 1.6, 0.5), 13.0], ["top", Vector3(-0.01, 16, 0), Vector3(0, 1.6, 0.5), 13.0], ["wheel", Vector3(-6, 2.2, -1.2), Vector3(-1.35, 0.7, -2.3), 4.2], ["cab", Vector3(-3.2, 3.4, -9), Vector3(0, 2.3, -3.2), 4.6], ["cab_side", Vector3(-7, 3.0, -1.5), Vector3(0, 2.4, -3.0), 4.6]]:
+		for view in [["front_left", Vector3(-10, 6, -9), Vector3(0, 1.6, 0.5), 13.0], ["rear_right", Vector3(9, 6, 10), Vector3(0, 1.6, 0.5), 13.0], ["side", Vector3(-14, 2.2, 0), Vector3(0, 1.6, 0.5), 13.0], ["top", Vector3(-0.01, 16, 0), Vector3(0, 1.6, 0.5), 13.0], ["wheel", Vector3(-6, 2.2, -1.2), Vector3(-1.35, 0.7, -2.3), 4.2], ["cab", Vector3(-3.2, 3.4, -9), Vector3(0, 2.3, -3.2), 4.6], ["cab_side", Vector3(-7, 3.0, -1.5), Vector3(0, 2.4, -3.0), 4.6], ["far", Vector3(-30, 24, -26), Vector3(0, 1.6, 0), 40.0]]:
 			camera.position = view[1]
 			camera.size = view[3]
 			camera.look_at(view[2], Vector3.UP if view[0] != "top" else Vector3.FORWARD)
