@@ -90,19 +90,20 @@ func _run() -> void:
 			if candidate.text.contains(workspace_title): workspace_button = candidate
 		assert(workspace_button != null)
 		await click(workspace_button)
-		assert(world.native_workspaces != null and world.native_workspaces.visible,"Workspace did not open: "+workspace_title)
+		var active_workspace: Control = world.model_preview_gallery if workspace_title == "Model Preview" else world.native_workspaces
+		assert(active_workspace != null and active_workspace.visible,"Workspace did not open: "+workspace_title)
 		assert(not hud.visible,"Battlefield HUD overlaps workspace.")
 		if DisplayServer.get_name() != "headless":
 			await RenderingServer.frame_post_draw
 			root.get_texture().get_image().save_png("res://"+workspace_title.to_lower().replace(" ","-")+"-preview.png")
 		var return_button: Button
-		for candidate in world.native_workspaces.find_children("*","Button",true,false):
-			if candidate.is_visible_in_tree() and (candidate.text.contains("Return") or candidate.text.contains("GRID COMMAND")):
+		for candidate in active_workspace.find_children("*","Button",true,false):
+			if candidate.is_visible_in_tree() and (candidate.text.contains("Return") or candidate.text.contains("GRID COMMAND") or candidate.text.contains("Battlefield")):
 				return_button = candidate
 				break
 		assert(return_button != null,"Missing return-to-battlefield button.")
 		await click(return_button)
-		assert(hud.visible and not world.native_workspaces.visible)
+		assert(hud.visible and not active_workspace.visible)
 	if DisplayServer.get_name() != "headless":
 		await RenderingServer.frame_post_draw
 		root.get_texture().get_image().save_png("res://hud-preview.png")
