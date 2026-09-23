@@ -4,11 +4,14 @@ extends RefCounted
 ## with a five-blade propeller, tandem canopy, low wing with dihedral, twin wing
 ## .50 guns, five hardpoints, ventral strakes and a large swept fin.
 ## Coordinates follow browser_support_models: x right, y forward, z up.
-## Painted surfaces use the HEMTT grey atlas and team ramps (ps2_surface);
+## Painted surfaces use the HEMTT grey atlas (ps2_surface) in neutral grey;
 ## lofted shells carry UV2 panel coordinates for seam burn and edge dodge.
 
 const S := preload("res://scripts/browser_support_models.gd")
-const BODY := ["#a58d68", "#4b6046"]
+## Aircraft are neutral grey for both sides; faction reads from the blue/red markings.
+const BODY := "#6f7478"
+const WING := [[.3,1.38,2.45,.13],[1.6,1.25,2.15,.13],[3.6,.98,1.65,.12],[5.5,.62,1.12,.11]]  # [x, LE y, chord, thickness]
+const FIN := [[2.02,-2.9,3.0,.05],[2.4,-4.0,2.0,.1],[3.97,-5.15,.85,.1]]  # [z, LE y, chord, thickness]
 const MARK := ["#54b7ff", "#ee777b"]
 const DIHEDRAL := 0.105  # tan(6 deg)
 
@@ -17,7 +20,7 @@ static func create(team: int = 0) -> Node3D:
 	S.palette_team = team
 	var root := Node3D.new()
 	root.name = "a29b"
-	var body := S.material(BODY[team], 0.9)
+	var body := S.material(BODY, 0.9)
 	var dark := S.material("#262c29", 0.9)
 	var metal := S.material("#565f51", 0.8, 0.15)
 	var mark := S.material(MARK[team], 0.85)
@@ -95,15 +98,14 @@ static func arches_height(arches: Array, y: float) -> float:
 static func wing(root: Node3D, s: float, body: Material, dark: Material, metal: Material, mark: Material, ordnance: Material, yellow: Material) -> void:
 	# Low straight wing, slight leading-edge sweep, 6 degree dihedral from the root.
 	var rings := []
-	for st in [[.3,1.38,2.45,.13],[1.6,1.25,2.15,.13],[3.6,.98,1.65,.12],[5.5,.62,1.12,.11]]:
+	for st in WING:
 		var x: float = st[0]
 		rings.append(airfoil(Vector3(s*x, st[1], wing_z(x)), st[2], st[3], false, 18))
 	loft(root, rings, body, true, true, [0.0,.3,.6,1.0])
-	var tip := Vector3(s*5.55, .1, wing_z(5.55))
-	S.box(root, Vector3(.06,.22,.06), tip + Vector3(s*.02,.2,0), S.material("#3f8a4a" if s > 0 else "#a8302a", 0.5))
+	S.box(root, Vector3(.06,.22,.06), Vector3(s*5.53,.3,wing_z(5.5)), S.material("#3f8a4a" if s > 0 else "#a8302a", 0.5))
 	# Wing guns (FN M3P .50) muzzles, team roundels, pylons and a mixed load.
 	S.rod(root, Vector3(s*1.9,1.55,wing_z(1.9)), Vector3(s*1.9,1.05,wing_z(1.9)), .035, dark, 8)
-	S.rod(root, Vector3(s*4.3,.45,wing_z(4.3)+.095), Vector3(s*4.3,.45,wing_z(4.3)+.105), .32, mark, 16)
+	for upper in [true, false]: roundel(root, s * 4.2, .2, .38, upper, mark)
 	if s < 0: S.rod(root, Vector3(s*4.9,1.0,wing_z(4.9)-.02), Vector3(s*4.9,1.6,wing_z(4.9)-.02), .02, metal)
 	for x in [2.3, 3.5]:
 		var z := wing_z(x) - .2
@@ -134,12 +136,12 @@ static func tail(root: Node3D, body: Material, dark: Material, mark: Material) -
 		strake.rotate_z(s * .5)
 	# Swept fin with a long dorsal fillet; rudder hinge line and team flash.
 	var fin := []
-	for st in [[2.02,-2.9,3.0,.05],[2.4,-4.0,2.0,.1],[3.97,-5.15,.85,.1]]:
+	for st in FIN:
 		fin.append(airfoil(Vector3(0, st[1], st[0]), st[2], st[3], true, 16))
 	loft(root, fin, body, true, true, [0.0,.4,1.0])
 	S.box(root, Vector3(.13,.03,1.5), Vector3(0,-5.3,3.0), dark)
 	for s in [-1.0, 1.0]:
-		S.box(root, Vector3(.012,.8,.5), Vector3(s*.09,-4.85,3.0), mark)
+		fin_flash(root, s, mark)
 
 static func gear(root: Node3D, dark: Material, metal: Material) -> void:
 	# Tricycle gear: single-wheel mains retract into the wing, nose gear aft.
@@ -173,6 +175,64 @@ static func propeller(root: Node3D, dark: Material, metal: Material) -> void:
 			blade.material_override = dark
 			blade.transform = Transform3D(turn * Basis(Vector3(0,1,0), .45), turn * Vector3(0, part[0], -.12))
 			prop.add_child(blade)
+
+## Markings are built on the lofted surface itself (same interpolation as the
+## loft, lifted 6 mm along the surface), so they never float off the skin.
+static func half_thickness(s: float, chord: float, ratio: float) -> float:
+	return maxf(5.0 * ratio * chord * (.2969*sqrt(s) - .126*s - .3516*s*s + .2843*s*s*s - .1036*s*s*s*s), .004 * chord)
+
+## Surface point between loft stations: station[0] is the span coordinate.
+static func skin(stations: Array, span: float, y: float, side: float) -> Vector3:
+	var i := 0
+	while i < stations.size() - 2 and span > stations[i+1][0]: i += 1
+	var a: Array = stations[i]
+	var b: Array = stations[i+1]
+	var t := clampf((span - a[0]) / (b[0] - a[0]), 0.0, 1.0)
+	var le := lerpf(a[1], b[1], t)
+	var chord := lerpf(a[2], b[2], t)
+	var s := clampf((le - y) / chord, 0.0, 1.0)
+	var thick := lerpf(half_thickness(s, a[2], a[3]), half_thickness(s, b[2], b[3]), t) + .006
+	return Vector3(span, y, side * thick)
+
+static func roundel(root: Node3D, x: float, y: float, radius: float, upper: bool, mat: Material) -> void:
+	var rings := []
+	for r in [radius, radius * .5, 0.001]:
+		var ring := PackedVector3Array()
+		for k in range(20):
+			var a := TAU * k / 20.0
+			var px: float = x + cos(a) * r
+			var p := skin(WING, absf(px), y + sin(a) * r, 1.0 if upper else -1.0)
+			ring.append(Vector3(px, p.y, wing_z(absf(px)) + p.z))
+		rings.append(ring)
+	decal(root, rings, mat, Vector3(0, 0, 1) if upper else Vector3(0, 0, -1))
+
+static func fin_flash(root: Node3D, side: float, mat: Material) -> void:
+	var rings := []
+	for z in [2.75, 3.0, 3.25]:
+		var ring := PackedVector3Array()
+		for k in range(8):
+			var p := skin(FIN, z, lerpf(-4.7, -5.4, k / 7.0), 1.0)
+			ring.append(Vector3(side * p.z, p.y, z))
+		rings.append(ring)
+	decal(root, rings, mat, Vector3(side, 0, 0), false)
+
+## Thin patch through the given skin points, facing out.
+static func decal(root: Node3D, rings: Array, mat: Material, out: Vector3, closed := true) -> void:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var count: int = rings[0].size()
+	var normal := S.point(out)
+	for r in range(rings.size() - 1):
+		for i in range(count if closed else count - 1):
+			var n := (i + 1) % count
+			for p in [rings[r][i], rings[r][n], rings[r+1][n], rings[r][i], rings[r+1][n], rings[r+1][i]]:
+				st.set_normal(normal)
+				st.set_uv2(Vector2(.5, .5))
+				st.add_vertex(S.point(p))
+	var node := MeshInstance3D.new()
+	node.mesh = st.commit()
+	node.material_override = mat
+	root.add_child(node)
 
 ## Superellipse ring (browser coordinates) at station y.
 static func super_ring(y: float, w: float, h: float, zc: float, n: int, p: float) -> PackedVector3Array:
