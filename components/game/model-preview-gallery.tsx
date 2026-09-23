@@ -12,8 +12,9 @@ import { createSupportModel, isSupportModel } from '@/lib/game/support-models'
 import { createBase } from '@/lib/game/base-models'
 import { addCarrierOccupants } from '@/lib/game/carrier-occupants'
 import { addStudioLighting } from '@/lib/game/scene-lighting'
-import { isAir, isVehicle, type Side } from '@/lib/game/types'
+import { isAir, isVehicle, type Role, type Side } from '@/lib/game/types'
 import { MODEL_CATALOG, MODEL_NAMES, modelCategory, type ModelId } from '@/lib/game/model-catalog'
+import { createHemtt, isHemttVariant } from '@/lib/game/hemtt-model'
 import { ModelViewport } from './model-viewport'
 import styles from './model-preview-gallery.module.css'
 
@@ -44,8 +45,10 @@ function GalleryStage({ side, paused, onSelect }: { side: Side; paused: boolean;
     const material = new T.MeshStandardMaterial({ vertexColors: true, roughness: .62, metalness: .08, flatShading: false })
     const items = MODEL_CATALOG.map(id => {
       const pivot = new T.Group(), content = new T.Scene()
+      const role: Role = isHemttVariant(id) ? 'TRUCK' : id === 'MOB' || id === 'AIRFIELD' ? 'COMMAND' : id
       let object: T.Object3D | undefined, batch: SoldierBatch | undefined
       if (id === 'MOB' || id === 'AIRFIELD') object = createBase(id, side)
+      else if (isHemttVariant(id)) object = createHemtt(id, side)
       else if (isAir(id)) object = createAircraft(id, side)
       else if (isSupportModel(id)) object = createSupportModel(id, side)
       else if (isVehicle(id)) {
@@ -58,9 +61,9 @@ function GalleryStage({ side, paused, onSelect }: { side: Side; paused: boolean;
       const bounds = object ? new T.Box3().setFromObject(object) : new T.Box3(new T.Vector3(-.7, -.7, 0), new T.Vector3(.7, .7, 2.1))
       const center = bounds.getCenter(new T.Vector3()), radius = Math.max(.01, bounds.getSize(new T.Vector3()).length() / 2)
       content.position.copy(center).multiplyScalar(-1)
-      const motorRoot = new T.Group(), motor = new EngineBoil(id,`gallery:${id}`)
+      const motorRoot = new T.Group(), motor = new EngineBoil(role,`gallery:${id}`)
       motorRoot.add(content);pivot.add(motorRoot); scene.add(pivot)
-      return { id, pivot, content, radius, batch, motorRoot, motor }
+      return { id, role, pivot, content, radius, batch, motorRoot, motor }
     })
     let width = 1, height = 1, dirty = true, frame = 0, previous = performance.now(), angle = 0, motorTime = 0
     const resize = () => { width = Math.max(2, element.clientWidth); height = Math.max(2, element.clientHeight); renderer.setSize(width, height); camera.aspect = width / height; camera.updateProjectionMatrix(); dirty = true }
@@ -93,7 +96,7 @@ function GalleryStage({ side, paused, onSelect }: { side: Side; paused: boolean;
         item.motorRoot.position.set(0,0,0);item.motorRoot.rotation.set(0,0,0)
         applyEngineBoil(item.motorRoot,item.motor.sample(motorTime,true,false,true,item.radius*2))
         if (item.batch && item.id !== 'MOB' && item.id !== 'AIRFIELD') {
-          item.batch.begin(); item.batch.pose({ id: `gallery:${item.id}`, x: 0, y: 0, status: 'active', stance: 'stand', action: 'idle', heading: 0, aim: 0, since: 0, shotAt: -10 }, item.id, 0, 0, true); item.batch.end(true)
+          item.batch.begin(); item.batch.pose({ id: `gallery:${item.id}`, x: 0, y: 0, status: 'active', stance: 'stand', action: 'idle', heading: 0, aim: 0, since: 0, shotAt: -10 }, item.role, 0, 0, true); item.batch.end(true)
         }
       }
       studio.update(camera, new T.Vector3(), new T.Vector3(), 15)
