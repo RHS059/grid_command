@@ -8,8 +8,9 @@ extends RefCounted
 ## lofted shells carry UV2 panel coordinates for seam burn and edge dodge.
 
 const S := preload("res://scripts/browser_support_models.gd")
+const L := preload("res://scripts/aircraft_loft.gd")
 ## Aircraft are neutral grey for both sides; faction reads from the blue/red markings.
-const BODY := "#6f7478"
+const BODY := "#565b5f"
 const WING := [[.3,1.38,2.45,.13],[1.6,1.25,2.15,.13],[3.6,.98,1.65,.12],[5.5,.62,1.12,.11]]  # [x, LE y, chord, thickness]
 const FIN := [[2.02,-2.9,3.0,.05],[2.4,-4.0,2.0,.1],[3.97,-5.15,.85,.1]]  # [z, LE y, chord, thickness]
 const MARK := ["#54b7ff", "#ee777b"]
@@ -52,8 +53,8 @@ static func fuselage(root: Node3D, body: Material, dark: Material) -> void:
 	# [y, half width, half height, centre z]: cowling, tandem cockpit, tapering tail cone.
 	var stations := [[5.22,.31,.34,1.45],[4.95,.39,.43,1.45],[4.4,.46,.53,1.46],[3.6,.52,.60,1.49],[2.8,.54,.61,1.51],[1.8,.55,.61,1.52],[0.8,.54,.60,1.52],[-0.2,.50,.57,1.52],[-1.4,.42,.49,1.55],[-2.8,.32,.39,1.60],[-4.2,.22,.29,1.66],[-5.2,.14,.20,1.70],[-5.72,.06,.10,1.72]]
 	var rings := []
-	for st in stations: rings.append(super_ring(st[0], st[1], st[2], st[3], 24, 2.4))
-	loft(root, rings, body, true, true, [0.0,.4,.7,1.0,1.3,1.6,1.8,2.0,2.4,2.7,3.0,3.5,3.9])
+	for st in stations: rings.append(L.super_ring(st[0], st[1], st[2], st[3], 24, 2.4))
+	L.loft(root, rings, body, true, true, [0.0,.4,.7,1.0,1.3,1.6,1.8,2.0,2.4,2.7,3.0,3.5,3.9])
 	# Chin intake under the spinner, twin exhaust stacks each side of the cowling.
 	S.box(root, Vector3(.62,.95,.3), Vector3(0,4.55,1.0), body)
 	S.box(root, Vector3(.46,.05,.2), Vector3(0,5.03,.99), dark)
@@ -68,14 +69,14 @@ static func cockpit(root: Node3D, body: Material, dark: Material, metal: Materia
 	# Tandem bubble: windscreen, front (pilot) and rear (WSO/instructor) cockpits.
 	var arches := [[3.45,.30,1.98,.2],[3.05,.38,1.98,.46],[2.5,.41,1.98,.6],[1.8,.42,1.98,.63],[1.1,.41,1.98,.62],[0.5,.38,1.98,.54],[0.05,.33,1.98,.38]]
 	var rings := []
-	for a in arches: rings.append(arch(a[0], a[1], a[2], a[3], 16))
-	loft(root, rings, glass, false, false)
+	for a in arches: rings.append(L.arch(a[0], a[1], a[2], a[3], 16))
+	L.loft(root, rings, glass, false, false)
 	# Dorsal spine fairs the canopy into the rear fuselage.
 	var spine := []
-	for a in [[0.05,.33,1.98,.38],[-0.6,.28,1.98,.22],[-1.3,.2,1.98,.1],[-1.9,.1,1.98,.02]]: spine.append(arch(a[0], a[1], a[2], a[3], 12))
-	loft(root, spine, body, false, false, [0.0,.3,.6,.9])
+	for a in [[0.05,.33,1.98,.38],[-0.6,.28,1.98,.22],[-1.3,.2,1.98,.1],[-1.9,.1,1.98,.02]]: spine.append(L.arch(a[0], a[1], a[2], a[3], 12))
+	L.loft(root, spine, body, false, false, [0.0,.3,.6,.9])
 	for y in [3.45, 3.02, 1.8, 0.05]:
-		var frame: PackedVector3Array = arch(y, arches_width(arches, y) + .015, 1.98, arches_height(arches, y) + .015, 12)
+		var frame: PackedVector3Array = L.arch(y, arches_width(arches, y) + .015, 1.98, arches_height(arches, y) + .015, 12)
 		for i in range(frame.size() - 1):
 			S.rod(root, frame[i], frame[i+1], .03 if y != 1.8 else .022, dark)
 	for s in [-1.0, 1.0]:
@@ -100,8 +101,8 @@ static func wing(root: Node3D, s: float, body: Material, dark: Material, metal: 
 	var rings := []
 	for st in WING:
 		var x: float = st[0]
-		rings.append(airfoil(Vector3(s*x, st[1], wing_z(x)), st[2], st[3], false, 18))
-	loft(root, rings, body, true, true, [0.0,.3,.6,1.0])
+		rings.append(L.airfoil(Vector3(s*x, st[1], wing_z(x)), st[2], st[3], false, 18))
+	L.loft(root, rings, body, true, true, [0.0,.3,.6,1.0])
 	S.box(root, Vector3(.06,.22,.06), Vector3(s*5.53,.3,wing_z(5.5)), S.material("#3f8a4a" if s > 0 else "#a8302a", 0.5))
 	# Wing guns (FN M3P .50) muzzles, team roundels, pylons and a mixed load.
 	S.rod(root, Vector3(s*1.9,1.55,wing_z(1.9)), Vector3(s*1.9,1.05,wing_z(1.9)), .035, dark, 8)
@@ -129,16 +130,16 @@ static func tail(root: Node3D, body: Material, dark: Material, mark: Material) -
 	for s in [-1.0, 1.0]:
 		var rings := []
 		for st in [[.12,-4.5,1.3],[2.3,-5.02,.72]]:
-			rings.append(airfoil(Vector3(s*st[0], st[1], 1.74), st[2], .1, false, 14))
-		loft(root, rings, body, true, true, [0.0,1.0])
+			rings.append(L.airfoil(Vector3(s*st[0], st[1], 1.74), st[2], .1, false, 14))
+		L.loft(root, rings, body, true, true, [0.0,1.0])
 		# Ventral strakes under the tail cone.
 		var strake := S.box(root, Vector3(.03,1.0,.16), Vector3(s*.16,-4.7,1.42), body)
 		strake.rotate_z(s * .5)
 	# Swept fin with a long dorsal fillet; rudder hinge line and team flash.
 	var fin := []
 	for st in FIN:
-		fin.append(airfoil(Vector3(0, st[1], st[0]), st[2], st[3], true, 16))
-	loft(root, fin, body, true, true, [0.0,.4,1.0])
+		fin.append(L.airfoil(Vector3(0, st[1], st[0]), st[2], st[3], true, 16))
+	L.loft(root, fin, body, true, true, [0.0,.4,1.0])
 	S.box(root, Vector3(.13,.03,1.5), Vector3(0,-5.3,3.0), dark)
 	for s in [-1.0, 1.0]:
 		fin_flash(root, s, mark)
@@ -163,8 +164,8 @@ static func propeller(root: Node3D, dark: Material, metal: Material) -> void:
 	root.add_child(prop)
 	var spinner := []
 	for st in [[0.0,.36],[.18,.33],[.34,.25],[.46,.13],[.52,.02]]:
-		spinner.append(super_ring(st[0], st[1], st[1], 0.0, 16, 2.0))
-	loft(prop, spinner, metal, true, true)
+		spinner.append(L.super_ring(st[0], st[1], st[1], 0.0, 16, 2.0))
+	L.loft(prop, spinner, metal, true, true)
 	for k in range(5):
 		var turn := Basis(Vector3(0,0,1), TAU * k / 5.0)
 		for part in [[.42,.3,.26],[.85,.27,.62],[1.12,.17,.28]]:
@@ -176,24 +177,7 @@ static func propeller(root: Node3D, dark: Material, metal: Material) -> void:
 			blade.transform = Transform3D(turn * Basis(Vector3(0,1,0), .45), turn * Vector3(0, part[0], -.12))
 			prop.add_child(blade)
 
-## Markings are built on the lofted surface itself (same interpolation as the
-## loft, lifted 6 mm along the surface), so they never float off the skin.
-static func half_thickness(s: float, chord: float, ratio: float) -> float:
-	return maxf(5.0 * ratio * chord * (.2969*sqrt(s) - .126*s - .3516*s*s + .2843*s*s*s - .1036*s*s*s*s), .004 * chord)
-
-## Surface point between loft stations: station[0] is the span coordinate.
-static func skin(stations: Array, span: float, y: float, side: float) -> Vector3:
-	var i := 0
-	while i < stations.size() - 2 and span > stations[i+1][0]: i += 1
-	var a: Array = stations[i]
-	var b: Array = stations[i+1]
-	var t := clampf((span - a[0]) / (b[0] - a[0]), 0.0, 1.0)
-	var le := lerpf(a[1], b[1], t)
-	var chord := lerpf(a[2], b[2], t)
-	var s := clampf((le - y) / chord, 0.0, 1.0)
-	var thick := lerpf(half_thickness(s, a[2], a[3]), half_thickness(s, b[2], b[3]), t) + .006
-	return Vector3(span, y, side * thick)
-
+## Markings are built on the lofted surface (aircraft_loft.skin), so they never float.
 static func roundel(root: Node3D, x: float, y: float, radius: float, upper: bool, mat: Material) -> void:
 	var rings := []
 	for r in [radius, radius * .5, 0.001]:
@@ -201,124 +185,17 @@ static func roundel(root: Node3D, x: float, y: float, radius: float, upper: bool
 		for k in range(20):
 			var a := TAU * k / 20.0
 			var px: float = x + cos(a) * r
-			var p := skin(WING, absf(px), y + sin(a) * r, 1.0 if upper else -1.0)
+			var p := L.skin(WING, absf(px), y + sin(a) * r, 1.0 if upper else -1.0)
 			ring.append(Vector3(px, p.y, wing_z(absf(px)) + p.z))
 		rings.append(ring)
-	decal(root, rings, mat, Vector3(0, 0, 1) if upper else Vector3(0, 0, -1))
+	L.decal(root, rings, mat, Vector3(0, 0, 1) if upper else Vector3(0, 0, -1))
 
 static func fin_flash(root: Node3D, side: float, mat: Material) -> void:
 	var rings := []
 	for z in [2.75, 3.0, 3.25]:
 		var ring := PackedVector3Array()
 		for k in range(8):
-			var p := skin(FIN, z, lerpf(-4.7, -5.4, k / 7.0), 1.0)
+			var p := L.skin(FIN, z, lerpf(-4.7, -5.4, k / 7.0), 1.0)
 			ring.append(Vector3(side * p.z, p.y, z))
 		rings.append(ring)
-	decal(root, rings, mat, Vector3(side, 0, 0), false)
-
-## Thin patch through the given skin points, facing out.
-static func decal(root: Node3D, rings: Array, mat: Material, out: Vector3, closed := true) -> void:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var count: int = rings[0].size()
-	var normal := S.point(out)
-	for r in range(rings.size() - 1):
-		for i in range(count if closed else count - 1):
-			var n := (i + 1) % count
-			for p in [rings[r][i], rings[r][n], rings[r+1][n], rings[r][i], rings[r+1][n], rings[r+1][i]]:
-				st.set_normal(normal)
-				st.set_uv2(Vector2(.5, .5))
-				st.add_vertex(S.point(p))
-	var node := MeshInstance3D.new()
-	node.mesh = st.commit()
-	node.material_override = mat
-	root.add_child(node)
-
-## Superellipse ring (browser coordinates) at station y.
-static func super_ring(y: float, w: float, h: float, zc: float, n: int, p: float) -> PackedVector3Array:
-	var ring := PackedVector3Array()
-	for i in range(n):
-		var a := TAU * i / n
-		var c := cos(a)
-		var s := sin(a)
-		ring.append(Vector3(w * signf(c) * pow(absf(c), 2.0/p), y, zc + h * signf(s) * pow(absf(s), 2.0/p)))
-	return ring
-
-## Open canopy arch: upper half superellipse from side to side.
-static func arch(y: float, w: float, base: float, h: float, n: int) -> PackedVector3Array:
-	var ring := PackedVector3Array()
-	for i in range(n + 1):
-		var a := PI * i / n
-		var c := cos(a)
-		ring.append(Vector3(w * signf(c) * pow(absf(c), 2.0/2.2), y, base + h * pow(sin(a), 2.0/2.2)))
-	return ring
-
-## NACA-style section: leading edge le, chord running aft (-y). Thickness in z
-## (wings) or x (fin, vertical). Closed ring, upper surface first.
-static func airfoil(le: Vector3, chord: float, ratio: float, vertical: bool, n: int) -> PackedVector3Array:
-	var half := n / 2
-	var ring := PackedVector3Array()
-	for j in range(n):
-		var upper := j < half
-		var k := half - j if upper else j - half
-		var s := (1.0 - cos(PI * float(k) / half)) * .5
-		var t := 5.0 * ratio * chord * (.2969*sqrt(s) - .126*s - .3516*s*s + .2843*s*s*s - .1036*s*s*s*s)
-		t = maxf(t, .004 * chord) * (1.0 if upper else -1.0)
-		ring.append(le + Vector3(t if vertical else 0.0, -s * chord, 0.0 if vertical else t))
-	return ring
-
-## Lofts rings (browser coords) into one smooth shell. UV2 carries panel
-## coordinates for ps2_surface: seams where they cross integers.
-static func loft(parent: Node3D, rings: Array, mat: Material, closed: bool, caps: bool, panels: Array = []) -> MeshInstance3D:
-	var count: int = rings[0].size()
-	var grid := []
-	for ring in rings:
-		var row := []
-		for p in ring: row.append(S.point(p))
-		grid.append(row)
-	var normals := []
-	for r in range(grid.size()):
-		var row := []
-		var centre := Vector3.ZERO
-		for p in grid[r]: centre += p
-		centre /= count
-		for i in range(count):
-			var i0: int = (i - 1 + count) % count if closed else maxi(i - 1, 0)
-			var i1: int = (i + 1) % count if closed else mini(i + 1, count - 1)
-			var along: Vector3 = grid[mini(r + 1, grid.size() - 1)][i] - grid[maxi(r - 1, 0)][i]
-			var around: Vector3 = grid[r][i1] - grid[r][i0]
-			var nrm := around.cross(along).normalized()
-			if nrm.dot(grid[r][i] - centre) < 0.0: nrm = -nrm
-			if nrm == Vector3.ZERO: nrm = (grid[r][i] - centre).normalized()
-			row.append(nrm)
-		normals.append(row)
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var segments := count if closed else count - 1
-	var put := func(r: int, i: int) -> void:
-		var ii: int = i % count
-		st.set_normal(normals[r][ii])
-		# One seam along the underside (x = 1 at three quarters round); seams across at integer panels[r].
-		st.set_uv2(Vector2(float(i) / segments + .25, panels[r]) if panels.size() == grid.size() else Vector2(.5, .5))
-		st.add_vertex(grid[r][ii])
-	for r in range(grid.size() - 1):
-		for i in range(segments):
-			for v in [[r,i],[r,i+1],[r+1,i+1],[r,i],[r+1,i+1],[r+1,i]]: put.call(v[0], v[1])
-	if caps and closed:
-		for r in [0, grid.size() - 1]:
-			var centre := Vector3.ZERO
-			for p in grid[r]: centre += p
-			centre /= count
-			var nrm: Vector3 = (grid[r][0] - grid[r][count/2]).cross(grid[r][count/4] - grid[r][0]).normalized()
-			var other: Vector3 = grid[1 if r == 0 else r - 1][0]
-			if nrm.dot(centre - other) < 0.0: nrm = -nrm
-			for i in range(count):
-				for p in [centre, grid[r][i], grid[r][(i + 1) % count]]:
-					st.set_normal(nrm)
-					st.set_uv2(Vector2(.5, .5))
-					st.add_vertex(p)
-	var node := MeshInstance3D.new()
-	node.mesh = st.commit()
-	node.material_override = mat
-	parent.add_child(node)
-	return node
+	L.decal(root, rings, mat, Vector3(side, 0, 0), false)
