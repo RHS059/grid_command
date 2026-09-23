@@ -35,11 +35,11 @@ func _render() -> void:
 			var model: Node3D = preload("res://scripts/browser_model_factory.gd").create(role, team)
 			scene.add_child(model)
 			var box := bounds(model); var r := box.size.length() * .5; var c := box.get_center()
-			for view in [["front_left", Vector3(-.75, .45, -.8), 1.9], ["rear_right", Vector3(.8, .5, .85), 1.9], ["side", Vector3(-1, .12, 0), 1.9], ["top", Vector3(0, 1, .01), 1.8], ["close", Vector3(-.55, .35, -.75), .9], ["far", Vector3(-1, .8, -.9), 5.0]]:
+			for view in [["front_left", Vector3(-.75, .45, -.8), 1.9], ["rear_right", Vector3(.8, .5, .85), 1.9], ["side", Vector3(-1, .12, 0), 1.9], ["top", Vector3(0, 1, .01), 1.8], ["close", Vector3(-.55, .35, -.75), .9], ["nose", Vector3(-.5, .12, -.85), .75], ["side_close", Vector3(-1, .2, -.25), .75], ["far", Vector3(-1, .8, -.9), 5.0]]:
 				var dir: Vector3 = view[1].normalized()
 				camera.fov = 38.0
 				camera.position = c + dir * r * view[2]
-				camera.look_at(c + (Vector3(0, 0, -r * .35) if view[0] == "close" else Vector3.ZERO))
+				camera.look_at(c + (Vector3(0, 0, -r * .35) if view[0] == "close" else Vector3(0, -r * .08, -r * .55) if view[0] == "nose" else Vector3.ZERO))
 				for frame in 4: await process_frame
 				await RenderingServer.frame_post_draw
 				root.get_texture().get_image().save_png("res://build/aircraft-b-review/%s_%s_%s.png" % [role.to_lower(), "blue" if team == 0 else "red", view[0]])

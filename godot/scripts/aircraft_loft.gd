@@ -84,7 +84,9 @@ static func airfoil(le: Vector3, chord: float, ratio: float, vertical: bool, n: 
 
 ## Lofts rings (browser coords) into one smooth shell. UV2 carries panel
 ## coordinates for ps2_surface: seams where they cross integers.
-static func loft(parent: Node3D, rings: Array, mat: Material, closed: bool, caps: bool, panels: Array = []) -> MeshInstance3D:
+## skip(r, i) -> true leaves that quad out (door openings); ring index i maps to
+## angle TAU * (i + .5) / count on super_ring rings.
+static func loft(parent: Node3D, rings: Array, mat: Material, closed: bool, caps: bool, panels: Array = [], skip: Callable = Callable()) -> MeshInstance3D:
 	var count: int = rings[0].size()
 	var grid := []
 	for ring in rings:
@@ -116,6 +118,7 @@ static func loft(parent: Node3D, rings: Array, mat: Material, closed: bool, caps
 		return [grid[r][ii], normals[r][ii], Vector2(float(i) / segments + .25, panels[r]) if panels.size() == grid.size() else Vector2(.5, .5)]
 	for r in range(grid.size() - 1):
 		for i in range(segments):
+			if skip.is_valid() and skip.call(r, i): continue
 			emit(st, [vert.call(r, i), vert.call(r, i + 1), vert.call(r + 1, i + 1)])
 			emit(st, [vert.call(r, i), vert.call(r + 1, i + 1), vert.call(r + 1, i)])
 	if caps and closed:
@@ -135,8 +138,8 @@ static func loft(parent: Node3D, rings: Array, mat: Material, closed: bool, caps
 	return node
 
 
-## Point on a superellipse fuselage between [y, half width, half height, centre z]
-## stations (as lofted), at angle a (0 = right side, PI/2 = top), lifted off the skin.
+## Point on a superellipse fuselage between [y, half width, half height, centre z,
+## optional exponent] stations (as lofted), at angle a (0 = right side, PI/2 = top), lifted off the skin.
 static func body_skin(stations: Array, y: float, a: float, p: float, lift := .01) -> Vector3:
 	var i := 0
 	while i < stations.size() - 2 and y < stations[i+1][0]: i += 1
@@ -146,6 +149,7 @@ static func body_skin(stations: Array, y: float, a: float, p: float, lift := .01
 	var w := lerpf(s0[1], s1[1], t)
 	var h := lerpf(s0[2], s1[2], t)
 	var zc := lerpf(s0[3], s1[3], t)
+	p = lerpf(s0[4] if s0.size() > 4 else p, s1[4] if s1.size() > 4 else p, t)  # optional per-station exponent
 	var c := cos(a)
 	var s := sin(a)
 	var local := Vector2(w * signf(c) * pow(absf(c), 2.0/p), h * signf(s) * pow(absf(s), 2.0/p))
@@ -173,3 +177,90 @@ static func body_roundel(root: Node3D, stations: Array, p: float, y: float, a: f
 			ring.append(body_skin(stations, y + cos(t) * r, a + sin(t) * r / half_width, p, lift))
 		rings.append(ring)
 	decal(root, rings, mat, Vector3(cos(a), 0, sin(a)))
+
+static var cab_materials: Dictionary = {}
+
+## Glazed window on a fuselage between two stations and two angles: a patch that
+## follows the skin (lifted slightly), mapped with the HEMTT interior cab shader
+## (kind 1 = windscreen with dash, 0 = side glass) and edged with a rubber seal
+## that also follows the skin. UVs run left-right, top-bottom as seen from outside.
+static func body_pane(parent: Node3D, stations: Array, p: float, y0: float, y1: float, a0: float, a1: float, kind: int, frame_mat: Material, lift := .015, frame := .05, depth := 1.4) -> void:
+	var nu := 6
+	var nv := 4
+	var grid := []
+	for j in range(nv + 1):
+		var row := []
+		for k in range(nu + 1):
+			var y := lerpf(y1, y0, float(j) / nv)
+			var a := lerpf(a0, a1, float(k) / nu)
+			var at := body_skin(stations, y, a, p, lift)
+			row.append([S.point(at), S.point((body_skin(stations, y, a, p, lift + .1) - at).normalized())])
+		grid.append(row)
+	var c: Array = grid[nv / 2][nu / 2]
+	var n: Vector3 = c[1]
+	var up := Vector3.UP - n * n.y
+	if up.length() < .2: up = Vector3(0, 0, -1) - n * -n.z
+	up = up.normalized()
+	var right := (-n).cross(up).normalized()
+	var xs := []
+	var ys := []
+	for row in grid:
+		for v in row:
+			xs.append((v[0] - c[0]).dot(right))
+			ys.append((v[0] - c[0]).dot(up))
+	var w: float = xs.max() - xs.min()
+	var h: float = ys.max() - ys.min()
+	var key := "%d:%.1f:%.1f" % [kind, w / h, depth]
+	if not cab_materials.has(key):
+		var m := ShaderMaterial.new()
+		m.shader = preload("res://shaders/cab_interior.gdshader")
+		m.set_shader_parameter("aspect", w / h)
+		m.set_shader_parameter("kind", kind)
+		m.set_shader_parameter("depth", depth)
+		m.set_shader_parameter("frame", 0.0)
+		cab_materials[key] = m
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var vert := func(j: int, k: int) -> Array:
+		var v: Array = grid[j][k]
+		var d: Vector3 = v[0] - c[0]
+		return [v[0], v[1], Vector2((d.dot(right) - xs.min()) / w, 1.0 - (d.dot(up) - ys.min()) / h)]
+	for j in range(nv):
+		for k in range(nu):
+			for tri in [[vert.call(j, k), vert.call(j, k + 1), vert.call(j + 1, k + 1)], [vert.call(j, k), vert.call(j + 1, k + 1), vert.call(j + 1, k)]]:
+				var t: Array = tri
+				var face: Vector3 = (t[1][0] - t[0][0]).cross(t[2][0] - t[0][0])
+				if face.dot(t[0][1]) > 0.0: t = [t[0], t[2], t[1]]
+				for v in t:
+					st.set_normal(v[1])
+					st.set_uv(v[2])
+					st.add_vertex(v[0])
+	st.generate_tangents()
+	var node := MeshInstance3D.new()
+	node.mesh = st.commit()
+	node.material_override = cab_materials[key]
+	parent.add_child(node)
+	if frame > 0.0:
+		body_line(parent, stations, p, [[y0, a0], [y0, a1], [y1, a1], [y1, a0], [y0, a0]], frame, frame_mat, lift + .004)
+
+## Thin strip along a polyline of [y, angle] points on a fuselage (seams, door edges).
+static func body_line(root: Node3D, stations: Array, p: float, points: Array, width: float, mat: Material, lift := .012) -> void:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for k in range(points.size() - 1):
+		var a: Array = points[k]
+		var b: Array = points[k + 1]
+		for j in range(8):
+			var t0 := j / 8.0
+			var t1 := (j + 1) / 8.0
+			var p0 := body_skin(stations, lerpf(a[0], b[0], t0), lerpf(a[1], b[1], t0), p, lift)
+			var p1 := body_skin(stations, lerpf(a[0], b[0], t1), lerpf(a[1], b[1], t1), p, lift)
+			var out := (body_skin(stations, lerpf(a[0], b[0], t0), lerpf(a[1], b[1], t0), p, lift + .1) - p0).normalized()
+			var side := (p1 - p0).cross(out).normalized() * width * .5
+			var nrm := S.point(out)
+			emit(st, [[S.point(p0 - side), nrm, Vector2(.5, .5)], [S.point(p0 + side), nrm, Vector2(.5, .5)], [S.point(p1 + side), nrm, Vector2(.5, .5)]])
+			emit(st, [[S.point(p0 - side), nrm, Vector2(.5, .5)], [S.point(p1 + side), nrm, Vector2(.5, .5)], [S.point(p1 - side), nrm, Vector2(.5, .5)]])
+	var node := MeshInstance3D.new()
+	node.mesh = st.commit()
+	node.material_override = mat
+	root.add_child(node)

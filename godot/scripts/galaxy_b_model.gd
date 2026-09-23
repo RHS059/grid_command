@@ -12,7 +12,9 @@ const BODY := "#5d6368"
 const MARK := ["#54b7ff", "#ee777b"]
 const P := 3.0  # boxy superellipse cargo fuselage
 ## [y, half width, half height, centre z]
-const FUSELAGE := [[37.7,.25,.3,5.3],[37.0,1.7,1.8,5.1],[35.5,2.7,2.9,5.2],[33.5,3.25,3.55,5.3],[30.0,3.55,3.9,5.35],[-16.0,3.55,3.9,5.35],[-22.0,3.3,3.55,5.9],[-28.0,2.65,2.85,6.85],[-33.0,1.85,2.05,7.75],[-36.6,1.0,1.2,8.35],[-37.8,.3,.4,8.6]]
+## Nose: radome tip low, steep 45 degree windscreen slope up to a flat-topped flight deck.
+## Fifth value: superellipse exponent, rounder at the radome, boxy along the hold.
+const FUSELAGE := [[37.95,.2,.25,4.35,2.0],[37.7,.95,1.0,4.3,2.1],[37.2,1.75,1.85,4.35,2.3],[36.5,2.45,2.55,4.5,2.5],[35.6,2.95,3.2,4.8,2.7],[34.6,3.3,3.55,5.05,2.85],[33.3,3.48,3.75,5.2,3.0],[31.5,3.55,3.875,5.325,3.0],[30.0,3.55,3.9,5.35],[-16.0,3.55,3.9,5.35],[-22.0,3.3,3.55,5.9],[-28.0,2.65,2.85,6.85],[-33.0,1.85,2.05,7.75],[-36.6,1.0,1.2,8.35],[-37.8,.3,.4,8.6]]
 ## [x, LE y, chord, thickness]; 25 degree quarter-chord sweep.
 const WING := [[1.0,8.0,13.0,.12],[12.0,3.33,9.8,.115],[24.0,-3.0,6.8,.105],[33.9,-8.3,4.4,.1]]
 ## [z, LE y, chord, thickness]
@@ -38,8 +40,8 @@ static func create(team: int = 0) -> Node3D:
 
 	# Fuselage with visor-nose, main-gear sponsons and a belly fairing.
 	var rings := []
-	for st in FUSELAGE: rings.append(L.super_ring(st[0], st[1], st[2], st[3], 28, P))
-	L.loft(root, rings, body, true, true, [0.0,.4,.8,1.0,1.4,4.0,4.5,5.0,5.5,5.8,6.0])
+	for st in FUSELAGE: rings.append(L.super_ring(st[0], st[1], st[2], st[3], 28, st[4] if st.size() > 4 else P))
+	L.loft(root, rings, body, true, true, [0.0,.25,.5,.75,1.0,1.25,1.5,2.0,4.0,4.5,5.0,5.5,5.8,6.0])
 	for s in [-1.0, 1.0]:
 		var pod := []
 		for st in [[5.0,.2,.5,1.9],[3.5,.75,.95,2.0],[-8.5,.75,.95,2.0],[-11.0,.2,.5,2.1]]:
@@ -47,12 +49,9 @@ static func create(team: int = 0) -> Node3D:
 			for k in range(ring.size()): ring[k].x += s * 3.3
 			pod.append(ring)
 		L.loft(root, pod, body, true, true, [0.0,.5,3.5,4.0])
-	L.body_decal(root, FUSELAGE, P, 33.4, 33.55, -.1, PI + .1, dark, 16, 1, .05)  # visor hinge seam
-	L.body_decal(root, FUSELAGE, P, 31.4, 33.0, PI * .33, PI * .67, glass, 8, 3, .05)  # flight deck glazing
+	flight_deck(root, body, dark, metal)
 	for s in [-1.0, 1.0]:
 		var a := 0.0 if s > 0 else PI
-		L.body_decal(root, FUSELAGE, P, 31.2, 32.2, a + s * .5, a + s * .75, glass, 3, 3, .05)
-		L.body_decal(root, FUSELAGE, P, 24.0, 25.2, a + s * .05, a - s * .3, dark, 3, 3, .05)  # crew door
 		L.body_decal(root, FUSELAGE, P, -12.5, -11.2, a + s * .05, a - s * .3, dark, 3, 3, .05)  # paratroop door
 		for i in range(12):
 			var y := 20.0 - i * 2.4
@@ -92,6 +91,47 @@ static func create(team: int = 0) -> Node3D:
 	gear(root, dark, metal)
 	S.merge_stationary(root)
 	return root
+
+## Flight deck and visor nose: framed interior-mapped windscreen (six front
+## panes, eyebrows, side and aft side windows), visor hinge and split seams, darker
+## radome, pitot probes, crew door with airstair, refuelling slipway, antennas.
+static func flight_deck(root: Node3D, body: Material, dark: Material, metal: Material) -> void:
+	var top := PI * .5
+	var seal := S.material("#1d2224", 0.9)
+	# Front panes step round the nose; eyebrow panes sit above on the roof curve.
+	for s in [-1.0, 1.0]:
+		var a := 0.0 if s > 0 else PI
+		var edges := [.02, .24, .47, .7]
+		for k in range(3):
+			L.body_pane(root, FUSELAGE, P, 36.25, 35.25, top - s * edges[k], top - s * edges[k + 1], 1, seal, .03, .09, 1.2)
+		for k in range(2):
+			L.body_pane(root, FUSELAGE, P, 35.05, 34.45, top - s * (.06 + k * .24), top - s * (.26 + k * .24), 0, seal, .03, .08, 1.0)
+		L.body_pane(root, FUSELAGE, P, 35.7, 34.55, a + s * .92, a + s * .78, 0, seal, .03, .09, 1.6)   # side window
+		L.body_pane(root, FUSELAGE, P, 34.2, 33.35, a + s * 1.0, a + s * .84, 0, seal, .03, .08, 1.8)    # aft side window
+		L.body_pane(root, FUSELAGE, P, 32.9, 32.25, a + s * 1.02, a + s * .88, 0, seal, .03, .07, 2.0)   # galley window
+		# Visor: seam from the windscreen sill down and aft to the belly behind the nose gear.
+		L.body_line(root, FUSELAGE, P, [[36.35, top - s * .72], [36.1, a + s * .75], [35.2, a + s * .1], [33.6, a - s * .7], [33.3, a - s * 1.4]], .1, dark, .03)
+		L.body_line(root, FUSELAGE, P, [[36.35, top - s * .72], [36.35, top]], .1, dark, .03)
+		L.body_line(root, FUSELAGE, P, [[36.9, a - s * .2], [36.1, a - s * .2]], .06, dark, .03)  # visor lock fairing
+		var base := L.body_skin(FUSELAGE, 35.4, a + s * .3, P, 0.0)
+		S.rod(root, base, base + Vector3(s * .12, .9, 0), .035, metal, 6)  # pitot
+		S.box(root, Vector3(.08, .5, .06), L.body_skin(FUSELAGE, 34.0, a - s * .25, P, .04), S.material("#3f8a4a" if s > 0 else "#a8302a", .5))  # formation light
+	# Crew entry door (left, forward) with its window and the airstair door below.
+	L.body_line(root, FUSELAGE, P, [[30.2, PI - .05], [28.9, PI - .05], [28.9, PI + .55], [30.2, PI + .55], [30.2, PI - .05]], .07, dark, .03)
+	L.body_pane(root, FUSELAGE, P, 29.95, 29.4, PI - .02, PI + .15, 0, seal, .035, .05, 1.5)
+	L.body_line(root, FUSELAGE, P, [[30.2, PI + .62], [28.9, PI + .62], [28.9, PI + 1.05], [30.2, PI + 1.05], [30.2, PI + .62]], .06, dark, .03)
+	for s in [-1.0, 1.0]:
+		var a := 0.0 if s > 0 else PI
+		L.body_line(root, FUSELAGE, P, [[-11.2, a - s * .05], [-12.5, a - s * .05], [-12.5, a - s * .45], [-11.2, a - s * .45], [-11.2, a - s * .05]], .07, dark, .05)  # paratroop door
+		L.body_pane(root, FUSELAGE, P, -11.45, -11.9, a - s * .12, a - s * .02, 0, seal, .05, .04, 2.0)
+	# Air-refuelling slipway on the roof behind the flight deck, with guide lines.
+	L.body_decal(root, FUSELAGE, P, 32.4, 31.2, top - .12, top + .12, dark, 4, 3, .03)
+	for s in [-1.0, 1.0]:
+		L.body_line(root, FUSELAGE, P, [[31.2, top - s * .12], [29.2, top - s * .02]], .06, S.material("#c9c6b4", .85), .03)
+	for y in [27.0, 18.0]: S.box(root, Vector3(.06, .9, .6), Vector3(0, y, 9.5), dark)  # antennas
+	# Nose gear doors stand open either side of the four-wheel nose leg.
+	for s in [-1.0, 1.0]:
+		S.box(root, Vector3(.05, 3.2, 1.2), Vector3(s * .95, 31.0, .95), body)
 
 static func wing_z(x: float) -> float:
 	return 9.1 - maxf(0.0, absf(x) - 1.0) * .096  # 5.5 degree anhedral
