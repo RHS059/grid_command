@@ -25,7 +25,8 @@ func run() -> void:
 	DirAccess.make_dir_recursive_absolute("res://build/aircraft-style-review")
 	for kind in ["fighter", "cas", "recon_uav", "transport_heli", "cargo_plane"]:
 		for team in 2:
-			var model: Node3D = preload("res://scripts/browser_model_factory.gd").create(kind.to_upper(), team)
+			var role: String = "CAS_FIGHTER" if kind == "cas" else kind.to_upper()
+			var model: Node3D = preload("res://scripts/browser_aircraft_models.gd").create(role, team) if role in ["CAS_FIGHTER", "TRANSPORT_HELI", "CARGO_PLANE"] else null
 			if model == null: model = load("res://assets/models/%s.glb" % kind).instantiate()
 			preload("res://scripts/air_naval_material.gd").apply(model, kind, team)
 			var orient := Node3D.new(); scene.add_child(orient); orient.add_child(model)
@@ -40,4 +41,3 @@ func run() -> void:
 				root.get_texture().get_image().save_png("res://build/aircraft-style-review/%s_%s_%s.png" % [kind, "blue" if team == 0 else "red", view])
 			orient.queue_free(); await process_frame
 	print("AIRCRAFT_STYLE_RENDER_OK"); quit()
-

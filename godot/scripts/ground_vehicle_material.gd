@@ -13,6 +13,8 @@ static func apply(root: Node, team: int, kind: String) -> void:
 	if not supports(kind):
 		return
 	_apply_surfaces(root, clampi(team, 0, 1), kind.to_lower())
+	if kind.to_lower() in ["apc", "cannon_apc"]:
+		preload("res://scripts/shared_vehicle_wheel.gd").replace_imported(root, BODY[clampi(team, 0, 1)])
 
 static func _apply_surfaces(root: Node, team: int, kind: String) -> void:
 	if root is MeshInstance3D and root.mesh != null:
@@ -32,4 +34,3 @@ static func _apply_surfaces(root: Node, team: int, kind: String) -> void:
 			root.set_surface_override_material(surface, material)
 	for child in root.get_children():
 		_apply_surfaces(child, team, kind)
-

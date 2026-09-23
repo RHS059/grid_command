@@ -30,13 +30,15 @@ static func _apply_node(node: Node, aircraft_texture: Texture2D) -> void:
 	for child in node.get_children():
 		_apply_node(child, aircraft_texture)
 
-static func _normalize(source: StandardMaterial3D, aircraft_texture: Texture2D) -> StandardMaterial3D:
+static func _normalize(source: StandardMaterial3D, aircraft_texture: Texture2D) -> Material:
 	var material: StandardMaterial3D = source.duplicate()
 	material.metallic = 0.0
 	material.metallic_specular = 0.2
 	material.roughness = maxf(material.roughness, 0.82)
 	if aircraft_texture != null:
-		material.albedo_texture = aircraft_texture
+		var neutral := ShaderMaterial.new()
+		neutral.shader = preload("res://shaders/aircraft_neutral_surface.gdshader")
+		neutral.set_shader_parameter("albedo_map", aircraft_texture)
+		return neutral
 	# Texture channels, alpha, UV transforms and importer data remain intact.
 	return material
-

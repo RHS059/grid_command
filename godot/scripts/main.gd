@@ -16,6 +16,7 @@ var theater_camera_state: Dictionary = {}
 var camera: RTSCamera
 var hud: Control
 var native_workspaces: Control
+var model_preview_gallery: Control
 var sun: DirectionalLight3D
 var units: Array[CombatUnit] = []
 var selected_units: Array[CombatUnit] = []
@@ -326,6 +327,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				open_battlefield()
 			KEY_F2:
 				open_model_preview()
+			KEY_F3:
+				open_model_gallery()
 			KEY_F4:
 				open_sfx_designer()
 			KEY_PERIOD:
@@ -344,6 +347,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_X:
 				hold_selection()
 	if is_instance_valid(native_workspaces) and native_workspaces.visible: return
+	if is_instance_valid(model_preview_gallery) and model_preview_gallery.visible: return
 	if not operation_view_active: return
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
@@ -374,7 +378,19 @@ func _ensure_native_workspaces() -> void:
 	hud.get_parent().add_child(native_workspaces)
 	native_workspaces.setup(self)
 
+func open_model_gallery() -> void:
+	if not is_instance_valid(model_preview_gallery):
+		model_preview_gallery = load("res://scripts/model_preview_gallery.gd").new()
+		hud.get_parent().add_child(model_preview_gallery)
+		model_preview_gallery.setup(self)
+	if is_instance_valid(native_workspaces): native_workspaces.hide_workspace_for_switch()
+	hud.close_panels()
+	hud.hide()
+	camera.input_enabled = false
+	model_preview_gallery.show_gallery()
+
 func open_model_preview() -> void:
+	if is_instance_valid(model_preview_gallery): model_preview_gallery.hide_gallery()
 	_ensure_native_workspaces()
 	hud.close_panels()
 	hud.hide()
@@ -382,6 +398,7 @@ func open_model_preview() -> void:
 	native_workspaces.show_models()
 
 func open_sfx_designer() -> void:
+	if is_instance_valid(model_preview_gallery): model_preview_gallery.hide_gallery()
 	_ensure_native_workspaces()
 	hud.close_panels()
 	hud.hide()
@@ -389,7 +406,8 @@ func open_sfx_designer() -> void:
 	native_workspaces.show_sfx()
 
 func open_battlefield() -> void:
-	if is_instance_valid(native_workspaces): native_workspaces.hide()
+	if is_instance_valid(model_preview_gallery): model_preview_gallery.hide_gallery()
+	if is_instance_valid(native_workspaces): native_workspaces.hide_workspace_for_switch()
 	camera.input_enabled = true
 	hud.show()
 	hud.close_panels()

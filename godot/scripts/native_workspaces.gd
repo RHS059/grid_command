@@ -404,6 +404,11 @@ func show_sfx() -> void:
 	sfx_page.show()
 	viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 
+func hide_workspace_for_switch() -> void:
+	hide()
+	viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	player.stop()
+
 func hide_workspace() -> void:
 	hide()
 	viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
@@ -1790,4 +1795,3 @@ const DEFAULT_SOUND_BANK := '''{
 
 
 '''
-

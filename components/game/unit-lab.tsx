@@ -54,7 +54,7 @@ export function UnitLab({ embedded = false, active = true, soundEngine }: { embe
     <div className={styles.viewport}><ModelViewport model={model} side={side} active={active} animate={animate} rotate={rotate} action={action} stance={stance} condition={condition} damagePreview={!!vehicleRole && damagePreview} destruction={destruction} reset={reset} clip={clip?.id} loop={clipLoop} seek={seek} onTime={setClipTime} /></div>
 
     <aside className={`${styles.card} ${styles.catalog}`} aria-label="Model catalog">
-      <div className={styles.catalogHeader}><span>CATALOG</span><span>{MODEL_CATALOG.length} MODELS</span></div>
+      <div className={styles.catalogHeader}><Link href="/model_preview_gallery">OPEN GALLERY</Link><span>{MODEL_CATALOG.length} MODELS</span></div>
       <div className={styles.pills} role="group" aria-label="Model category">{CATEGORIES.map(item => <button key={item} type="button" aria-pressed={category === item} onClick={() => setCategory(item)}>{item}</button>)}</div>
       <div className={styles.modelList}>{visibleModels.map(id => <button key={id} type="button" data-model={id} className={styles.modelRow} aria-pressed={model === id} onClick={() => {setModel(id);setClipId('idle');setClipLoop(true);scrub(0)}}><strong>{MODEL_NAMES[id]}</strong><small>{modelCategory(id).toUpperCase()} · {id.replaceAll('_', ' ')}</small></button>)}</div>
     </aside>
@@ -105,3 +105,4 @@ function RangeControl({ label, value, current, min, max, step, onChange }: { lab
 function SelectControl({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (value: string) => void }) {
   return <label className={styles.select}><span>{label}</span><select value={value} onChange={event => onChange(event.target.value)}>{options.map(option => <option key={option}>{option}</option>)}</select></label>
 }
+
