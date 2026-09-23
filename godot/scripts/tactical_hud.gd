@@ -184,6 +184,7 @@ func _icon(parent: Control, key: String, at: Vector2, pixels: int = 16, color: C
 	var paths := {
 		"Battlefield": '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/>',
 		"Model Preview": '<path d="m12 3 10 5-10 5L2 8Zm-10 9 10 5 10-5M2 16l10 5 10-5"/>',
+		"Model Preview Gallery": '<path d="M3 3h7v7H3Zm11 0h7v7h-7ZM3 14h7v7H3Zm11 0h7v7h-7Z"/>',
 		"SFX Designer": '<path d="M2 10v4m4-7v10m4-14v18m4-13v8m4-11v14m4-9v4"/>',
 		"Graphics & settings": '<path d="M3 8h4m4 0h10M3 16h10m4 0h4"/><circle cx="9" cy="8" r="2"/><circle cx="15" cy="16" r="2"/>',
 		"Controls & help": '<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3m.1 4h.01"/>',
@@ -259,16 +260,17 @@ func _build_workspace() -> void:
 	name_label.add_theme_constant_override("outline_size",0)
 	brand_subtitle = _label("San Diego · City theater",10,Color("b3bfc8")); _mono(brand_subtitle,10); workspace_button.add_child(brand_subtitle); brand_subtitle.position = Vector2(50,33)
 	_icon(workspace_button,"menu",Vector2(261,19),20,INK)
-	menu = _panel(self,Rect2(20,86,296,290)); menu.z_index = 120
+	menu = _panel(self,Rect2(20,86,296,328)); menu.z_index = 120
 	menu.add_theme_stylebox_override("panel",_style(Color(0.039,0.055,0.075,0.95),12))
 	var box := _column(menu); box.add_theme_constant_override("separation",0)
-	for item in [["⊕", "Battlefield", "F1"], ["▱", "Model Preview", "F2"], ["≋", "SFX Designer", "F4"], ["", "", ""], ["☷", "Graphics & settings", ""], ["?", "Controls & help", ""], ["↶", "New operation", ""], ["↓", "Check for updates", ""]]:
+	for item in [["⊕", "Battlefield", "F1"], ["▱", "Model Preview", "F2"], ["▦", "Model Preview Gallery", "F3"], ["≋", "SFX Designer", "F4"], ["", "", ""], ["☷", "Graphics & settings", ""], ["?", "Controls & help", ""], ["↶", "New operation", ""], ["↓", "Check for updates", ""]]:
 		var title: String = item[1]
 		if title.is_empty(): _spacer(box,6); _rule(box); _spacer(box,6); continue
 		var callback: Callable
 		match title:
 			"Battlefield": callback = close_panels
 			"Model Preview": callback = func(): close_panels(); world.open_model_preview()
+			"Model Preview Gallery": callback = func(): close_panels(); world.open_model_gallery()
 			"SFX Designer": callback = func(): close_panels(); world.open_sfx_designer()
 			"Graphics & settings": callback = func(): open_drawer("Settings")
 			"Controls & help": callback = toggle_help

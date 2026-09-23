@@ -7,12 +7,15 @@ const MODEL_NAMES := {
   "PATROL_BOAT":"Patrol boat", "FRIGATE":"Missile cruiser", "AIRCRAFT_CARRIER":"Aircraft carrier", "LANDING_CRAFT":"Landing craft", "AMPHIBIOUS_APC":"Amphibious APC",
   "FORKLIFT":"Supply forklift", "CARGO_PLANE":"Tactical cargo plane", "UAV_JAMMER":"UAV jammer", "AA_TEAM":"Anti-air launcher team", "TRANSPORT_HELI":"Troop transport helicopter", "HEAVY_LIFT_HELI":"Heavy-lift helicopter", "TROOP_TRUCK":"Light troop carrier",
   "RIFLE":"Rifle squad", "SCOUT":"Scout team", "MG":"Machine gun team", "AT":"Anti-tank team", "MORTAR":"Mortar team", "ENGINEER":"Combat engineer", "MEDIC":"Combat medic", "LOGISTICS":"Logistics team", "TANK":"Main battle tank", "PILOT":"Pilot", "COMMAND":"Command officer", "TRUCK":"Supply truck", "FUEL_TRUCK":"Fuel HEMTT", "TROOP_HEMTT":"Troop HEMTT", "MEDICAL_HEMTT":"Medical HEMTT", "REPAIR_HEMTT":"Repair HEMTT", "FOB_HEMTT":"FOB HEMTT", "RECON_UAV":"Reconnaissance UAV", "APC":"Armored personnel carrier", "CANNON_APC":"Cannon APC", "IFV":"Infantry fighting vehicle", "CAS_FIGHTER":"CAS fighter", "JET":"FQ-44 Fury strike fighter", "ATTACK_HELI":"Attack helicopter", "MOB":"Main operating base", "AIRFIELD":"Airfield compound",}
+main
 const MODEL_FILES := {"COMMAND":"soldier","RIFLE":"soldier","SCOUT":"soldier","MG":"soldier","AT":"soldier","MORTAR":"soldier","ENGINEER":"soldier","MEDIC":"soldier","LOGISTICS":"soldier","PILOT":"soldier","AA_TEAM":"soldier","TANK":"tank","APC":"apc","CANNON_APC":"cannon_apc","IFV":"ifv","AMPHIBIOUS_APC":"amphibious_apc","TROOP_TRUCK":"troop_transport","TRUCK":"truck","CAS_FIGHTER":"cas","JET":"fighter","ATTACK_HELI":"vtol_attack","TRANSPORT_HELI":"transport_heli","HEAVY_LIFT_HELI":"vtol_cargo","CARGO_PLANE":"cargo_plane","RECON_UAV":"recon_uav","AIRCRAFT_CARRIER":"aircraft_carrier","FRIGATE":"missile_cruiser","PATROL_BOAT":"patrol_boat","LANDING_CRAFT":"landing_craft","FORKLIFT":"forklift","UAV_JAMMER":"uav_jammer","MOB":"mob","AIRFIELD":"airfield"}
 const Z_UP_MODEL_FILES := ["fighter","troop_transport","vtol_attack","vtol_cargo"]
 var world
 var viewport: SubViewport
 var scene: Node3D
 var camera: Camera3D
+var preview_motor
+var preview_motor_base := Transform3D.IDENTITY
 var model_root: Node3D
 var model: Node3D
 var preview_greebles: VehicleGreebles
@@ -238,7 +241,7 @@ func _build_models() -> void:
 func _category(id: String) -> String:
 	if MODEL_FILES.get(id,"") == "soldier": return "Personnel"
 	if id in ["MOB","AIRFIELD"]: return "Structures"
-	if id in ["JET","CAS_FIGHTER","ATTACK_HELI","TRANSPORT_HELI","HEAVY_LIFT_HELI","RECON_UAV","CARGO_PLANE"]: return "Aircraft"
+	if id in ["JET","CAS_FIGHTER","A29B","ATTACK_HELI","TRANSPORT_HELI","HEAVY_LIFT_HELI","RECON_UAV","CARGO_PLANE"]: return "Aircraft"
 	return "Vehicles"
 
 func _populate_catalog(category: String) -> void:
@@ -296,8 +299,11 @@ func _load_model(id: String) -> void:
 	var bounds := _bounds(model,Transform3D.IDENTITY)
 	var span := maxf(0.001,maxf(bounds.size.x,maxf(bounds.size.y,bounds.size.z)))
 	var factor := 3.0 / span
+	model_root.transform = Transform3D.IDENTITY
 	model_root.scale = Vector3.ONE*factor
 	model_root.position = Vector3(-bounds.get_center().x,-bounds.position.y,-bounds.get_center().z)*factor
+	preview_motor = preload("res://scripts/engine_boil.gd").new("preview:"+id)
+	preview_motor_base = model_root.transform
 	model_title.text = MODEL_NAMES[id]
 	_find_animation(model)
 	if animation:
@@ -370,6 +376,10 @@ func _update_camera() -> void:
 
 func _process(delta: float) -> void:
 	if not visible: return
+	if model_page.visible and preview_motor != null:
+		var running := not is_instance_valid(animation) or animation.is_playing()
+		var driving := is_instance_valid(animation) and "drive" in animation.current_animation.to_lower()
+		model_root.transform = preview_motor.sample(selected_model,delta if running else 0.0,true,driving,true,3.0)*preview_motor_base
 	if model_page.visible and is_instance_valid(preview_tank_fire) and is_instance_valid(animation):
 		var clip := animation.current_animation
 		var clip_time := animation.current_animation_position
@@ -380,6 +390,8 @@ func _process(delta: float) -> void:
 	if is_instance_valid(preview_greebles):
 		var driving := is_instance_valid(animation) and animation.is_playing() and "drive" in animation.current_animation.to_lower()
 		preview_greebles.set_activity(driving, delta)
+	if model_page.visible and selected_model == "A29B" and is_instance_valid(model):
+		preload("res://scripts/a29b_model.gd").animate(model, delta)
 	if model_page.visible and selected_model == "TRANSPORT_HELI" and is_instance_valid(model):
 		preload("res://scripts/browser_aircraft_models.gd").animate(model, delta)
 	if model_page.visible and auto_rotate:

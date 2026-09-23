@@ -116,6 +116,8 @@ static func create(role: String, team: int = 0) -> Node3D:
 	return root
 
 static func merge_stationary(parent: Node3D) -> void:
+	if parent.has_meta("shared_vehicle_wheel"):
+		return
 	# Same material batching as the browser. Keep cargo, forks and trailers as nodes.
 	var batches: Dictionary = {}
 	for child in parent.get_children():
@@ -479,25 +481,11 @@ static func rod(parent: Node3D, a: Vector3, b: Vector3, radius: float, mat: Mate
 	node.quaternion = Quaternion(Vector3.UP,point(b-a).normalized())
 	parent.add_child(node)
 
-static func wheel(parent: Node3D, x: float, y: float, z: float, radius: float, dark: Material, metal: Material) -> void:
-	# Military off-road tire: textured carcass (tread band, sidewall and painted
-	# rim with bolts from the tire sheet), raised chevron blocks, protruding hub
-	# and CTIS cap on the outboard face.
-	var out := signf(x) if x != 0.0 else 1.0
-	var width := .34
-	rod(parent,Vector3(x-width*.5,y,z),Vector3(x+width*.5,y,z),radius*.93,tire(),24)
-	rod(parent,Vector3(x-width*.38,y,z),Vector3(x+width*.38,y,z),radius*.97,tire(),24)
-	var blocks := 22
-	for i in range(blocks):
-		for lane in [-1.0,1.0]:
-			var a := TAU*(float(i)+(.5 if lane > 0.0 else 0.0))/float(blocks)
-			var block := box(parent,Vector3(width*.44,.15,.07),Vector3(x+lane*width*.24,y+sin(a)*radius*.97,z+cos(a)*radius*.97),dark)
-			block.rotate_x(-a)
-			block.rotate_object_local(Vector3.UP,lane*.35)
-	var face := x+out*width*.5
-	rod(parent,Vector3(face,y,z),Vector3(face+out*.06,y,z),radius*.22,metal,12)
-	rod(parent,Vector3(face+out*.06,y,z),Vector3(face+out*.1,y,z),radius*.09,dark,8)
-
+static func wheel(parent: Node3D, x: float, y: float, z: float, radius: float, _dark: Material, _metal: Material) -> void:
+	var hub_color := Color(TEAM_PALETTES[palette_team]["#73765a"]).darkened(.12)
+	var shared := preload("res://scripts/shared_vehicle_wheel.gd").create(radius, .34, hub_color)
+	shared.position = point(Vector3(x,y,z))
+	parent.add_child(shared)
 static func container() -> Node3D:
 	var root := Node3D.new()
 	var mat := material("#73765a",.9,.12)

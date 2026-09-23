@@ -29,6 +29,10 @@ var order := "READY"
 var attack_target: CombatUnit
 var cooldown := 0.0
 var next_scan := 0.0
+var motor_root: Node3D
+var motor_boil
+var motor_snapshot := -1.0
+var motor_interpolation := 0.0
 var visual: Node3D
 var selection_ring: MeshInstance3D
 var team_marker: MeshInstance3D
@@ -62,6 +66,10 @@ func _ready() -> void:
 	visual.name = "UnitVisual"
 	visual.position.y = altitude + 0.0014
 	add_child(visual)
+	motor_root = Node3D.new()
+	motor_root.name = "EngineBoil"
+	visual.add_child(motor_root)
+	motor_boil = preload("res://scripts/engine_boil.gd").new(str(core_record.get("id",call_sign)))
 	_create_model()
 	fired.connect(_present_shot)
 	_create_markers()
@@ -69,6 +77,15 @@ func _ready() -> void:
 		_create_exhaust()
 
 func _process(delta: float) -> void:
+	if is_instance_valid(motor_root):
+		var motor_delta := delta
+		if simulation_core != null:
+			if motor_snapshot != float(simulation_core.time):
+				motor_snapshot = float(simulation_core.time)
+				motor_interpolation = 0.0
+			motor_delta = minf(delta,maxf(0.0,0.05-motor_interpolation))
+			motor_interpolation += motor_delta
+		motor_root.transform = motor_boil.sample(role,motor_delta,preload("res://scripts/engine_boil.gd").powered(core_record),bool(core_record.get("moving",false)),is_alive,float(stats["size"]))
 	if is_instance_valid(vehicle_greebles):
 		vehicle_greebles.set_activity(is_alive and not route.is_empty(), delta)
 	if kind == "transport_heli" and is_instance_valid(source_model):
@@ -121,7 +138,7 @@ func _create_model() -> void:
 			vehicle_greebles.build_tank_stowage(model)
 		var orient := Node3D.new()
 		orient.name = "SourceAxisCorrection"
-		visual.add_child(orient)
+		motor_root.add_child(orient)
 		orient.add_child(model)
 		if source_kind == "soldier":
 			_filter_personnel_gear(model)
@@ -166,7 +183,7 @@ func _create_model() -> void:
 	if kind == "tank" and imported_model:
 		var content := source_model.get_parent() as Node3D
 		tank_fire = preload("res://scripts/tank_fire_effects.gd").new()
-		visual.add_child(tank_fire)
+		motor_root.add_child(tank_fire)
 		tank_fire.setup(content, source_model)
 
 func _present_shot(_unit: CombatUnit, _target: CombatUnit) -> void:
@@ -225,7 +242,7 @@ func _add_part(mesh: Mesh, pos: Vector3, color: Color) -> MeshInstance3D:
 	part.mesh = mesh
 	part.position = pos
 	part.material_override = TacticalMap.material(color, 0.78)
-	visual.add_child(part)
+	motor_root.add_child(part)
 	visual_meshes.append(part)
 	return part
 
@@ -511,4 +528,3 @@ func take_damage(amount: float) -> void:
 func set_fresnel(enabled: bool) -> void:
 	for mesh in visual_meshes:
 		mesh.material_overlay = overlay if enabled and is_alive and DisplayServer.get_name() != "headless" else null
-

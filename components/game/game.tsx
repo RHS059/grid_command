@@ -20,10 +20,11 @@ import { nearestPersonnelCarrier, transportSquad } from '@/lib/game/transport'
 import styles from './game-hud.module.css'
 
 type GameView = 'battlefield' | 'sfx'
-type Workspace = GameView | 'models'
+type Workspace = GameView | 'models' | 'gallery'
 const WORKSPACES: { id: Workspace; label: string; hint: string; icon: typeof Crosshair }[] = [
   { id: 'battlefield', label: 'Battlefield', hint: 'F1', icon: Crosshair },
   { id: 'models', label: 'Model Preview', hint: 'F2', icon: Layers },
+  { id: 'gallery', label: 'Model Preview Gallery', hint: 'F3', icon: Layers },
   { id: 'sfx', label: 'SFX Designer', hint: 'F4', icon: AudioLines },
 ]
 
@@ -38,7 +39,7 @@ function WorkspaceMenu({ view, open, setOpen, setView, openCommand, openHelp, op
       <span className={styles.brandOrb}><Crosshair size={17} /></span><span><strong>GRID COMMAND</strong><small>{subtitle}</small></span><Menu className={styles.menuIcon} size={20} />
     </button>
     {open && <><button className={styles.menuDismiss} aria-label="Close workspace menu" onClick={() => setOpen(false)} /><div id="workspace-menu" role="menu" className={styles.workspaceDropdown}>
-      {WORKSPACES.map(item => item.id === 'models' ? <Link key={item.id} href="/model_preview" role="menuitem" className={styles.workspaceItem} onClick={() => setOpen(false)}><item.icon size={16} /><span>{item.label}</span><kbd>{item.hint}</kbd></Link> : <button key={item.id} role="menuitem" className={cn(styles.workspaceItem, item.id === view && styles.active)} onClick={() => { setView(item.id); setOpen(false) }}><item.icon size={16} /><span>{item.label}</span><kbd>{item.hint}</kbd></button>)}
+      {WORKSPACES.map(item => (item.id === 'models' || item.id === 'gallery') ? <Link key={item.id} href={item.id === 'gallery' ? '/model_preview_gallery' : '/model_preview'} role="menuitem" className={styles.workspaceItem} onClick={() => setOpen(false)}><item.icon size={16} /><span>{item.label}</span><kbd>{item.hint}</kbd></Link> : <button key={item.id} role="menuitem" className={cn(styles.workspaceItem, item.id === view && styles.active)} onClick={() => { setView(item.id); setOpen(false) }}><item.icon size={16} /><span>{item.label}</span><kbd>{item.hint}</kbd></button>)}
       <div className={styles.menuDivider} />
       {view === 'battlefield' && <button role="menuitem" className={styles.workspaceItem} onClick={() => { openCommand(); setOpen(false) }}><Shield size={16} /><span>Command center</span></button>}
       <button role="menuitem" className={styles.workspaceItem} onClick={() => { openSettings(); setOpen(false) }}><Settings2 size={16} /><span>Graphics &amp; settings</span></button>
@@ -65,6 +66,7 @@ export function Game() {
   const router = useRouter()
   const navigateWorkspace = useCallback((workspace: Workspace) => {
     if (workspace === 'models') router.push('/model_preview')
+    else if (workspace === 'gallery') router.push('/model_preview_gallery')
     else setView(workspace)
   }, [router])
   const [state, setState] = useState<BattleState>(() => initialState()), stateRef = useRef(state)
@@ -153,5 +155,6 @@ export function Game() {
     <GameDialogs modal={modal} onClose={() => setModal(null)} graphics={graphics} setGraphics={setGraphics} restart={restart} loadScenario={scenario => { worker.current?.postMessage({type:'restart',scenario}); setSelected(null); setModal(null); setView('battlefield'); if(scenario.units[0])mapAPI.current?.focus(scenario.units[0].position) }} />
   </main>
 }
+
 
 

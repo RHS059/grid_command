@@ -14,12 +14,13 @@ var large_body_material: ShaderMaterial
 static func create(role: String, team: int = 0) -> Node3D:
 	var builder := BrowserAircraftModels.new()
 	builder.root = Node3D.new(); builder.root.name = role
-	# Faction paint is shared by airframes; glazing and fittings retain their own values.
-	builder.body = builder.material("a58d68" if team == 0 else "4b6046",0.9,0.0)
+	# Aircraft retain their natural neutral finish. Faction ownership is confined
+	# to the cyan/red recognition panels so silhouettes remain plausible.
+	builder.body = builder.material("70777a",0.9,0.0)
 	builder.large_body_material = ShaderMaterial.new()
 	builder.large_body_material.shader = preload("res://shaders/ps2_surface.gdshader")
 	builder.large_body_material.set_shader_parameter("atlas", preload("res://assets/textures/vehicles/hemtt_atlas.png"))
-	var paint := builder.body.albedo_color
+	var paint := Color("70777a")
 	builder.large_body_material.set_shader_parameter("ramp_mid", paint)
 	builder.large_body_material.set_shader_parameter("ramp_dark", paint.darkened(0.24))
 	builder.large_body_material.set_shader_parameter("ramp_light", paint.lightened(0.12))
@@ -32,6 +33,7 @@ static func create(role: String, team: int = 0) -> Node3D:
 	builder.mark = builder.material("54b7ff" if team == 0 else "ee777b",0.85)
 	if role == "CARGO_PLANE": builder.cargo_plane()
 	elif role == "TRANSPORT_HELI": builder.transport_heli()
+	elif role == "CAS_FIGHTER": builder.cas_aircraft()
 	builder.bake(builder.root)
 	return builder.root
 
@@ -81,8 +83,9 @@ func rail(a: Array,b: Array,r: float,mat: Material=null,parent: Node3D=null) -> 
 	add_mesh(mesh,metal if mat == null else mat,parent,Transform3D(Basis(Quaternion(Vector3.UP,(finish-start).normalized())),(start+finish)*0.5))
 
 func wheel_mesh(x: float,y: float,z: float,r: float,width: float,mat: Material=null) -> void:
-	var mesh := CylinderMesh.new(); mesh.top_radius=r; mesh.bottom_radius=r; mesh.height=width; mesh.radial_segments=12; mesh.rings=1
-	add_mesh(mesh,dark if mat == null else mat,null,Transform3D(Basis(Vector3.FORWARD,PI/2),point([x,y,z])))
+	var wheel_node: Node3D = preload("res://scripts/shared_vehicle_wheel.gd").create(r, width, Color("666b68"))
+	wheel_node.position = point([x,y,z])
+	root.add_child(wheel_node)
 
 func wheel(x: float,y: float,r: float=0.3) -> void:
 	wheel_mesh(x,y,r,r,0.23); rail([x,y,r],[x,y,1.25],0.055)
@@ -155,7 +158,7 @@ func bake(parent: Node3D) -> void:
 			var material: Material=child.material_override
 			if not groups.has(material): groups[material]=[]
 			groups[material].append(child)
-		elif child is Node3D: bake(child)
+		elif child is Node3D and not child.has_meta("shared_vehicle_wheel"): bake(child)
 	for mat in groups:
 		var st:=SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)
 		for child in groups[mat]:
@@ -181,55 +184,110 @@ static func animate(model: Node3D,delta: float,active: bool=true) -> void:
 	if tail != null:
 		var conversion:=Basis(Vector3.RIGHT,-PI/2)
 		tail.basis=conversion*Basis(Vector3.RIGHT,time*48.0)*Basis(Vector3.UP,PI/2)*conversion.inverse()
+	var propeller: Node3D=model.find_child("propeller",true,false)
+	if propeller != null: propeller.rotation.z=time*42.0
 
 func cargo_plane() -> void:
-	hull([[-14,0.6,0.8],[-11,2.6,2.8],[-7,4.6,4.6],[7,4.8,4.8],[10,4.2,4.2],[12.3,2.8,2.8],[13.6,0.8,1.2]],3.65)
-	hull([[8.7,3.1,0.6],[10,2.9,1.6],[11.5,1.8,0.75]],5.05,glass)
-	rail([0,9.5,5.83],[0,11.45,5.32],0.065)
+	# C-5 Galaxy: bluff raised cockpit, high swept wing, four podded engines,
+	# 28-wheel landing gear and high T-tail.
+	hull([[-18.0,0.5,0.7],[-16.8,2.2,2.2],[-13.8,5.2,5.0],[10.5,5.4,5.2],[14.6,4.4,4.3],[17.2,2.3,2.3],[18.1,0.45,0.65]],4.0)
+	hull([[10.0,3.8,0.55],[12.2,3.5,1.8],[14.7,2.25,0.7]],6.25,glass)
+	# Cockpit panes and characteristic black radome/anti-glare strip.
+	box(3.0,1.2,0.12,0,13.4,6.48,glass)
+	box(2.5,2.2,0.08,0,14.3,5.65,dark)
 	for sign in [-1,1]:
-		rail([sign*1.15,9.6,5.65],[sign*0.7,11.3,5.3],0.055)
-		wing([[sign*1.8,4.1],[sign*14,-1.9],[sign*14,-3.4],[sign*2,-0.7]],5.55)
-		wing([[sign*1.7,3.8],[sign*6.1,1.4],[sign*5.8,-0.8],[sign*1.7,-1]],5.38)
-		rail([sign*6.6,-1.25,5.67],[sign*13.2,-3.12,5.67],0.02,metal)
-		box(0.65,0.85,0.025,sign*11,-1.85,5.68,mark)
-		for pair in [[5,1.7],[9.2,-0.25]]:
-			var x: float=pair[0]; var y: float=pair[1]
-			box(0.2,1.5,1.1,sign*x,y,4.9)
-			hull([[y-2.7,0.65,0.65],[y-1.8,1.18,1.22],[y+0.9,1.5,1.5],[y+1.2,1.4,1.4]],3.95,body,sign*x)
-			intake(sign*x,y,3.95)
-			rail([sign*x,y+0.98,3.95],[sign*x,y+1.23,3.95],0.15,metal)
-			for i in range(8):
-				var a:=i*PI/4; rail([sign*x+cos(a)*0.2,y+1.205,3.95+sin(a)*0.2],[sign*x+cos(a+0.2)*0.51,y+1.205,3.95+sin(a+0.2)*0.51],0.025,metal)
-			rail([sign*x,y-2.5,3.95],[sign*x,y-2.85,3.95],0.32,dark)
-		hull([[-5.8,0.45,0.4],[-4.6,1.1,1],[1,1.1,1],[2,0.3,0.3]],1.8,body,sign*2.2)
-		for y in [-4.6,-3.8,-1.2,-0.4]:
-			for x in [1.88,2.42]: wheel_mesh(sign*x,y,0.46,0.46,0.23)
-			rail([sign*2.15,y,0.6],[sign*2.15,y,1.75],0.09,metal)
-		box(0.035,0.6,0.85,sign*2.28,6.7,3.7,metal); box(0.045,0.1,0.1,sign*2.31,6.9,3.7,dark)
-		box(0.045,1.2,0.23,sign*2.4,3.3,3.2,mark)
-	fin([[-13.4,4],[-13.3,9.5],[-11.8,9.6],[-9.2,4.6]],0)
-	wing([[-0.12,-10.9],[-5.7,-13.1],[-5.5,-14.1],[0,-13.3],[5.5,-14.1],[5.7,-13.1],[0.12,-10.9]],9.45)
-	for x in [-0.32,0.32]: wheel_mesh(x,9.2,0.38,0.38,0.24)
-	rail([0,9.2,0.5],[0,9.2,1.9],0.1,metal)
-	var ramp:=Node3D.new(); ramp.name="cargo-ramp"; ramp.position=point([0,-11.12,1.1]); root.add_child(ramp)
-	box(2.5,0.14,2.5,0,0,1.25,metal,ramp); box(2.22,0.035,2.23,0,-0.09,1.25,dark,ramp)
-	for i in range(7): box(2.1,0.04,0.045,0,-0.12,0.3+i*0.31,metal,ramp)
+		# High-mounted 25-degree swept wings.
+		wing([[sign*2.2,5.4],[sign*17.2,-2.2],[sign*17.0,-4.1],[sign*2.3,-1.0]],6.2)
+		box(0.72,1.15,0.04,sign*13.3,-2.15,6.27,mark)
+		# Four independently readable turbofan pods and pylons.
+		for pair in [[6.2,1.25],[11.0,-0.85]]:
+			var ex: float=pair[0]; var ey: float=pair[1]
+			box(0.24,1.4,1.35,sign*ex,ey,5.25)
+			hull([[ey-2.6,0.45,0.45],[ey-1.9,1.25,1.3],[ey+0.9,1.42,1.42],[ey+1.3,1.15,1.15]],4.35,metal,sign*ex)
+			intake(sign*ex,ey,4.35)
+			rail([sign*ex,ey-2.45,4.35],[sign*ex,ey-2.8,4.35],0.34,dark)
+		# Main bogies: 24 wheels in four six-wheel trucks.
+		for bogie_y in [-4.5,-1.0]:
+			for axle in [-0.58,0.0,0.58]:
+				wheel_mesh(sign*1.72,bogie_y+axle,0.55,0.55,0.42)
+			rail([sign*1.72,bogie_y,0.65],[sign*1.72,bogie_y,2.0],0.1,metal)
+		# Side cargo-door seams and faction recognition stripe.
+		box(0.045,3.2,2.0,sign*2.72,2.2,3.6,metal)
+		box(0.06,2.3,0.28,sign*2.76,5.0,3.5,mark)
+	# Four-wheel nose gear.
+	for x in [-0.42,0.42]:
+		for y in [10.45,11.0]: wheel_mesh(x,y,0.43,0.43,0.3)
+	rail([0,10.72,0.55],[0,10.72,2.2],0.11,metal)
+	# Tall swept fin and stabilizer mounted at the top.
+	fin([[-17.2,5.0],[-16.8,11.2],[-14.6,11.0],[-11.2,5.1]],0)
+	wing([[-0.12,-14.8],[-6.2,-17.1],[-6.0,-18.0],[0,-16.9],[6.0,-18.0],[6.2,-17.1],[0.12,-14.8]],10.6)
+	# Nose and rear drive-through cargo door outlines.
+	for y in [-14.9,14.8]:
+		box(3.7,0.05,2.7,0,y,3.75,metal)
+		for i in range(5): box(3.3,0.065,0.035,0,y+0.03,2.75+i*0.48,dark)
 
 func transport_heli() -> void:
-	hull([[-4,0.45,0.7],[-2.7,2.3,2.15],[1.8,2.5,2.25],[3.5,1.7,1.5],[4.05,0.9,0.6]],2.05)
-	hull([[2.1,2.1,0.75],[3,1.85,1.2],[3.73,1.15,0.5]],2.65,glass)
-	rail([0,2.15,3.1],[0,3.7,2.8],0.055); rail([-0.95,2.3,3.05],[-0.65,3.65,2.5],0.05); rail([0.95,2.3,3.05],[0.65,3.65,2.5],0.05)
-	hull([[-9,0.17,0.28],[-4,0.5,0.7],[-2.5,0.85,0.85]],2.2)
-	fin([[-9,2.1],[-9.1,4.8],[-8.5,4.6],[-7.6,2.3]],0)
-	wing([[-2,-7.4],[2,-7.4],[2,-8],[-2,-8]],2.25)
+	# UH-60 Black Hawk: faceted stepped cockpit, rectangular cabin, twin-engine
+	# doghouse, long tail boom, low stabilator and fixed three-point gear.
+	var charcoal:=material("303638",0.92)
+	hull([[-4.4,0.55,0.65],[-3.5,2.3,2.0],[1.7,2.45,2.15],[3.0,2.15,1.85],[3.9,1.25,0.8]],2.1,charcoal)
+	hull([[1.8,2.15,0.65],[2.8,2.0,1.35],[3.72,1.18,0.55]],2.75,glass)
+	# Cockpit frames, chin and nose sensors.
+	rail([0,2.05,3.35],[0,3.72,2.88],0.055,dark)
+	for s in [-1,1]: rail([s*0.96,2.2,3.2],[s*0.62,3.58,2.63],0.045,dark)
+	box(0.55,0.45,0.35,0,3.42,1.65,dark)
+	# Twin T700 engine housings and exhausts.
 	for s in [-1,1]:
-		hull([[-2,0.45,0.5],[-1.5,0.8,0.7],[0.8,0.85,0.7],[1.2,0.45,0.4]],3.3,body,s*0.88)
-		for y in [-1.7,-0.55,0.6]:
-			box(0.025,0.7,0.7,s*1.255,y,2.35,glass); box(0.055,0.82,0.045,s*1.28,y,1.55,metal)
-		rail([s*1.28,-2.1,1.45],[s*1.28,-2.1,2.95],0.03); box(0.055,0.23,0.045,s*1.3,-0.15,1.9,dark)
-		wing([[s*0.9,0.4],[s*2.9,0],[s*2.8,-0.7],[s*0.9,-0.8]],2.3)
-		hull([[-2.1,0.1,0.1],[-1.7,0.7,0.65],[1,0.7,0.65],[1.5,0.1,0.1]],1.4,body,s*2.45)
-		rail([s*1.05,0.1,1.5],[s*1.5,0.25,0.45],0.09); wheel(s*1.5,0.25,0.4); box(0.055,0.5,0.22,s*1.26,-1.7,1.85,mark)
-	wheel(0,-7.3,0.23); rail([0,0,3.3],[0,0,4.2],0.13); rotor("main-rotor",0,0,4.25,7.1,4)
-	var tail:=rotor("tail-rotor",0.2,-8.8,4.2,1,4); tail.rotation.z=-PI/2
+		hull([[-1.8,0.55,0.45],[-1.35,0.78,0.72],[0.7,0.8,0.65],[1.15,0.35,0.3]],3.42,charcoal,s*0.83)
+		rail([s*0.83,-1.65,3.4],[s*0.83,-2.18,3.38],0.25,dark)
+	# Cabin sliding doors, three side windows, rails and team bars.
+	for s in [-1,1]:
+		for y in [-2.0,-0.85,0.3]:
+			box(0.04,0.82,0.72,s*1.27,y,2.35,glass)
+		box(0.055,3.05,0.045,s*1.3,-0.9,1.52,metal)
+		box(0.06,0.82,0.22,s*1.33,-2.55,1.85,mark)
+	# Tail boom and canted fin/stabilator.
+	hull([[-9.2,0.18,0.25],[-4.0,0.62,0.72],[-2.7,0.95,0.9]],2.3,charcoal)
+	fin([[-9.2,2.25],[-9.05,4.85],[-8.25,4.55],[-7.4,2.35]],0,charcoal)
+	wing([[-2.7,-7.25],[2.7,-7.25],[2.7,-8.0],[-2.7,-8.0]],2.28,charcoal)
+	# Fixed Black Hawk gear: widely spaced mains and tail wheel.
+	for s in [-1,1]:
+		rail([s*1.0,-1.75,1.35],[s*1.58,-1.55,0.48],0.085,metal)
+		wheel_mesh(s*1.58,-1.55,0.45,0.45,0.3)
+	wheel_mesh(0,-7.35,0.28,0.28,0.22)
+	rail([0,-7.35,0.35],[0,-7.35,1.65],0.075,metal)
+	rail([0,0,3.65],[0,0,4.25],0.14,metal)
+	rotor("main-rotor",0,0,4.28,8.0,4)
+	var tail:=rotor("tail-rotor",0.22,-8.75,4.05,1.65,4); tail.rotation.z=-PI/2
 
+func cas_aircraft() -> void:
+	# Embraer A-29 Super Tucano: tandem canopy, long turboprop nose, low straight
+	# wing with clipped tips, tall fin and compact tricycle undercarriage.
+	hull([[-4.7,0.35,0.42],[-3.7,1.05,1.15],[-1.4,1.35,1.45],[1.4,1.25,1.25],[3.45,0.72,0.74],[4.35,0.32,0.34]],1.65)
+	hull([[-1.45,1.05,0.42],[-0.65,1.0,1.0],[1.55,0.92,0.78],[2.0,0.48,0.25]],2.45,glass)
+	# Canopy bow and anti-glare nose deck.
+	for y in [-0.65,0.4,1.42]: rail([-0.53,y,2.55],[0.53,y,2.55],0.025,dark)
+	box(0.9,2.25,0.07,0,2.45,2.12,dark)
+	# Five-blade propeller and spinner at the nose.
+	var prop:=Node3D.new(); prop.name="propeller"; prop.position=point([0,4.48,1.65]); root.add_child(prop)
+	var spinner:=SphereMesh.new(); spinner.radius=0.28; spinner.height=0.56; add_mesh(spinner,metal,prop)
+	for i in range(5):
+		var blade:=Node3D.new(); blade.rotation.z=i*TAU/5.0; prop.add_child(blade)
+		box(0.14,0.06,1.55,0,0,0.78,dark,blade)
+	# Low aspect wing, hardpoints and restrained faction panels.
+	wing([[-0.9,1.15],[-5.75,-0.15],[-5.6,-1.05],[-0.8,-0.55],[0.8,-0.55],[5.6,-1.05],[5.75,-0.15],[0.9,1.15]],1.55)
+	for s in [-1,1]:
+		box(0.52,0.9,0.04,s*4.65,-0.38,1.62,mark)
+		for x in [2.2,3.5]:
+			rail([s*x,-0.15,1.45],[s*x,-0.15,0.85],0.045,metal)
+			hull([[-0.48,0.12,0.12],[0.38,0.16,0.16],[0.55,0.05,0.05]],0.78,metal,s*x)
+	# Tailplanes and dorsal fin.
+	fin([[-4.55,1.7],[-4.4,4.15],[-3.42,4.0],[-2.75,1.78]],0)
+	wing([[-0.15,-3.55],[-2.35,-4.2],[-2.2,-4.75],[0,-4.35],[2.2,-4.75],[2.35,-4.2],[0.15,-3.55]],2.65)
+	# Exhaust stacks and tricycle landing gear using canonical wheel asset.
+	for s in [-1,1]: rail([s*0.52,3.22,1.75],[s*0.8,2.82,1.7],0.09,dark)
+	for s in [-1,1]:
+		rail([s*1.45,-0.7,1.25],[s*1.55,-0.7,0.38],0.065,metal)
+		wheel_mesh(s*1.55,-0.7,0.3,0.3,0.2)
+	rail([0,3.05,1.2],[0,3.05,0.35],0.055,metal)
+	wheel_mesh(0,3.05,0.24,0.24,0.17)
