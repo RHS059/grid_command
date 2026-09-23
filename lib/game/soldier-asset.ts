@@ -5,7 +5,8 @@ interface RigAsset { scene: D.Object3D; animations: D.AnimationClip[] }
 interface GltfNode { name?: string; children?: number[]; translation?: number[]; rotation?: number[]; scale?: number[] }
 interface GltfAccessor { bufferView?: number; byteOffset?: number; count: number; type: string; componentType: number }
 interface GltfDocument { nodes?: GltfNode[]; scenes?: { nodes: number[] }[]; scene?: number; accessors?: GltfAccessor[]; bufferViews?: { byteOffset?: number; byteStride?: number }[]; animations?: { name?: string; samplers: { input: number; output: number }[]; channels: { sampler: number; target: { node: number; path: string } }[] }[] }
-let soldierAsset: Promise<RigAsset> | undefined
+export type SoldierModelKind = 'soldier' | 'commander' | 'logistics'
+const soldierAssets = new Map<SoldierModelKind, Promise<RigAsset>>()
 let soldierWeaponAsset: Promise<RigAsset> | undefined
 export type SoldierWeapon = 'RIFLE' | 'MG' | 'AT' | 'AA_TEAM'
 /** Parse hierarchy and animation metadata; Babylon owns GPU meshes and skeletons. */
@@ -50,7 +51,11 @@ async function loadRig(url: string): Promise<RigAsset> {
   })
   return { scene, animations }
 }
-export function loadSoldierAsset() { return soldierAsset ??= loadRig(assetPath('/models/soldier.glb')) }
+export function loadSoldierAsset(kind: SoldierModelKind = 'soldier') {
+  let asset = soldierAssets.get(kind)
+  if (!asset) { asset = loadRig(assetPath(`/models/${kind}.glb`)); soldierAssets.set(kind, asset) }
+  return asset
+}
 export function loadSoldierWeaponAsset() { return soldierWeaponAsset ??= loadRig(assetPath('/models/soldier-weapons.glb')) }
 export function cloneSoldierWeapon(source: D.Object3D, weapon: SoldierWeapon) {
   const node = source.getObjectByName(`Weapon_${weapon}`)

@@ -117,7 +117,7 @@ func presentation_heading() -> float:
 	return rotation.y+presentation_yaw_offset
 
 func _create_model() -> void:
-	var source_kind := "soldier" if kind == "command" else kind
+	var source_kind := "commander" if role == "COMMAND" else "logistics" if role == "LOGISTICS" else "soldier" if not SimulationCore.is_vehicle(role) else kind
 	var path := "res://assets/models/" + source_kind + ".glb"
 	var model: Node3D = preload("res://scripts/browser_model_factory.gd").create(role, team)
 	if model == null and ResourceLoader.exists(path):
@@ -143,7 +143,7 @@ func _create_model() -> void:
 		orient.name = "SourceAxisCorrection"
 		motor_root.add_child(orient)
 		orient.add_child(model)
-		if source_kind == "soldier":
+		if source_kind in ["soldier", "commander", "logistics"]:
 			_filter_personnel_gear(model)
 		if source_kind in Z_UP_MODEL_FILES:
 			orient.rotation_degrees.x = -90.0

@@ -7,7 +7,7 @@ import { createAircraft, disposeModel } from './aircraft-models'
 import { shell, profile, rod } from './model-geometry'
 import { armoredGeometry } from './armored-models'
 import { hasBlenderVehicle, blenderVehicleGeometry } from './blender-vehicles'
-import { cloneSoldierRig, cloneSoldierWeapon, createSoldierTemplate, loadSoldierAsset, loadSoldierWeaponAsset, type SoldierWeapon } from './soldier-asset'
+import { cloneSoldierRig, cloneSoldierWeapon, createSoldierTemplate, loadSoldierAsset, loadSoldierWeaponAsset, type SoldierModelKind, type SoldierWeapon } from './soldier-asset'
 
 const kit = '#68694c', armor = '#30332d', black = '#222524', face = '#b6a084'
 const clothLight = '#7b7b59', clothDark = '#505640', steel = '#454945'
@@ -90,7 +90,7 @@ const SOLDIER_WEAPONS:SoldierWeapon[]=['RIFLE','MG','AT','AA_TEAM']
 const weaponForRole=(role:Role):SoldierWeapon|undefined=>role==='PILOT'?undefined:role==='MG'?'MG':role==='AT'?'AT':role==='AA_TEAM'?'AA_TEAM':'RIFLE'
 const WEAPON_HAND_CANT=Math.PI/4
 
-type SoldierRig={id:string;root:T.Group;model:T.Object3D;mixer:T.AnimationMixer;actions:Map<string,T.AnimationAction>;gears:T.Object3D[];weaponBone?:T.Object3D;weapons:Map<SoldierWeapon,T.Object3D>;clip?:string;role?:Role;atAction?:T.AnimationAction;state?:string;stateSince:number}
+type SoldierRig={id:string;variant:SoldierModelKind;root:T.Group;model:T.Object3D;mixer:T.AnimationMixer;actions:Map<string,T.AnimationAction>;gears:T.Object3D[];weaponBone?:T.Object3D;weapons:Map<SoldierWeapon,T.Object3D>;clip?:string;role?:Role;atAction?:T.AnimationAction;state?:string;stateSince:number}
 
 /** Convert only the AT arm/hand/weapon pose tracks to offsets from the rig's rest pose. */
 function createAtOverlay(source:T.Object3D,clip:T.AnimationClip|undefined){
@@ -117,7 +117,7 @@ function createAtOverlay(source:T.Object3D,clip:T.AnimationClip|undefined){
 export class SoldierBatch {
   root=new T.Group(); pelvis=new T.Group();torso=new T.Group(); head=new T.Group(); hips=[new T.Group(),new T.Group()];knees=[new T.Group(),new T.Group()];shoulders=[new T.Group(),new T.Group()];elbows=[new T.Group(),new T.Group()]; weapon=new T.Group()
   parts=new Map<string,T.InstancedMesh>(); nodes:{key:string;node:T.Object3D}[]=[]; counts=new Map<string,number>(); matrix=new T.Matrix4()
-  asset:'loading'|'ready'|'error'='loading';template?:T.Object3D;clips=new Map<string,T.AnimationClip>();atOverlay?:T.AnimationClip;weaponTemplates=new Map<SoldierWeapon,T.Object3D>();used=new Set<string>();disposed=false
+  asset:'loading'|'ready'|'error'='loading';templates=new Map<SoldierModelKind,T.Object3D>();clips=new Map<string,T.AnimationClip>();atOverlay?:T.AnimationClip;weaponTemplates=new Map<SoldierWeapon,T.Object3D>();used=new Set<string>();disposed=false
   rigs=new Map<string,SoldierRig>()
   constructor(public scene:T.Scene,public side:Side,material:T.Material){const geometries=soldierParts(side);for(const [key,g]of Object.entries(geometries)){const mesh=new T.InstancedMesh(g,material,1024);mesh.userData.unitSurface=true;mesh.frustumCulled=false;mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);this.parts.set(key,mesh);scene.add(mesh)}
     const add=(key:keyof typeof geometries,parent:T.Object3D,x=0,y=0,z=0)=>{const node=new T.Object3D();node.position.set(x,y,z);parent.add(node);this.nodes.push({key,node});return node}
@@ -125,12 +125,12 @@ export class SoldierBatch {
     for(let i=0;i<2;i++){const sign=i?1:-1;this.pelvis.add(this.hips[i]);this.hips[i].position.set(sign*.115,0,-.06);add('thigh',this.hips[i]);this.hips[i].add(this.knees[i]);this.knees[i].position.z=-.4;add('shin',this.knees[i]);add('boot',this.knees[i],0,0,-.39);this.torso.add(this.shoulders[i]);this.shoulders[i].position.set(sign*.31,0,.32);add('arm',this.shoulders[i]);this.shoulders[i].add(this.elbows[i]);this.elbows[i].position.z=-.28;add('forearm',this.elbows[i])}
     for(const key of ['medic','radio','engineer','supplies'] as const)add(key,this.torso);add('pilot',this.head);add('mortar',this.root)
     this.torso.add(this.weapon);this.weapon.position.set(.17,.39,.27);add('rifle',this.weapon);add('mg',this.weapon);add('launcher',this.weapon);add('aaLauncher',this.weapon)
-    loadSoldierAsset().then(gltf=>{if(this.disposed)return;this.template=createSoldierTemplate(gltf.scene,this.side);for(const clip of gltf.animations)this.clips.set(clip.name.toLowerCase(),clip);this.atOverlay=createAtOverlay(this.template,this.clips.get('ik_at'));this.asset=this.clips.size?'ready':'error'}).catch(()=>{if(!this.disposed)this.asset='error'})
+    Promise.all((['soldier','commander','logistics'] as SoldierModelKind[]).map(async kind=>[kind,await loadSoldierAsset(kind)] as const)).then(assets=>{if(this.disposed)return;for(const [kind,gltf] of assets){const template=createSoldierTemplate(gltf.scene,this.side);this.templates.set(kind,template);for(const clip of gltf.animations)this.clips.set(clip.name.toLowerCase(),clip);if(kind==='soldier')this.atOverlay=createAtOverlay(template,this.clips.get('ik_at'))}this.asset='ready'}).catch(()=>{if(!this.disposed)this.asset='error'})
     loadSoldierWeaponAsset().then(gltf=>{if(this.disposed)return;for(const weapon of SOLDIER_WEAPONS){const template=cloneSoldierWeapon(gltf.scene,weapon);if(template)this.weaponTemplates.set(weapon,template)}}).catch(()=>{})
   }
   begin(){this.counts.clear();this.used.clear()}
-  private rig(id:string){let rig=this.rigs.get(id);if(rig)return rig;const spare=[...this.rigs.values()].find(value=>!this.used.has(value.id)&&!value.root.visible);if(spare){this.rigs.delete(spare.id);spare.id=id;spare.role=undefined;spare.state=undefined;spare.stateSince=0;spare.clip=undefined;spare.atAction=undefined;spare.mixer.stopAllAction();this.rigs.set(id,spare);return spare}if(!this.template)return undefined
-    const root=new T.Group(),model=cloneSoldierRig(this.template),gears:T.Object3D[]=[];let weaponBone:T.Object3D|undefined;model.visible=true;model.rotation.x=Math.PI/2;model.traverse(node=>{if(node.name.startsWith('Gear_'))gears.push(node);if(node.name==='weapon')weaponBone=node;if(node.name.startsWith('Weapon_'))node.visible=false});root.add(model);this.scene.add(root);rig={id,root,model,mixer:new T.AnimationMixer(model),actions:new Map(),gears,weaponBone,weapons:new Map(),stateSince:0};this.rigs.set(id,rig);return rig
+  private rig(id:string,role:Role){const variant:SoldierModelKind=role==='COMMAND'?'commander':role==='LOGISTICS'?'logistics':'soldier';let rig=this.rigs.get(id);if(rig?.variant===variant)return rig;if(rig){rig.mixer.stopAllAction();rig.root.removeFromParent();this.rigs.delete(id)}const template=this.templates.get(variant);if(!template)return undefined
+    const root=new T.Group(),model=cloneSoldierRig(template),gears:T.Object3D[]=[];let weaponBone:T.Object3D|undefined;model.visible=true;model.rotation.x=Math.PI/2;model.traverse(node=>{if(node.name.startsWith('Gear_'))gears.push(node);if(node.name==='weapon')weaponBone=node;if(node.name.startsWith('Weapon_'))node.visible=false});root.add(model);this.scene.add(root);rig={id,variant,root,model,mixer:new T.AnimationMixer(model),actions:new Map(),gears,weaponBone,weapons:new Map(),stateSince:0};this.rigs.set(id,rig);return rig
   }
   private firstClip(...names:string[]){for(const name of names){const clip=this.clips.get(name);if(clip)return clip}return undefined}
   private clipFor(s:Soldier,role:Role,time:number,rig:SoldierRig){
@@ -154,7 +154,7 @@ export class SoldierBatch {
   }
   private syncWeapon(rig:SoldierRig,role:Role){const wanted=weaponForRole(role);for(const weapon of rig.weapons.values())weapon.visible=false;if(!wanted||!rig.weaponBone)return;let weapon=rig.weapons.get(wanted);if(!weapon){const template=this.weaponTemplates.get(wanted);if(!template)return;weapon=template.clone(true);weapon.rotation.x=WEAPON_HAND_CANT;rig.weaponBone.add(weapon);rig.weapons.set(wanted,weapon)}weapon.visible=true}
   private syncAtOverlay(rig:SoldierRig,enabled:boolean,time:number){if(!enabled||!this.atOverlay){rig.atAction?.stop();rig.atAction=undefined;return}if(!rig.atAction){rig.atAction=rig.mixer.clipAction(this.atOverlay);rig.atAction.setLoop(T.LoopRepeat,Infinity).setEffectiveWeight(1).play()}rig.atAction.time=this.atOverlay.duration?time%this.atOverlay.duration:0}
-  private poseAsset(s:Soldier,role:Role,time:number,z:number){const rig=this.rig(s.id);if(!rig)return;this.used.add(s.id);rig.root.visible=true;rig.root.position.set(s.x,s.y,z);rig.root.rotation.set(0,0,-s.heading);const state=`${s.status}:${s.stance}:${s.action}`;if(rig.state!==state){rig.state=state;rig.stateSince=time}if(rig.role!==role){const gear=`Gear_${role}`;for(const node of rig.gears)node.visible=node.name===gear;rig.role=role}this.syncWeapon(rig,role)
+  private poseAsset(s:Soldier,role:Role,time:number,z:number){const rig=this.rig(s.id,role);if(!rig)return;this.used.add(s.id);rig.root.visible=true;rig.root.position.set(s.x,s.y,z);rig.root.rotation.set(0,0,-s.heading);const state=`${s.status}:${s.stance}:${s.action}`;if(rig.state!==state){rig.state=state;rig.stateSince=time}if(rig.role!==role){const gear=`Gear_${role}`;for(const node of rig.gears)node.visible=node.name===gear;rig.role=role}this.syncWeapon(rig,role)
     const selected=this.clipFor(s,role,time,rig),clip=selected.clip;if(!clip)return;let action=rig.actions.get(clip.name);if(!action){action=rig.mixer.clipAction(clip);rig.actions.set(clip.name,action)}action.setLoop(selected.once?T.LoopOnce:T.LoopRepeat,selected.once?1:Infinity);action.clampWhenFinished=selected.once;if(rig.clip!==clip.name){if(rig.clip)rig.actions.get(rig.clip)?.stop();action.reset().play();rig.clip=clip.name}const phase=time+(s.id.charCodeAt(s.id.length-1)||0)*.037,offset=selected.offset??phase;action.time=selected.once?Math.min(clip.duration,offset):clip.duration?offset%clip.duration:0;this.syncAtOverlay(rig,role==='AT'&&s.status==='active',time);rig.mixer.update(0)
   }
   private poseFallback(s:Soldier,role:Role,time:number,z:number,detail=true){const dead=s.status!=='active',walking=['walk','cover','drag'].includes(s.action),phase=time*9+(s.id.charCodeAt(s.id.length-1)||0),stride=dead?0:walking?Math.sin(phase)*.62:Math.sin(time*2)*.015,crouch=s.stance==='crouch',prone=s.stance==='prone',recoil=Math.max(0,1-(time-s.shotAt)/.16)

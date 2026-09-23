@@ -19,6 +19,8 @@ ASSETS = (
     "amphibious_apc_orm.png",
     "mec_lift.glb",
     "soldier.glb",
+    "commander.glb",
+    "logistics.glb",
     "troop_transport.glb",
     "vtol_attack.glb",
     "vtol_cargo.glb",
