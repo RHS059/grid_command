@@ -49,6 +49,7 @@ def main() -> None:
         "schema": 1,
         "app_id": "grid-command-godot",
         "version": plan["version"],
+        "source_commit": plan.get("source_commit", ""),
         "min_runtime_version": "4.7.2",
         "requires_restart": plan["requires_restart"],
         "download_url": f"https://github.com/RHS059/grid_command/releases/download/godot-v{plan['version']}/GridCommand-Windows-x86_64.zip",
@@ -68,3 +69,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

@@ -38,22 +38,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Read version and skip an existing release
+      - name: Select a new version for this source commit
         id: version
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          version="$(sed -n 's/^config\/version="\([^"]*\)"/\1/p' "$PROJECT_DIR/project.godot")"
-          test -n "$version"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "tag=godot-v$version" >> "$GITHUB_OUTPUT"
-          if gh release view "godot-v$version" >/dev/null 2>&1; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-          fi
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases?per_page=100" > "$RUNNER_TEMP/godot-releases.json"
+          python3 "$PROJECT_DIR/tools/select_release_version.py" --project "$PROJECT_DIR" \
+            --releases "$RUNNER_TEMP/godot-releases.json" --source-sha "$GITHUB_SHA" --github-output "$GITHUB_OUTPUT"
 
       - name: Find previous Godot release
         if: steps.version.outputs.exists != 'true'
@@ -62,7 +56,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag="$(gh release list --limit 100 --json tagName --jq '[.[].tagName | select(startswith("godot-v"))][0] // ""')"
+          set -euo pipefail
+          tag="${{ steps.version.outputs.previous_tag }}"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           if [[ -n "$tag" ]]; then
             gh release download "$tag" --pattern godot-update.json --output "$RUNNER_TEMP/previous-manifest.json" || true
@@ -138,7 +133,7 @@ jobs:
         shell: bash
         run: |
           base_pack="$(find "$RUNNER_TEMP/previous" -name GridCommand.pck -print -quit 2>/dev/null || true)"
-          args=(--repo "$GITHUB_WORKSPACE" --project "$GITHUB_WORKSPACE/$PROJECT_DIR" --previous-ref "${{ steps.previous.outputs.tag }}" --output "$RUNNER_TEMP/release-plan.json")
+          args=(--repo "$GITHUB_WORKSPACE" --project "$GITHUB_WORKSPACE/$PROJECT_DIR" --previous-ref "${{ steps.previous.outputs.tag }}" --previous-version "${{ steps.version.outputs.previous_version }}" --output "$RUNNER_TEMP/release-plan.json")
           [[ -n "$base_pack" ]] && args+=(--base-pack "$base_pack")
           python3 "$PROJECT_DIR/tools/prepare_release.py" "${args[@]}"
           cat "$RUNNER_TEMP/release-plan.json"
@@ -212,4 +207,5 @@ jobs:
           for category in models textures gameplay; do
             assets+=("$PROJECT_DIR/build/release/update-$category.pck" "$PROJECT_DIR/build/release/update-$category.pck.sha256")
           done
-          gh release create "${{ steps.version.outputs.tag }}" "${assets[@]}" --target "$GITHUB_SHA" --title "Grid Command Godot ${{ steps.version.outputs.version }}" --notes "Windows build and verified Godot update channel assets. See release-plan.json for live-patch compatibility."
+          gh release create "${{ steps.version.outputs.tag }}" "${assets[@]}" --target "$GITHUB_SHA" --latest --title "Grid Command Godot ${{ steps.version.outputs.version }}" --notes "Windows build and verified Godot update channel assets. Source: $GITHUB_SHA. See release-plan.json for live-patch compatibility."
+

@@ -45,6 +45,16 @@ jobs:
             echo "PROJECT_DIR=." >> "$GITHUB_ENV"
           fi
 
+      - name: Stamp the published update version
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases?per_page=100" > "$RUNNER_TEMP/godot-releases.json"
+          python3 "$PROJECT_DIR/tools/select_release_version.py" --project "$PROJECT_DIR" \
+            --releases "$RUNNER_TEMP/godot-releases.json" --source-sha "$GITHUB_SHA"
+
       - name: Install browser geographic build dependencies
         shell: bash
         run: |
@@ -170,16 +180,27 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Commit build to repository
+      - name: Publish downloadable Windows build
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A -f builds/
-          if git diff --cached --quiet; then
-            echo "The repository already contains this exact build."
-            exit 0
+          tag="godot-build-${GITHUB_RUN_ID}"
+          archive="$GITHUB_WORKSPACE/builds/$BUILD_NAME"
+          test -s "$archive"
+          # A release asset can exceed GitHub's 100 MiB Git blob limit.
+          # Keep these per-run builds out of the stable in-game update channel.
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" "$archive" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$tag" "$archive" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "Grid Command Windows build ${GITHUB_RUN_ID}" \
+              --notes "Windows ZIP from build ${GITHUB_RUN_ID}. Extract the archive and run windows/GridCommand.exe. The in-game updater uses the separate stable Godot release channel." \
+              --prerelease --latest=false
           fi
-          git commit -m "Publish Godot Windows build [skip ci]"
-          git push
+          printf '### Windows build\n\n[Download %s](https://github.com/%s/releases/download/%s/%s)\n' \
+            "$BUILD_NAME" "$GITHUB_REPOSITORY" "$tag" "$BUILD_NAME" >> "$GITHUB_STEP_SUMMARY"
+

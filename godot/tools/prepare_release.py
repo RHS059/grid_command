@@ -73,6 +73,7 @@ def main() -> None:
     parser.add_argument("--repo", type=Path, required=True)
     parser.add_argument("--project", type=Path, required=True)
     parser.add_argument("--previous-ref", default="")
+    parser.add_argument("--previous-version", default="", help="Published version; CI may stamp it without changing the tagged source")
     parser.add_argument("--base-pack", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
@@ -95,7 +96,7 @@ def main() -> None:
     else:
         prior_project = run("git", "-C", str(repo), "show", f"{args.previous_ref}:{source_prefix}project.godot")
         prior_match = re.search(r'^config/version="([^"]+)"', prior_project, re.MULTILINE)
-        previous_version = prior_match.group(1) if prior_match else ""
+        previous_version = args.previous_version or (prior_match.group(1) if prior_match else "")
         lines = run("git", "-C", str(repo), "diff", "--name-status", args.previous_ref, "HEAD", "--", project_prefix).splitlines()
         for line in lines:
             fields = line.split("\t")
@@ -137,6 +138,7 @@ def main() -> None:
     live_patch = bool(args.previous_ref and previous_version and changed and not restart_reasons and args.base_pack and args.base_pack.is_file())
     plan = {
         "version": version,
+        "source_commit": run("git", "-C", str(repo), "rev-parse", "HEAD"),
         "previous_version": previous_version,
         "live_patch": live_patch,
         "requires_restart": not live_patch,
@@ -154,3 +156,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
