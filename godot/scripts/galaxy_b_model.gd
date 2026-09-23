@@ -4,6 +4,9 @@ extends RefCounted
 ## anhedral, four underwing turbofans, T-tail, upswept tail with rear doors,
 ## lifting visor nose, 28-wheel gear (four six-wheel main bogies in sponsons,
 ## four-wheel nose gear). Neutral grey; faction reads from the markings.
+## Rigged for drive-through loading: nose visor, forward ramp, aft clamshell
+## doors and aft ramp are pivot nodes; the "unload" clip opens both ends and
+## drives two HEMTTs out. set_cargo_doors(model, t) poses the doors for gameplay.
 ## Coordinates: x right, y forward, z up (see aircraft_loft.gd).
 
 const S := preload("res://scripts/browser_support_models.gd")
@@ -38,10 +41,8 @@ static func create(team: int = 0) -> Node3D:
 	glass.roughness = 0.1
 	glass.metallic_specular = 0.8
 
-	# Fuselage with visor-nose, main-gear sponsons and a belly fairing.
-	var rings := []
-	for st in FUSELAGE: rings.append(L.super_ring(st[0], st[1], st[2], st[3], 28, st[4] if st.size() > 4 else P))
-	L.loft(root, rings, body, true, true, [0.0,.25,.5,.75,1.0,1.25,1.5,2.0,4.0,4.5,5.0,5.5,5.8,6.0])
+	# Fuselage split into the fixed airframe and rigged cargo doors (see cargo_fuselage).
+	cargo_fuselage(root, body, dark, metal)
 	for s in [-1.0, 1.0]:
 		var pod := []
 		for st in [[5.0,.2,.5,1.9],[3.5,.75,.95,2.0],[-8.5,.75,.95,2.0],[-11.0,.2,.5,2.1]]:
@@ -57,10 +58,7 @@ static func create(team: int = 0) -> Node3D:
 			var y := 20.0 - i * 2.4
 			L.body_decal(root, FUSELAGE, P, y, y - .45, a + s * .95, a + s * 1.02, glass, 1, 1, .05)  # upper-deck windows
 		L.body_roundel(root, FUSELAGE, P, 14.0, a + s * .05, 1.2, 3.55, mark, .05)
-	# Rear clamshell doors and ramp outline on the upswept belly.
-	for a in [-PI * .82, -PI * .5, -PI * .18]:
-		L.body_decal(root, FUSELAGE, P, -22.5, -34.0, a - .012, a + .012, dark, 1, 8, .05)
-	L.body_decal(root, FUSELAGE, P, -22.4, -22.6, -PI * .82, -PI * .18, dark, 10, 1, .05)
+	cargo(root, team)
 
 	# High swept wing with anhedral, engine pylons and nacelles.
 	for s in [-1.0, 1.0]:
@@ -132,6 +130,152 @@ static func flight_deck(root: Node3D, body: Material, dark: Material, metal: Mat
 	# Nose gear doors stand open either side of the four-wheel nose leg.
 	for s in [-1.0, 1.0]:
 		S.box(root, Vector3(.05, 3.2, 1.2), Vector3(s * .95, 31.0, .95), body)
+
+## Stations densified so door cuts follow the skin closely (the loft is linear
+## between stations, so this does not change the surface).
+static func dense_stations(stations: Array, step: float) -> Array:
+	var out := []
+	for k in range(stations.size() - 1):
+		var a: Array = stations[k]
+		var b: Array = stations[k + 1]
+		var n := maxi(1, ceili(absf(a[0] - b[0]) / step))
+		for j in range(n):
+			var t := float(j) / n
+			var row := []
+			for f in range(5):
+				row.append(lerpf(a[f] if f < a.size() else P, b[f] if f < b.size() else P, t))
+			out.append(row)
+	var last: Array = stations[-1].duplicate()
+	if last.size() < 5: last.append(P)
+	out.append(last)
+	return out
+
+const VISOR_HINGE := Vector3(0, 36.35, 7.0)
+const NOSE_RAMP_HINGE := Vector3(0, 33.35, 1.6)
+const AFT_RAMP_HINGE := Vector3(0, -17.8, 1.62)
+const FLOOR_Z := 1.6
+
+## Which rigged part a fuselage quad (centre c, browser coords) belongs to.
+static func door_part(c: Vector3) -> String:
+	var cut := 33.2 + clampf((c.z - 1.4) / 5.5, 0.0, 1.0) * 3.2
+	if c.y > cut and c.z < 7.05: return "visor"
+	if c.y < -17.8 and c.y > -30.5 and c.z < 6.9:
+		if c.y > -23.2 and absf(c.x) < 2.2 and c.z < 3.4: return "aft-ramp"
+		return "clamshell-right" if c.x > 0.0 else "clamshell-left"
+	return "airframe"
+
+## Pivot node at a browser-space hinge with a holder that keeps child geometry
+## in airframe coordinates.
+static func pivot(root: Node3D, name: String, hinge: Vector3) -> Node3D:
+	var p := Node3D.new()
+	p.name = name
+	p.position = S.point(hinge)
+	root.add_child(p)
+	var holder := Node3D.new()
+	holder.name = "skin"
+	holder.position = -S.point(hinge)
+	p.add_child(holder)
+	return holder
+
+static func cargo_fuselage(root: Node3D, body: Material, dark: Material, metal: Material) -> void:
+	var stations := dense_stations(FUSELAGE, 1.2)
+	var rings := []
+	for st in stations: rings.append(L.super_ring(st[0], st[1], st[2], st[3], 28, st[4]))
+	var panels := []
+	for st in stations: panels.append(st[0] * .25)
+	var part := func(r: int, i: int, ring_set: Array) -> String:
+		var n: int = ring_set[r].size()
+		var c: Vector3 = (ring_set[r][i] + ring_set[r][(i + 1) % n] + ring_set[r + 1][i] + ring_set[r + 1][(i + 1) % n]) * .25
+		return door_part(c)
+	var holders := {
+		"airframe": root,
+		"visor": pivot(root, "visor-pivot", VISOR_HINGE),
+		"aft-ramp": pivot(root, "aft-ramp-pivot", AFT_RAMP_HINGE),
+		"clamshell-right": pivot(root, "clamshell-right-pivot", Vector3(2.7, -24.5, 6.9)),
+		"clamshell-left": pivot(root, "clamshell-left-pivot", Vector3(-2.7, -24.5, 6.9)),
+	}
+	for key in holders:
+		var k: String = key
+		L.loft(holders[k], rings, body, true, false, panels, func(r, i): return part.call(r, i, rings) != k)
+	# Hold: dark liner with the same openings, floor, ramp decks and the nose ramp.
+	var hold := S.material("#3a3f3c", .95)
+	var inner := []
+	var inner_panels := []
+	for st in stations:
+		if st[0] < 34.6 and st[0] > -31.5:
+			inner.append(L.super_ring(st[0], st[1] - .18, st[2] - .18, st[3], 28, st[4]))
+			inner_panels.append(0.0)
+	L.loft(root, inner, hold, true, false, [], func(r, i): return part.call(r, i, inner) != "airframe")
+	S.box(root, Vector3(5.6, 51.0, .12), Vector3(0, 7.7, FLOOR_Z - .06), metal)
+	# Aft ramp deck lies along the upswept belly (10 degrees) when stowed.
+	var deck := S.box(holders["aft-ramp"], Vector3(4.2, 5.4, .15), AFT_RAMP_HINGE + Vector3(0, -2.66, .6), metal)
+	deck.rotation.x = deg_to_rad(-10.0)
+	for k in range(6):
+		var d := .6 + k * .8
+		S.box(holders["aft-ramp"], Vector3(3.8, .06, .04), AFT_RAMP_HINGE + Vector3(0, -d, .18 + d * .176), dark)  # treads
+	var nose_ramp := pivot(root, "nose-ramp-pivot", NOSE_RAMP_HINGE)
+	S.box(nose_ramp, Vector3(4.2, 5.2, .15), NOSE_RAMP_HINGE + Vector3(0, 2.6, .07), metal)
+	for k in range(6):
+		S.box(nose_ramp, Vector3(3.8, .06, .04), NOSE_RAMP_HINGE + Vector3(0, .5 + k * .8, .17), dark)
+	set_cargo_doors(root, 0.0)
+
+## Pose the cargo doors: 0 closed, 1 fully open (both ends).
+static func set_cargo_doors(model: Node3D, t: float) -> void:
+	var angles := door_angles(t)
+	for key in angles:
+		var node := model.get_node_or_null(key)
+		if node != null: node.rotation = angles[key]
+
+static func door_angles(t: float) -> Dictionary:
+	var e := func(a: float, b: float) -> float: return clampf((t - a) / (b - a), 0.0, 1.0)
+	return {
+		"visor-pivot": Vector3(1.9 * e.call(0.0, .6), 0, 0),
+		"nose-ramp-pivot": Vector3(lerpf(PI * .5, -.3, e.call(.45, 1.0)), 0, 0),
+		"aft-ramp-pivot": Vector3(.49 * e.call(.35, 1.0), 0, 0),
+		# Clamshells swing up and out about hinges along their top edges.
+		"clamshell-right-pivot": Vector3(0, 0, 1.35 * e.call(0.0, .6)),
+		"clamshell-left-pivot": Vector3(0, 0, -1.35 * e.call(0.0, .6)),
+	}
+
+## Cargo and the "unload" clip: doors open, then a container HEMTT drives out
+## down the aft ramp and a troop HEMTT out through the nose.
+static func cargo(root: Node3D, team: int) -> void:
+	var aft: Node3D = S.create("TRUCK", team)
+	aft.name = "cargo-aft"
+	root.add_child(aft)
+	var fwd: Node3D = S.create("TROOP_HEMTT", team)
+	fwd.name = "cargo-forward"
+	root.add_child(fwd)
+	S.palette_team = team
+	var anim := Animation.new()
+	anim.length = 18.0
+	for key in door_angles(0.0):
+		var track := anim.add_track(Animation.TYPE_VALUE)
+		anim.track_set_path(track, NodePath("%s:rotation" % key))
+		for k in range(9):
+			var time := 1.0 + k * .5
+			anim.track_insert_key(track, time, door_angles(k / 8.0)[key])
+		anim.track_insert_key(track, 0.0, door_angles(0.0)[key])
+	# [time, browser y, z, pitch]: rolls to the ramp, pitches down it, rolls clear.
+	var drive := func(node: String, yaw: float, keys: Array) -> void:
+		var pos := anim.add_track(Animation.TYPE_VALUE)
+		var rot := anim.add_track(Animation.TYPE_VALUE)
+		anim.track_set_path(pos, NodePath("%s:position" % node))
+		anim.track_set_path(rot, NodePath("%s:rotation" % node))
+		for key in keys:
+			anim.track_insert_key(pos, key[0], S.point(Vector3(0, key[1], key[2])))
+			anim.track_insert_key(rot, key[0], Vector3(key[3], yaw, 0))
+	drive.call("cargo-aft", PI, [[0.0, -6.0, FLOOR_Z, 0.0], [5.5, -6.0, FLOOR_Z, 0.0], [8.5, -13.5, FLOOR_Z, 0.0], [10.5, -20.3, .8, -.32], [12.5, -27.5, 0.0, 0.0], [14.0, -33.0, 0.0, 0.0]])
+	drive.call("cargo-forward", 0.0, [[0.0, 21.0, FLOOR_Z, 0.0], [9.0, 21.0, FLOOR_Z, 0.0], [12.0, 29.5, FLOOR_Z, 0.0], [14.0, 35.8, .8, -.3], [16.0, 42.5, 0.0, 0.0], [17.5, 47.0, 0.0, 0.0]])
+	var library := AnimationLibrary.new()
+	library.add_animation("unload", anim)
+	var player := AnimationPlayer.new()
+	player.name = "AnimationPlayer"
+	player.add_animation_library("", library)
+	root.add_child(player)
+	aft.position = S.point(Vector3(0, -6.0, FLOOR_Z))
+	aft.rotation.y = PI
+	fwd.position = S.point(Vector3(0, 21.0, FLOOR_Z))
 
 static func wing_z(x: float) -> float:
 	return 9.1 - maxf(0.0, absf(x) - 1.0) * .096  # 5.5 degree anhedral

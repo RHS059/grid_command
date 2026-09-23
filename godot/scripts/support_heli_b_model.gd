@@ -16,8 +16,9 @@ const RING := 24
 ## [y, half width, half height, centre z]: drooped nose under a steep windscreen,
 ## long flat-bottomed cabin (belly 0.55 m, roof 2.5 m), belly sweeping up into a
 ## straight high tail boom whose top line continues the roof. 3.15 / 0.6 bound the doors.
-const FUSELAGE := [[7.72,.25,.14,1.12],[7.55,.6,.33,1.16],[7.2,.85,.5,1.22],[6.8,.97,.6,1.26],[6.3,1.04,.68,1.29],[5.4,1.1,.91,1.47],[4.8,1.12,.96,1.51],[3.15,1.12,.968,1.518],[0.6,1.12,.974,1.524],[0.0,1.12,.975,1.525],[-1.5,1.05,.95,1.55],[-2.6,.8,.65,1.8],[-3.6,.5,.35,2.07],[-6.5,.32,.22,2.24],[-7.75,.26,.19,2.31]]
-const DOOR_RING := 7        # quads between the 3.15 and 0.6 stations
+const FUSELAGE := [[7.72,.25,.14,1.12],[7.55,.6,.33,1.16],[7.2,.85,.5,1.22],[6.8,.97,.6,1.26],[6.3,1.04,.68,1.29],[5.4,1.1,.91,1.47],[4.8,1.12,.96,1.51],[3.95,1.12,.966,1.516],[3.35,1.12,.968,1.518],[3.15,1.12,.968,1.518],[0.6,1.12,.974,1.524],[0.0,1.12,.975,1.525],[-1.5,1.05,.95,1.55],[-2.6,.8,.65,1.8],[-3.6,.5,.35,2.07],[-6.5,.32,.22,2.24],[-7.75,.26,.19,2.31]]
+const GUNNER_RING := 7      # quads between the 3.95 and 3.35 stations (gunner windows)
+const DOOR_RING := 9        # quads between the 3.15 and 0.6 stations
 const DOOR_ANGLE := .785    # opening spans +/-45 degrees around each side
 ## [z, LE y, chord, thickness]: swept tail pylon.
 const PYLON := [[2.2,-6.8,1.5,.16],[4.45,-7.95,1.0,.13]]
@@ -35,7 +36,7 @@ static func create(team: int = 0) -> Node3D:
 	var canvas := S.material("#56583f", 0.95)
 
 	fuselage(root, body, dark, metal)
-	cabin(root, body, dark, metal, interior, canvas)
+	cabin(root, body, dark, metal, interior, canvas, mark)
 	cockpit(root, dark, metal)
 	for s in [-1.0, 1.0]:
 		var a := 0.0 if s > 0 else PI
@@ -55,16 +56,19 @@ static func animate(model: Node3D, delta: float) -> void:
 	var tail := model.get_node_or_null("tail-rotor")
 	if tail != null: tail.rotate_object_local(Vector3.RIGHT, delta * 40.0)
 
-## True inside either door opening (ring quad r, i on a RING-sided super_ring).
-static func in_door(r: int, i: int, door_ring := DOOR_RING) -> bool:
-	if r != door_ring: return false
+## True inside a door or open gunner window (ring quad r, i on a RING-sided super_ring).
+static func in_opening(r: int, i: int, gunner_ring := GUNNER_RING, door_ring := DOOR_RING) -> bool:
 	var a := TAU * (i + .5) / RING
-	return absf(wrapf(a, -PI, PI)) < DOOR_ANGLE or absf(wrapf(a - PI, -PI, PI)) < DOOR_ANGLE
+	var right := wrapf(a, -PI, PI)
+	var left := wrapf(PI - a, -PI, PI)
+	if r == door_ring: return absf(right) < DOOR_ANGLE or absf(left) < DOOR_ANGLE
+	if r == gunner_ring: return (right > 0.0 and right < .52) or (left > 0.0 and left < .52)
+	return false
 
 static func fuselage(root: Node3D, body: Material, dark: Material, metal: Material) -> void:
 	var rings := []
 	for st in FUSELAGE: rings.append(L.super_ring(st[0], st[1], st[2], st[3], RING, P))
-	L.loft(root, rings, body, true, true, [0.0,.2,.4,.6,1.0,1.4,1.6,1.9,2.2,2.4,2.8,3.0,3.4,3.9,4.2], func(r, i): return in_door(r, i))
+	L.loft(root, rings, body, true, true, [0.0,.2,.4,.6,1.0,1.4,1.6,1.7,1.8,1.9,2.2,2.4,2.8,3.0,3.4,3.9,4.2], func(r, i): return in_opening(r, i))
 	# Transmission and engine deck, T700 nacelles, angled IR suppressors, oil-cooler grille.
 	var deck := []
 	for st in [[4.6,.15,.1],[3.9,.72,.45],[.4,.72,.5],[-1.4,.35,.3],[-2.4,.1,.08]]:
@@ -88,12 +92,12 @@ static func fuselage(root: Node3D, body: Material, dark: Material, metal: Materi
 	S.box(root, Vector3(.03, .3, .32), Vector3(0, -2.0, 2.2), dark)  # VHF blade
 	S.box(root, Vector3(.03, .4, .12), Vector3(0, 1.5, .5), dark)    # belly antenna
 
-static func cabin(root: Node3D, body: Material, dark: Material, metal: Material, interior: Material, canvas: Material) -> void:
+static func cabin(root: Node3D, body: Material, dark: Material, metal: Material, interior: Material, canvas: Material, team_mark: Material) -> void:
 	# Inner liner closes the cabin behind the openings; its caps are the bulkheads.
 	var liner := []
-	for y in [3.2, 3.15, 0.6, 0.55]:
+	for y in [4.05, 3.95, 3.35, 3.15, 0.6, 0.55]:
 		liner.append(L.super_ring(y, 1.07, .92, 1.52, RING, P))
-	L.loft(root, liner, interior, true, true, [], func(r, i): return in_door(r, i, 1))
+	L.loft(root, liner, interior, true, true, [], func(r, i): return in_opening(r, i, 1, 3))
 	S.box(root, Vector3(2.1, 2.6, .06), Vector3(0, 1.875, .66), dark)  # floor
 	for s in [-1.0, 1.0]:
 		var a := 0.0 if s > 0 else PI
@@ -105,11 +109,9 @@ static func cabin(root: Node3D, body: Material, dark: Material, metal: Material,
 		S.box(root, Vector3(.04, .18, .04), Vector3(s * 1.2, .35, 1.3), metal)  # door handle
 		L.body_line(root, FUSELAGE, P, [[3.3, a + s * .82], [-2.1, a + s * .82]], .05, metal, .02)  # upper rail
 		L.body_line(root, FUSELAGE, P, [[3.3, a - s * .82], [-2.1, a - s * .82]], .05, metal, .02)  # lower rail
-		# Door gunner's M240 on its pintle arm at the gunner window, with ammo can.
-		S.box(root, Vector3(.12, .1, .35), Vector3(s * .95, 3.6, 1.35), metal)
-		S.box(root, Vector3(.1, .5, .12), Vector3(s * 1.05, 3.65, 1.6), dark)
-		S.rod(root, Vector3(s * 1.05, 3.9, 1.62), Vector3(s * 1.55, 4.55, 1.62), .025, dark, 6)
-		S.box(root, Vector3(.14, .22, .16), Vector3(s * .92, 3.55, 1.48), S.material("#4d5a3a", .85))
+		# Open gunner window: frame, M240H on its pintle and a seated door gunner.
+		L.body_line(root, FUSELAGE, P, [[3.95, a], [3.95, a + s * .52], [3.35, a + s * .52], [3.35, a], [3.95, a]], .05, dark)
+		door_gunner(root, s, dark, metal, team_mark)
 	# Troop seats: four facing forward on the rear bulkhead, three facing aft forward.
 	for row in [[.72, .6, 1.0], [2.95, 3.1, -1.0]]:
 		var n := 4 if row[2] > 0 else 3
@@ -121,6 +123,87 @@ static func cabin(root: Node3D, body: Material, dark: Material, metal: Material,
 				S.rod(root, Vector3(x + dx, row[0] + row[2] * .28, .69), Vector3(x + dx, row[0] + row[2] * .28, 1.05), .015, metal, 4)
 			S.rod(root, Vector3(x - .2, row[1], 1.66), Vector3(x + .2, row[1], 1.66), .015, metal, 4)
 
+## Seated door gunner behind an M240H on a pintle at the open gunner window,
+## gun trained out and forward. Flight suit, armour vest, flight helmet with
+## visor and boom mic, gloves on the spade grips, team patch on the shoulder.
+static func door_gunner(root: Node3D, s: float, dark: Material, metal: Material, team_mark: Material) -> void:
+	var suit := S.material("#5f624c", .95)
+	var vest := S.material("#4b4f3d", .95)
+	var helmet := S.material("#3c4043", .8)
+	var skin := S.material("#a67c5b", .9)
+	var boots := S.material("#3b3128", .95)
+	var visor := S.material("#1b252c", .3, .2)
+	var dir := Vector3(s * .55, .83, 0).normalized()
+	var yaw := atan2(-dir.x, dir.y)
+	var mount := Vector3(s * 1.0, 3.7, 1.62)
+	# Gun: receiver behind the pintle, barrel out through the window, feed tray and ammo can.
+	var gun := Node3D.new()
+	gun.position = S.point(mount)
+	gun.rotation.y = yaw
+	root.add_child(gun)
+	S.rod(root, mount + Vector3(0, 0, -.06), Vector3(s * 1.06, 3.7, 1.2), .03, metal, 6)  # pintle arm to the frame
+	S.box(gun, Vector3(.09, .62, .13), Vector3(0, -.12, .06), dark)
+	S.rod(gun, Vector3(0, .18, .07), Vector3(0, .82, .07), .022, dark, 6)
+	S.rod(gun, Vector3(0, .82, .07), Vector3(0, .9, .07), .032, dark, 8)
+	S.box(gun, Vector3(.06, .08, .18), Vector3(0, .6, .0), dark)  # gas block and bipod stowed
+	S.box(gun, Vector3(.14, .2, .14), Vector3(-.12, -.05, -.02), S.material("#4d5a3a", .85))
+	for gx in [-.07, .07]: S.rod(gun, Vector3(gx, -.43, -.04), Vector3(gx, -.43, .1), .018, dark, 6)  # spade grips
+	# Gunner, seated facing the gun: local x right, y forward, z up from the hips.
+	var man := Node3D.new()
+	man.position = S.point(mount - dir * .98 + Vector3(0, 0, -.62))
+	man.rotation.y = yaw
+	root.add_child(man)
+	S.box(man, Vector3(.46, .42, .07), Vector3(0, -.02, -.12), dark)   # seat
+	S.rod(man, Vector3(0, -.02, -.15), Vector3(0, -.02, -.34), .03, metal, 6)
+	S.box(man, Vector3(.36, .26, .2), Vector3(0, 0, .02), suit)        # pelvis
+	var torso := []
+	for st in [[.1, .18, .12, .02], [.32, .21, .14, .07], [.5, .23, .13, .12], [.6, .15, .09, .14]]:
+		torso.append(vertical_ring(st[0], st[1], st[2], st[3], 12))
+	L.loft(man, torso, suit, true, true)
+	S.box(man, Vector3(.44, .32, .34), Vector3(0, .07, .34), vest)      # armour vest
+	S.box(man, Vector3(.3, .05, .16), Vector3(0, .24, .3), vest)        # pouches
+	S.rod(man, Vector3(0, .13, .6), Vector3(0, .15, .7), .05, skin, 8)  # neck
+	sphere(man, Vector3(0, .17, .8), .1, skin)                          # head
+	sphere(man, Vector3(0, .15, .84), .135, helmet)                     # flight helmet
+	S.box(man, Vector3(.2, .05, .08), Vector3(0, .27, .83), visor)      # visor
+	S.rod(man, Vector3(.1, .2, .76), Vector3(.03, .29, .74), .01, dark, 4)  # boom mic
+	var grip := Vector3(0, .98 - .43, .62 + .03)
+	for x in [-1.0, 1.0]:
+		var shoulder := Vector3(x * .22, .1, .54)
+		var hand := grip + Vector3(x * .07, 0, 0)
+		var elbow := (shoulder + hand) * .5 + Vector3(x * .1, -.02, -.14)
+		S.rod(man, shoulder, elbow, .055, suit, 8)
+		S.rod(man, elbow, hand, .045, suit, 8)
+		S.box(man, Vector3(.07, .1, .09), hand, dark)                   # glove
+		# Seated legs: thighs forward, shins down, boots on the floor.
+		var hip := Vector3(x * .1, .02, 0)
+		var knee := Vector3(x * .14, .42, .02)
+		var ankle := Vector3(x * .15, .5, -.3)
+		S.rod(man, hip, knee, .075, suit, 8)
+		S.rod(man, knee, ankle, .06, suit, 8)
+		S.box(man, Vector3(.11, .26, .1), ankle + Vector3(0, .06, -.02), boots)
+	S.box(man, Vector3(.02, .1, .08), Vector3(s * .28, .1, .45), team_mark)  # shoulder patch, outboard side
+
+## Horizontal ring around the local vertical axis (x right, y forward) at height z.
+static func vertical_ring(z: float, w: float, d: float, y: float, n: int) -> PackedVector3Array:
+	var ring := PackedVector3Array()
+	for k in range(n):
+		var a := TAU * k / n
+		ring.append(Vector3(cos(a) * w, y + sin(a) * d, z))
+	return ring
+
+static func sphere(parent: Node3D, center: Vector3, radius: float, mat: Material) -> void:
+	var mesh := SphereMesh.new()
+	mesh.radius = radius
+	mesh.height = radius * 2.0
+	mesh.radial_segments = 12
+	mesh.rings = 6
+	var node := MeshInstance3D.new()
+	node.mesh = mesh
+	node.material_override = mat
+	node.position = S.point(center)
+	parent.add_child(node)
+
 static func cockpit(root: Node3D, dark: Material, metal: Material) -> void:
 	# Framed interior-mapped glazing: split windscreen, overhead, door and chin windows.
 	var top := PI * .5
@@ -131,7 +214,6 @@ static func cockpit(root: Node3D, dark: Material, metal: Material) -> void:
 		L.body_pane(root, FUSELAGE, P, 5.35, 4.3, a + s * .2, a + s * .8, 0, dark, .02, .04, 1.3)         # cockpit door
 		L.body_pane(root, FUSELAGE, P, 5.2, 4.45, a - s * .12, a + s * .14, 0, dark, .02, .03, 1.3)       # lower door
 		L.body_pane(root, FUSELAGE, P, 6.85, 6.05, a - s * .3, a - s * .78, 0, dark, .02, .03, 1.0)       # chin window
-		L.body_pane(root, FUSELAGE, P, 3.95, 3.35, a + s * .12, a + s * .62, 0, dark, .02, .03, 1.6)      # gunner window
 		L.body_line(root, FUSELAGE, P, [[5.4, a + s * .9], [4.2, a + s * .9], [4.2, a - s * .5], [5.4, a - s * .5]], .03, dark)  # cockpit door outline
 		S.rod(root, Vector3(s * .5, 7.1, 1.5), Vector3(s * .5, 7.9, 1.48), .012, metal, 4)  # pitot
 	# Wire-strike protection: roof cutter, windscreen deflector, chin cutter.
