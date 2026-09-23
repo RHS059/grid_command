@@ -11,13 +11,14 @@ import { createBase } from '@/lib/game/base-models'
 import { isAir, isVehicle, type Side, type SoldierAction, type Stance, type Soldier } from '@/lib/game/types'
 import { vehicleClips, poseVehicleClip, advanceVehiclePlayback } from '@/lib/game/vehicle-animation'
 import { MODEL_NAMES, type ModelId } from '@/lib/game/model-catalog'
-import { isHemttVariant } from '@/lib/game/hemtt-model'
+import { createHemtt, isHemttVariant } from '@/lib/game/hemtt-model'
 import { addStudioLighting } from '@/lib/game/scene-lighting'
+import { MODEL_DIMENSIONS, modelScale, modelDimensionLabel, modelGridSpacing, visibleModelBounds } from '@/lib/game/model-dimensions'
 
 interface Props { model: ModelId; side: Side; active: boolean; animate: boolean; rotate: boolean; action: SoldierAction; stance: Stance; condition: Soldier['status']; damagePreview?: boolean; destruction?: number; reset: number; clip?:string; loop?:boolean; seek?:{serial:number;time:number}; onTime?:(time:number)=>void }
 export function ModelViewport(props: Props) {
   const host = useRef<HTMLDivElement>(null), rendererRef=useRef<GraphicsRenderer|null>(null), current = useRef(props); current.current = props
-  const [error, setError] = useState('')
+  const [error, setError] = useState(''), [gridMetres, setGridMetres] = useState(1)
   useEffect(()=>()=>{rendererRef.current?.dispose();rendererRef.current?.domElement.remove();rendererRef.current=null},[])
   useEffect(() => {
     if (!props.active || !host.current) return
@@ -27,12 +28,13 @@ export function ModelViewport(props: Props) {
     const element = host.current, scene = new T.Scene(), camera = new T.PerspectiveCamera(38, 1, .05, 5000)
     camera.up.set(0, 0, 1); renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5))
     renderer.domElement.setAttribute('aria-label', `${MODEL_NAMES[props.model]} interactive 3D model`); element.append(renderer.domElement)
-    const orbit = new OrbitControls(camera, renderer.domElement); orbit.enableDamping = true; orbit.autoRotateSpeed = .65; orbit.maxPolarAngle = Math.PI * .49
+    const orbit = new OrbitControls(camera, renderer.domElement); orbit.enableKeyboard = true; orbit.enableDamping = true; orbit.autoRotateSpeed = .65; orbit.maxPolarAngle = Math.PI * .49
     const material = new T.MeshStandardMaterial({ vertexColors: true, roughness: .62, metalness: .08, flatShading: false })
     let object: T.Object3D | null = null, batch: SoldierBatch | null = null
+    const modelScene = new T.Scene()
     const id = props.model
     if (id === 'MOB' || id === 'AIRFIELD') object = createBase(id, props.side)
-    else if (isHemttVariant(id)) object = createSupportModel(id, props.side)
+    else if (isHemttVariant(id)) object = createHemtt(id, props.side)
     else if (isAir(id)) object = createAircraft(id, props.side)
     else if (isSupportModel(id)) object = createSupportModel(id, props.side)
     else if (isVehicle(id)) {
@@ -44,21 +46,27 @@ export function ModelViewport(props: Props) {
         object.add(attachment)
       }
     }
-    else batch = new SoldierBatch(scene, props.side, material)
+    else batch = new SoldierBatch(modelScene, props.side, material)
     const motorRoot = new T.Group(), motor = new EngineBoil(id,`preview:${id}`);scene.add(motorRoot)
-    if (object) { if(id==='TROOP_TRUCK')addCarrierOccupants(object,props.side,true);motorRoot.add(object) }
+    motorRoot.add(modelScene)
+    if (object) { if(id==='TROOP_TRUCK')addCarrierOccupants(object,props.side,true);modelScene.add(object) }
     // A studio scene honors each mesh's own cast/receive flags (unlike the battlefield
     // scene, which keeps its existing "everything casts and receives" behavior), so the
     // subject has to opt in explicitly. The grid deliberately does not.
     object?.traverse(node => { if (node instanceof T.Mesh) { node.castShadow = true; node.receiveShadow = true } })
     if (batch) for (const mesh of batch.parts.values()) { mesh.castShadow = true; mesh.receiveShadow = true }
-    const bounds = object ? new T.Box3().setFromObject(object) : new T.Box3(new T.Vector3(-1, -1, 0), new T.Vector3(1.5, 1, 2.1))
+    const sourceBounds = object ? visibleModelBounds(object) : new T.Box3(new T.Vector3(-1, -1, 0), new T.Vector3(1.5, 1, 1.7))
+    const factor = modelScale(id, sourceBounds.getSize(new T.Vector3()))
+    modelScene.scale.setScalar(factor)
+    const bounds = new T.Box3(sourceBounds.min.clone().multiplyScalar(factor), sourceBounds.max.clone().multiplyScalar(factor))
     const size = bounds.getSize(new T.Vector3()), center = bounds.getCenter(new T.Vector3()), radius = Math.max(size.length() / 2, .01)
     // Matte floor under the grid: catches the key light's shadow and gives the subject
     // somewhere to stand. Receive-only, and created after bounds so it never affects framing.
     const floor = new T.Mesh(new T.PlaneGeometry(radius * 40, radius * 40), new T.MeshStandardMaterial({ color: '#16243c', roughness: .96, metalness: 0 }))
     floor.position.z = bounds.min.z - .05; floor.receiveShadow = true; scene.add(floor)
-    const grid = new T.GridHelper(radius * 8, 32, '#5f9fc4', '#2d4a63'); grid.rotation.x = Math.PI / 2; grid.position.z = bounds.min.z - .04; scene.add(grid)
+    const spacing = modelGridSpacing(radius * 2), gridSpan = Math.ceil(radius * 8 / spacing) * spacing
+    setGridMetres(spacing)
+    const grid = new T.GridHelper(gridSpan, Math.round(gridSpan / spacing), '#5f9fc4', '#2d4a63'); grid.rotation.x = Math.PI / 2; grid.position.z = bounds.min.z - .04; scene.add(grid)
     const studio = addStudioLighting(scene)
     // A near plane at radius/1000 loses centimetre-separated runway paint to depth
     // rounding on a 1,200 m airfield. Radius/20 preserves those layers and remains
@@ -76,6 +84,8 @@ export function ModelViewport(props: Props) {
       if (lastReset !== c.reset) { lastReset = c.reset; frameModel() }
       if(object?.userData.blenderVehicle){const clip=vehicleClips(id).find(v=>v.id===c.clip)||vehicleClips(id)[0];if(lastClip!==clip.id){lastClip=clip.id;clipTime=0}if(c.seek&&lastSeek!==c.seek.serial){lastSeek=c.seek.serial;clipTime=c.seek.time}else clipTime=advanceVehiclePlayback(clipTime,dt,c.animate,clip.duration,c.loop??clip.loop);poseVehicleClip(object,clip.id,clipTime);if(now-lastReport>80){c.onTime?.(clipTime);lastReport=now}}else if(object){animateAircraft(object,time);animateSupport(object,time)}
       if (batch && id !== 'MOB' && id !== 'AIRFIELD' && !isHemttVariant(id)) {
+        // Imported bodies are 1.7 m tall; the temporary procedural body is 2.1 m.
+        modelScene.scale.setScalar(MODEL_DIMENSIONS[id].metres / (batch.asset === 'ready' ? 1.7 : 2.1))
         const soldier: Soldier = { id: 'preview:0', x: 0, y: 0, status: c.condition, stance: c.stance, action: c.action, heading: 0, aim: Math.sin(time * .6) * .5, since: Math.floor(time / 2) * 2, shotAt: c.action === 'fire' || c.action === 'peek' ? Math.floor(time * 3) / 3 : -10 }
         batch.begin(); batch.pose(soldier, id, time, 0, true); if (c.action === 'drag') batch.pose({ ...soldier, id: 'preview:1', x: -.5, y: -1.2, status: 'downed' }, id, time, 0, true); batch.end(true)
       }
@@ -86,5 +96,6 @@ export function ModelViewport(props: Props) {
     frame = requestAnimationFrame(render)
     return () => { cancelAnimationFrame(frame); observer.disconnect(); orbit.dispose(); batch?.dispose(); disposeModel(scene); material.dispose() }
   }, [props.model, props.side, props.active])
-  return <div className="model-viewport" ref={host}>{error && <p role="alert" className="p-6 text-sm text-destructive">{error}</p>}</div>
+  return <div className="model-viewport relative" ref={host}>{error && <p role="alert" className="p-6 text-sm text-destructive">{error}</p>}<p className="pointer-events-none absolute bottom-3 left-3 max-w-[calc(100%-1.5rem)] rounded bg-background/80 px-2 py-1 text-xs text-muted-foreground">{modelDimensionLabel(props.model)} · Grid: {gridMetres} m · WASD move · Shift faster · Drag orbit · Right-drag pan · Wheel zoom</p></div>
 }
+

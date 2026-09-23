@@ -1,0 +1,198 @@
+{
+  "RIFLE": {
+    "metres": 1.8,
+    "axis": "height",
+    "note": "Nominal equipped adult body height; equipment is not used to measure stature."
+  },
+  "SCOUT": {
+    "metres": 1.8,
+    "axis": "height",
+    "note": "Nominal equipped adult body height; equipment is not used to measure stature."
+  },
+  "MG": {
+    "metres": 1.8,
+    "axis": "height",
+    "note": "Nominal equipped adult body height; equipment is not used to measure stature."
+  },
+  "AT": {
+    "metres": 1.8,
+    "axis": "height",
+    "note": "Nominal equipped adult body height; equipment is not used to measure stature."
+  },
+  "MORTAR": {
+    "metres": 1.8,
+    "axis": "height",
+    "note": "Nominal equipped adult body height; equipment is not used to measure stature."
+  },
+  "ENGINEER": {
+    "metres": 1.8,
+    "axis": "height",
+    "note": "Nominal equipped adult body height; equipment is not used to measure stature."
+  },
+  "MEDIC": {
+    "metres": 1.8,
+    "axis": "height",
+    "note": "Nominal equipped adult body height; equipment is not used to measure stature."
+  },
+  "LOGISTICS": {
+    "metres": 1.8,
+    "axis": "height",
+    "note": "Nominal equipped adult body height; equipment is not used to measure stature."
+  },
+  "PILOT": {
+    "metres": 1.8,
+    "axis": "height",
+    "note": "Nominal equipped adult body height; equipment is not used to measure stature."
+  },
+  "AA_TEAM": {
+    "metres": 1.8,
+    "axis": "height",
+    "note": "Nominal equipped adult body height; equipment is not used to measure stature."
+  },
+  "COMMAND": {
+    "metres": 1.85,
+    "axis": "height",
+    "note": "Nominal command officer body height."
+  },
+  "TANK": {
+    "metres": 9.8,
+    "axis": "longest",
+    "note": "Approximate modern main battle tank overall length including gun."
+  },
+  "APC": {
+    "metres": 6.95,
+    "axis": "longest",
+    "note": "Approximate Stryker family hull length; retained uniform proportions."
+  },
+  "CANNON_APC": {
+    "metres": 6.95,
+    "axis": "longest",
+    "note": "Approximate Stryker family hull length; retained uniform proportions."
+  },
+  "IFV": {
+    "metres": 6.55,
+    "axis": "longest",
+    "note": "Approximate tracked infantry fighting vehicle overall length."
+  },
+  "AMPHIBIOUS_APC": {
+    "metres": 8.2,
+    "axis": "longest",
+    "note": "Approximate amphibious armored personnel carrier length."
+  },
+  "TROOP_TRUCK": {
+    "metres": 4.6,
+    "axis": "longest",
+    "note": "Custom light carrier; model-design.md chassis reference."
+  },
+  "TRUCK": {
+    "metres": 10.211,
+    "axis": "longest",
+    "note": "HEMTT M1120A4 reference length; custom bodies retain shared chassis scale."
+  },
+  "FUEL_TRUCK": {
+    "metres": 10.211,
+    "axis": "longest",
+    "note": "HEMTT M1120A4 reference length; custom bodies retain shared chassis scale."
+  },
+  "TROOP_HEMTT": {
+    "metres": 10.211,
+    "axis": "longest",
+    "note": "HEMTT M1120A4 reference length; custom bodies retain shared chassis scale."
+  },
+  "MEDICAL_HEMTT": {
+    "metres": 10.211,
+    "axis": "longest",
+    "note": "HEMTT M1120A4 reference length; custom bodies retain shared chassis scale."
+  },
+  "REPAIR_HEMTT": {
+    "metres": 10.211,
+    "axis": "longest",
+    "note": "HEMTT M1120A4 reference length; custom bodies retain shared chassis scale."
+  },
+  "FOB_HEMTT": {
+    "metres": 10.211,
+    "axis": "longest",
+    "note": "HEMTT M1120A4 reference length; custom bodies retain shared chassis scale."
+  },
+  "FORKLIFT": {
+    "metres": 4.2,
+    "axis": "longest",
+    "note": "Approximate supply forklift including forks."
+  },
+  "UAV_JAMMER": {
+    "metres": 2.5,
+    "axis": "longest",
+    "note": "Custom field jammer, nominal deployed mast height."
+  },
+  "CAS_FIGHTER": {
+    "metres": 11.38,
+    "axis": "longest",
+    "note": "A-29 reference length, Embraer brochure."
+  },
+  "A29B": {
+    "metres": 11.38,
+    "axis": "longest",
+    "note": "A-29 reference length, Embraer brochure."
+  },
+  "JET": {
+    "metres": 15.5,
+    "axis": "longest",
+    "note": "Fictional FQ-44 Fury; nominal fighter length, not a measured real aircraft."
+  },
+  "TRANSPORT_HELI": {
+    "metres": 19.76,
+    "axis": "longest",
+    "note": "Approximate Black Hawk class helicopter overall length including rotors."
+  },
+  "HEAVY_LIFT_HELI": {
+    "metres": 25.8,
+    "axis": "longest",
+    "note": "Fictional wingtip rotor aircraft; nominal rotor-to-rotor span."
+  },
+  "ATTACK_HELI": {
+    "metres": 25.8,
+    "axis": "longest",
+    "note": "Fictional wingtip rotor aircraft; nominal rotor-to-rotor span."
+  },
+  "CARGO_PLANE": {
+    "metres": 53,
+    "axis": "longest",
+    "note": "C-17 reference length, USAF fact sheet."
+  },
+  "RECON_UAV": {
+    "metres": 20.1,
+    "axis": "longest",
+    "note": "Approximate medium-altitude reconnaissance UAV wingspan."
+  },
+  "PATROL_BOAT": {
+    "metres": 25,
+    "axis": "longest",
+    "note": "Custom patrol craft, nominal overall length."
+  },
+  "LANDING_CRAFT": {
+    "metres": 40,
+    "axis": "longest",
+    "note": "Custom landing craft, nominal overall length."
+  },
+  "FRIGATE": {
+    "metres": 173,
+    "axis": "longest",
+    "note": "Missile cruiser; approximate Ticonderoga class overall length."
+  },
+  "AIRCRAFT_CARRIER": {
+    "metres": 332.85,
+    "axis": "longest",
+    "note": "Nimitz class reference overall length, US Navy."
+  },
+  "MOB": {
+    "metres": 240,
+    "axis": "longest",
+    "note": "Custom operating base; nominal compound extent."
+  },
+  "AIRFIELD": {
+    "metres": 1200,
+    "axis": "longest",
+    "note": "Custom compact airfield; nominal compound extent."
+  }
+}
+

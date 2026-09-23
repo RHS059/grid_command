@@ -2,6 +2,8 @@ extends Control
 class_name NativeWorkspaces
 
 signal closed
+const Dimensions = preload("res://scripts/model_dimensions.gd")
+const CameraMotion = preload("res://scripts/preview_camera_motion.gd")
 
 const MODEL_NAMES := {
   "PATROL_BOAT":"Patrol boat", "FRIGATE":"Missile cruiser", "AIRCRAFT_CARRIER":"Aircraft carrier", "LANDING_CRAFT":"Landing craft", "AMPHIBIOUS_APC":"Amphibious APC",
@@ -37,6 +39,16 @@ var pitch := 0.32
 var distance := 5.0
 var auto_rotate := false
 var drag := false
+var panning := false
+var camera_target := Vector3.ZERO
+var model_radius := 1.0
+var model_height := 1.2
+var model_span := 3.0
+var frame_distance := 5.0
+var move_keys: Dictionary = {}
+var floor_node: MeshInstance3D
+var preview_grid: MeshInstance3D
+var scale_label: Label
 var team := 0
 var material_overlay: ShaderMaterial
 var animation_progress: HSlider
@@ -146,7 +158,7 @@ func _build_models() -> void:
 	light.light_energy = 1.2
 	light.shadow_enabled = true
 	scene.add_child(light)
-	var floor_node := MeshInstance3D.new()
+	floor_node = MeshInstance3D.new()
 	var floor_mesh := PlaneMesh.new()
 	floor_mesh.size = Vector2(100,100)
 	floor_node.mesh = floor_mesh
@@ -164,6 +176,7 @@ func _build_models() -> void:
 		grid_mesh.surface_add_vertex(Vector3(20,0.002,line))
 	grid_mesh.surface_end()
 	var grid := MeshInstance3D.new()
+	preview_grid = grid
 	grid.mesh = grid_mesh
 	var grid_mat := StandardMaterial3D.new()
 	grid_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -209,14 +222,14 @@ func _build_models() -> void:
 	_label(livery,"Livery")
 	_button(livery,"BLU",func(): _set_team(0))
 	_button(livery,"RED",func(): _set_team(1))
-	var controls := _panel(model_page,Rect2(-304,-378,288,362),true)
+	var controls := _panel(model_page,Rect2(-304,-410,288,394),true)
 	controls.get_parent().set_anchor(SIDE_TOP,1.0,true)
 	controls.get_parent().set_anchor(SIDE_BOTTOM,1.0,true)
 	var rotate := CheckBox.new()
 	rotate.text = "Auto-rotate"
 	rotate.toggled.connect(func(value: bool): auto_rotate = value)
 	controls.add_child(rotate)
-	_button(controls,"Reset view",func(): yaw = 0.6; pitch = 0.32; distance = 5.0; _update_camera())
+	_button(controls,"Reset view",_reset_view)
 	fire_cannon_button = _button(controls,"Fire cannon",_fire_preview_cannon)
 	_label(controls,"Animation")
 	clips = OptionButton.new()
@@ -234,7 +247,8 @@ func _build_models() -> void:
 	animation_progress.value_changed.connect(func(value: float):
 		if not updating_progress and is_instance_valid(animation): animation.seek(value,true))
 	controls.add_child(animation_progress)
-	_label(controls,"Drag to orbit · Wheel to zoom",11)
+	scale_label = _label(controls,"",11)
+	_label(controls,"WASD move · Shift faster\nDrag orbit · Right-drag pan · Wheel zoom",11)
 	_load_model("CANNON_APC")
 
 func _category(id: String) -> String:
@@ -296,8 +310,10 @@ func _load_model(id: String) -> void:
 	if MODEL_FILES.get(id,"") in Z_UP_MODEL_FILES: model.rotation_degrees.x = -90
 	if MODEL_FILES.get(id,"") == "soldier": _filter_gear(model,id)
 	var bounds := _bounds(model,Transform3D.IDENTITY)
-	var span := maxf(0.001,maxf(bounds.size.x,maxf(bounds.size.y,bounds.size.z)))
-	var factor := 3.0 / span
+	var factor := Dimensions.scale_factor(id,bounds.size)
+	model_span = maxf(0.001,maxf(bounds.size.x,maxf(bounds.size.y,bounds.size.z))*factor)
+	model_radius = maxf(0.1,bounds.size.length()*factor*0.5)
+	model_height = bounds.size.y*factor
 	model_root.transform = Transform3D.IDENTITY
 	model_root.scale = Vector3.ONE*factor
 	model_root.position = Vector3(-bounds.get_center().x,-bounds.position.y,-bounds.get_center().z)*factor
@@ -305,7 +321,7 @@ func _load_model(id: String) -> void:
 	preview_motor_base = model_root.transform
 	model_title.text = MODEL_NAMES[id]
 	preload("res://scripts/personnel_animations.gd").install(model,str(MODEL_FILES.get(id,id)))
-	preload("res://scripts/personnel_animations.gd").install(model,str(MODEL_FILES.get(id,id)))
+	preload("res://scripts/personnel_equipment.gd").attach(model,id)
 	_find_animation(model)
 	if animation:
 		for clip in animation.get_animation_list():
@@ -317,6 +333,33 @@ func _load_model(id: String) -> void:
 		preview_tank_fire = preload("res://scripts/tank_fire_effects.gd").new()
 		model_root.add_child(preview_tank_fire)
 		preview_tank_fire.setup(model, model)
+	_update_scale_grid()
+	_reset_view()
+
+func _update_scale_grid() -> void:
+	var spacing := Dimensions.grid_spacing(model_span)
+	var extent := maxf(20.0,ceil(model_span*2.0/spacing)*spacing)
+	var mesh := ImmediateMesh.new()
+	mesh.surface_begin(Mesh.PRIMITIVE_LINES)
+	for line in range(-int(extent/spacing),int(extent/spacing)+1):
+		var coordinate := line*spacing
+		mesh.surface_add_vertex(Vector3(coordinate,0.002,-extent))
+		mesh.surface_add_vertex(Vector3(coordinate,0.002,extent))
+		mesh.surface_add_vertex(Vector3(-extent,0.002,coordinate))
+		mesh.surface_add_vertex(Vector3(extent,0.002,coordinate))
+	mesh.surface_end()
+	preview_grid.mesh = mesh
+	floor_node.mesh.size = Vector2.ONE*extent*4.0
+	scale_label.text = Dimensions.label(selected_model)+" · Grid: "+str(spacing)+" m"
+
+func _reset_view() -> void:
+	yaw = 0.6; pitch = 0.32
+	camera_target = Vector3(0,model_height*0.5,0)
+	var aspect := maxf(0.1,float(viewport.size.x)/maxf(1.0,float(viewport.size.y)))
+	var half_fov := atan(tan(deg_to_rad(camera.fov*0.5))*minf(1.0,aspect))
+	frame_distance = model_radius/sin(half_fov)*1.2
+	distance = frame_distance
+	move_keys.clear(); drag = false; panning = false
 	_update_camera()
 
 func _fire_preview_cannon() -> void:
@@ -362,25 +405,51 @@ func _apply_team(node: Node) -> void:
 
 func _orbit_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_LEFT: drag = event.pressed
-		if event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_UP: distance = maxf(1.2,distance*0.9)
-		if event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_DOWN: distance = minf(20,distance*1.1)
+		if event.button_index in [MOUSE_BUTTON_LEFT,MOUSE_BUTTON_MIDDLE,MOUSE_BUTTON_RIGHT]:
+			drag = event.pressed; panning = event.button_index != MOUSE_BUTTON_LEFT or event.shift_pressed
+			if event.pressed:
+				var owner := get_viewport().gui_get_focus_owner()
+				if owner != null: owner.release_focus()
+		if event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_UP: distance = maxf(model_radius*0.3,distance*0.9)
+		if event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_DOWN: distance = minf(frame_distance*10.0,distance*1.1)
 	if event is InputEventMouseMotion and drag:
-		yaw -= event.relative.x*0.008
-		pitch = clampf(pitch+event.relative.y*0.008,-0.1,1.45)
+		if panning: camera_target += CameraMotion.pan(event.relative,camera.basis,distance,camera.fov,float(viewport.size.y))
+		else:
+			yaw -= event.relative.x*0.008
+			pitch = clampf(pitch+event.relative.y*0.008,-0.1,1.45)
 	_update_camera()
 
 func _update_camera() -> void:
-	var target := Vector3(0,0.6,0)
-	camera.position = target+Vector3(sin(yaw)*cos(pitch),sin(pitch),cos(yaw)*cos(pitch))*distance
-	camera.look_at(target)
+	camera.near = maxf(0.015,model_radius/100.0)
+	camera.far = maxf(200.0,distance+model_radius*50.0)
+	camera.position = camera_target+Vector3(sin(yaw)*cos(pitch),sin(pitch),cos(yaw)*cos(pitch))*distance
+	camera.look_at(camera_target)
+
+func _input(event: InputEvent) -> void:
+	if not visible or not model_page.visible: return
+	if event is InputEventKey and CameraMotion.is_move_key(event.physical_keycode):
+		if event.pressed and not event.ctrl_pressed and not event.alt_pressed and not event.meta_pressed and get_viewport().gui_get_focus_owner() == null:
+			move_keys[event.physical_keycode] = true
+			get_viewport().set_input_as_handled()
+		elif not event.pressed: move_keys.erase(event.physical_keycode)
+	if event is InputEventMouseButton and not event.pressed and event.button_index in [MOUSE_BUTTON_LEFT,MOUSE_BUTTON_MIDDLE,MOUSE_BUTTON_RIGHT]: drag = false
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		move_keys.clear(); drag = false
 
 func _process(delta: float) -> void:
 	if not visible: return
+	if model_page.visible:
+		if get_viewport().gui_get_focus_owner() != null: move_keys.clear()
+		var motion := CameraMotion.movement(move_keys,camera.basis,delta,distance)
+		if motion.length_squared() > 0:
+			camera_target += motion
+			_update_camera()
 	if model_page.visible and preview_motor != null:
 		var running := not is_instance_valid(animation) or animation.is_playing()
 		var driving := is_instance_valid(animation) and "drive" in animation.current_animation.to_lower()
-		model_root.transform = preview_motor.sample(selected_model,delta if running else 0.0,true,driving,true,3.0)*preview_motor_base
+		model_root.transform = preview_motor.sample(selected_model,delta if running else 0.0,true,driving,true,model_span)*preview_motor_base
 	if model_page.visible and is_instance_valid(preview_tank_fire) and is_instance_valid(animation):
 		var clip := animation.current_animation
 		var clip_time := animation.current_animation_position
@@ -412,6 +481,7 @@ func show_models() -> void:
 	player.stop()
 
 func show_sfx() -> void:
+	move_keys.clear(); drag = false
 	show()
 	model_page.hide()
 	sfx_page.show()
@@ -422,7 +492,7 @@ func hide_workspace_for_switch() -> void:
 	hide()
 	viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	player.stop()
-	drag = false
+	drag = false; panning = false; move_keys.clear()
 
 func hide_workspace() -> void:
 	hide_workspace_for_switch()

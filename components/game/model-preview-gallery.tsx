@@ -16,6 +16,7 @@ import { isAir, isVehicle, type Role, type Side } from '@/lib/game/types'
 import { MODEL_CATALOG, MODEL_NAMES, modelCategory, type ModelId } from '@/lib/game/model-catalog'
 import { createHemtt, isHemttVariant } from '@/lib/game/hemtt-model'
 import { ModelViewport } from './model-viewport'
+import { MODEL_DIMENSIONS, modelScale, modelDimensionLabel, visibleModelBounds } from '@/lib/game/model-dimensions'
 import styles from './model-preview-gallery.module.css'
 
 /** All cards share one scene and GPU context. DOM cards provide hit targets and labels. */
@@ -58,7 +59,10 @@ function GalleryStage({ side, paused, onSelect }: { side: Side; paused: boolean;
         }
       } else batch = new SoldierBatch(content, side, material)
       if (object) { if (id === 'TROOP_TRUCK') addCarrierOccupants(object, side, true); content.add(object) }
-      const bounds = object ? new T.Box3().setFromObject(object) : new T.Box3(new T.Vector3(-.7, -.7, 0), new T.Vector3(.7, .7, 2.1))
+      const sourceBounds = object ? visibleModelBounds(object) : new T.Box3(new T.Vector3(-.7, -.7, 0), new T.Vector3(.7, .7, 1.7))
+      const factor = modelScale(id, sourceBounds.getSize(new T.Vector3()))
+      content.scale.setScalar(factor)
+      const bounds = new T.Box3(sourceBounds.min.clone().multiplyScalar(factor), sourceBounds.max.clone().multiplyScalar(factor))
       const center = bounds.getCenter(new T.Vector3()), radius = Math.max(.01, bounds.getSize(new T.Vector3()).length() / 2)
       content.position.copy(center).multiplyScalar(-1)
       const motorRoot = new T.Group(), motor = new EngineBoil(role,`gallery:${id}`)
@@ -96,6 +100,7 @@ function GalleryStage({ side, paused, onSelect }: { side: Side; paused: boolean;
         item.motorRoot.position.set(0,0,0);item.motorRoot.rotation.set(0,0,0)
         applyEngineBoil(item.motorRoot,item.motor.sample(motorTime,true,false,true,item.radius*2))
         if (item.batch && item.id !== 'MOB' && item.id !== 'AIRFIELD') {
+          item.content.scale.setScalar(MODEL_DIMENSIONS[item.id].metres / (item.batch.asset === 'ready' ? 1.7 : 2.1))
           item.batch.begin(); item.batch.pose({ id: `gallery:${item.id}`, x: 0, y: 0, status: 'active', stance: 'stand', action: 'idle', heading: 0, aim: 0, since: 0, shotAt: -10 }, item.role, 0, 0, true); item.batch.end(true)
         }
       }
@@ -107,7 +112,7 @@ function GalleryStage({ side, paused, onSelect }: { side: Side; paused: boolean;
   }, [side])
   return <div className={styles.stage}>
     <div ref={host} className={styles.canvas} />
-    <div ref={scroller} className={styles.scroll}><div className={styles.grid}>{MODEL_CATALOG.map(id => <button ref={node => { if (node) cards.current.set(id, node); else cards.current.delete(id) }} key={id} type="button" className={styles.tile} onClick={() => onSelect(id)} aria-label={`Inspect ${MODEL_NAMES[id]}`}><span className={styles.caption}><strong>{MODEL_NAMES[id]}</strong><small>{modelCategory(id)} · {id.replaceAll('_', ' ')}</small></span></button>)}</div></div>
+    <div ref={scroller} className={styles.scroll}><div className={styles.grid}>{MODEL_CATALOG.map(id => <button ref={node => { if (node) cards.current.set(id, node); else cards.current.delete(id) }} key={id} type="button" className={styles.tile} onClick={() => onSelect(id)} aria-label={`Inspect ${MODEL_NAMES[id]}`}><span className={styles.caption}><strong>{MODEL_NAMES[id]}</strong><small>{modelCategory(id)} · {modelDimensionLabel(id)}</small></span></button>)}</div></div>
     {error && <p className={styles.error} role="alert">{error}</p>}
   </div>
 }
@@ -121,6 +126,7 @@ export function ModelPreviewGallery() {
   useEffect(() => { if (!selected && lastSelected.current) { const button = document.querySelector<HTMLButtonElement>(`[aria-label="Inspect ${MODEL_NAMES[lastSelected.current]}"]`); button?.focus({ preventScroll: true }); button?.scrollIntoView({ block: 'nearest' }) } }, [selected])
   return <main className={styles.root}>
     <header className={styles.header}><Link href="/" className={styles.back}><ArrowLeft size={16} /> Battlefield</Link><div><h1><Grid2X2 size={18} /> Model Preview Gallery</h1><p>{selected ? MODEL_NAMES[selected] : `${MODEL_CATALOG.length} production models · Select a model to inspect`}</p></div><div className={styles.actions}><div role="group" aria-label="Gallery livery">{(['BLU', 'RED'] as const).map(value => <button key={value} aria-pressed={side === value} onClick={() => setSide(value)}>{value} FORCE</button>)}</div>{!selected && <button onClick={() => setPaused(value => !value)} aria-label={paused ? 'Resume turntables' : 'Pause turntables'}>{paused ? <Play size={16} /> : <Pause size={16} />}</button>}<Link href="/model_preview">Model Preview</Link></div></header>
-    {selected ? <section className={styles.focus} aria-label={`${MODEL_NAMES[selected]} inspection`}><ModelViewport model={selected} side={side} active animate rotate={false} action="idle" stance="stand" condition="active" reset={0} /><button autoFocus className={styles.close} onClick={close} aria-label="Return to model grid"><X size={22} /></button><p className={styles.hint}>Drag to rotate · Scroll to zoom · Esc to return</p></section> : <GalleryStage side={side} paused={paused} onSelect={select} />}
+    {selected ? <section className={styles.focus} aria-label={`${MODEL_NAMES[selected]} inspection`}><ModelViewport model={selected} side={side} active animate rotate={false} action="idle" stance="stand" condition="active" reset={0} /><button autoFocus className={styles.close} onClick={close} aria-label="Return to model grid" title="Return to model grid (Escape)"><X size={22} /></button></section> : <GalleryStage side={side} paused={paused} onSelect={select} />}
   </main>
 }
+
