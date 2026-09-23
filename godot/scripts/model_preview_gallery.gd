@@ -1,7 +1,13 @@
 extends Control
 ## One renderer, shared production models, and a scrollable grid of turntables.
 
-const Catalog = preload("res://scripts/native_workspaces.gd")
+const MODEL_NAMES := {
+  "PATROL_BOAT":"Patrol boat", "FRIGATE":"Missile cruiser", "AIRCRAFT_CARRIER":"Aircraft carrier", "LANDING_CRAFT":"Landing craft", "AMPHIBIOUS_APC":"Amphibious APC",
+  "FORKLIFT":"Supply forklift", "CARGO_PLANE":"Tactical cargo plane", "UAV_JAMMER":"UAV jammer", "AA_TEAM":"Anti-air launcher team", "TRANSPORT_HELI":"Troop transport helicopter", "HEAVY_LIFT_HELI":"Heavy-lift helicopter", "TROOP_TRUCK":"Light troop carrier",
+  "RIFLE":"Rifle squad", "SCOUT":"Scout team", "MG":"Machine gun team", "AT":"Anti-tank team", "MORTAR":"Mortar team", "ENGINEER":"Combat engineer", "MEDIC":"Combat medic", "LOGISTICS":"Logistics team", "TANK":"Main battle tank", "PILOT":"Pilot", "COMMAND":"Command officer", "TRUCK":"Supply truck", "FUEL_TRUCK":"Fuel HEMTT", "TROOP_HEMTT":"Troop HEMTT", "MEDICAL_HEMTT":"Medical HEMTT", "REPAIR_HEMTT":"Repair HEMTT", "FOB_HEMTT":"FOB HEMTT", "RECON_UAV":"Reconnaissance UAV", "APC":"Armored personnel carrier", "CANNON_APC":"Cannon APC", "IFV":"Infantry fighting vehicle", "CAS_FIGHTER":"CAS fighter", "JET":"FQ-44 Fury strike fighter", "ATTACK_HELI":"Attack helicopter", "MOB":"Main operating base", "AIRFIELD":"Airfield compound",}
+main
+const MODEL_FILES := {"COMMAND":"soldier","RIFLE":"soldier","SCOUT":"soldier","MG":"soldier","AT":"soldier","MORTAR":"soldier","ENGINEER":"soldier","MEDIC":"soldier","LOGISTICS":"soldier","PILOT":"soldier","AA_TEAM":"soldier","TANK":"tank","APC":"apc","CANNON_APC":"cannon_apc","IFV":"ifv","AMPHIBIOUS_APC":"amphibious_apc","TROOP_TRUCK":"troop_transport","TRUCK":"truck","CAS_FIGHTER":"cas","JET":"fighter","ATTACK_HELI":"vtol_attack","TRANSPORT_HELI":"transport_heli","HEAVY_LIFT_HELI":"vtol_cargo","CARGO_PLANE":"cargo_plane","RECON_UAV":"recon_uav","AIRCRAFT_CARRIER":"aircraft_carrier","FRIGATE":"missile_cruiser","PATROL_BOAT":"patrol_boat","LANDING_CRAFT":"landing_craft","FORKLIFT":"forklift","UAV_JAMMER":"uav_jammer","MOB":"mob","AIRFIELD":"airfield"}
+const Z_UP_MODEL_FILES := ["fighter","troop_transport","vtol_attack","vtol_cargo"]
 const Factory = preload("res://scripts/browser_model_factory.gd")
 const EXTRA_NAMES := {"FUEL_TRUCK":"HEMTT fuel tanker", "TROOP_HEMTT":"HEMTT troop transport", "MEDICAL_HEMTT":"HEMTT medical", "REPAIR_HEMTT":"HEMTT recovery", "FOB_HEMTT":"HEMTT mobile base"}
 var world
@@ -114,7 +120,7 @@ func hide_gallery() -> void:
 	viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 
 func _build_catalog() -> void:
-	var names: Dictionary = Catalog.MODEL_NAMES.duplicate()
+	var names: Dictionary = MODEL_NAMES.duplicate()
 	names.merge(EXTRA_NAMES)
 	for id in names:
 		_add_entry(id,names[id],false)
@@ -151,7 +157,7 @@ func _populate(entry: Dictionary) -> void:
 	for child in pivot.get_children():
 		pivot.remove_child(child); child.queue_free()
 	var model: Node3D = Factory.create(id,team)
-	var file: String = Catalog.MODEL_FILES.get(id,id.to_lower())
+	var file: String = MODEL_FILES.get(id,id.to_lower())
 	if model == null:
 		var path := "res://assets/models/"+file+".glb"
 		if ResourceLoader.exists(path):
@@ -172,7 +178,7 @@ func _populate(entry: Dictionary) -> void:
 	preload("res://scripts/ground_vehicle_material.gd").apply(model,team,file)
 	preload("res://scripts/air_naval_material.gd").apply(model,file,team)
 	preload("res://scripts/naval_material.gd").apply(model,file,team)
-	if file in Catalog.Z_UP_MODEL_FILES: model.rotation_degrees.x = -90
+	if file in Z_UP_MODEL_FILES: model.rotation_degrees.x = -90
 	if file == "soldier": _filter_gear(model,id)
 	if entry.deployed: preload("res://scripts/browser_support_models.gd").set_deployed(model,true)
 	if id not in ["MOB","AIRFIELD"] and DisplayServer.get_name() != "headless":
