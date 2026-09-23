@@ -226,6 +226,9 @@ func _start_inline_update() -> void:
 		return
 	update_applied_acknowledged = false
 	UpdateService.set_meta("update_menu_open",true)
+	if UpdateService.phase == "available":
+		UpdateService.apply_update()
+		return
 	await UpdateService.check_for_updates()
 	if UpdateService.phase == "available": UpdateService.apply_update()
 
@@ -234,6 +237,7 @@ func _refresh_inline_update(delta: float) -> void:
 	var phase: String = UpdateService.phase
 	var caption := "Check for updates"
 	match phase:
+		"available": caption = "Download update"
 		"checking": caption = "Checking for Updates"
 		"downloading": caption = "Downloading Update %d%%" % roundi(clampf(float(UpdateService.progress),0.0,1.0)*100.0)
 		"applying": caption = "Applying Update"

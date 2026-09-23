@@ -102,6 +102,9 @@ func _ready() -> void:
 		restore_session_state(snapshot)
 	if "--smoke-test" in OS.get_cmdline_user_args() and not UpdateService.smoke_finished:
 		_run_smoke_test.call_deferred()
+	if not "--smoke-test" in OS.get_cmdline_user_args():
+		# Let the UI finish initializing before starting the asynchronous check.
+		UpdateService.check_on_startup.call_deferred()
 
 func _setup_geography() -> void:
 	geography = GeographyScript.new()

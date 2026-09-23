@@ -20,7 +20,7 @@ const PUBLIC_CA_BUNDLE := "res://data/certificates/mozilla-ca.pem"
 var current_version := "0.1.0"
 var base_version := "0.1.0"
 var phase := "idle"
-var status_text := "Updates are checked only when you select the button."
+var status_text := "Updates are checked when the game starts."
 var manifest: Dictionary = {}
 var pending_patches: Array[Dictionary] = []
 var installed_patches: Array[Dictionary] = []
@@ -34,6 +34,7 @@ var staged_native_version := ""
 var _download_base := 0.0
 var _download_span := 1.0
 var _last_download_percent := -1
+var _check_started := false
 
 func _init() -> void:
 	base_version = str(ProjectSettings.get_setting("application/config/version", "0.1.0"))
@@ -50,9 +51,17 @@ func _status(next_phase: String, text: String) -> void:
 	status_text = text
 	status_changed.emit()
 
-func check_for_updates() -> void:
+func check_on_startup() -> void:
+	# The autoload survives scene replacements. An early manual check also counts
+	# as this launch's check, even if it finishes before the deferred startup call.
+	if _check_started or is_busy() or phase == "restart_required":
+		return
+	await check_for_updates(false)
+
+func check_for_updates(download_native: bool = true) -> void:
 	if is_busy():
 		return
+	_check_started = true
 	progress = 0.0
 	_status("checking", "Checking the public update channel...")
 	var channel := str(ProjectSettings.get_setting("updates/channel_url", DEFAULT_CHANNEL))
@@ -78,22 +87,25 @@ func check_for_updates() -> void:
 	var engine := Engine.get_version_info()
 	var engine_version := "%d.%d.%d" % [engine["major"], engine["minor"], engine["patch"]]
 	if manifest.get("requires_restart", false) or compare_versions(engine_version, str(manifest.get("min_runtime_version", "4.3.0"))) < 0:
-		await _stage_native_update()
+		await _offer_native_update(download_native)
 		return
 	pending_patches = patch_chain(manifest, current_version)
 	if pending_patches.is_empty():
-		await _stage_native_update()
+		await _offer_native_update(download_native)
 		return
 	# Autoloads and native settings cannot safely replace a running coordinator.
 	for patch in pending_patches:
 		for file_path in _patch_files(patch):
 			if str(file_path) in ["res://scripts/update_service.gd", "res://scripts/update_service.gdc", "res://project.godot", "res://project.binary"] or str(file_path).ends_with(".gdextension"):
-				await _stage_native_update()
+				await _offer_native_update(download_native)
 				return
 	_status("available", "Version %s is ready. Download %d changed-file patch%s and keep this mission." % [manifest["version"], pending_patches.size(), "" if pending_patches.size() == 1 else "es"])
 
 func apply_update() -> void:
-	if phase != "available" or pending_patches.is_empty():
+	if phase != "available":
+		return
+	if pending_patches.is_empty():
+		await _stage_native_update()
 		return
 	if DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(CACHE_DIR)) != OK:
 		_status("error", "Cannot write the update folder. No files were changed.")
@@ -189,6 +201,14 @@ func take_session_snapshot() -> Dictionary:
 func open_native_download() -> void:
 	if phase == "restart_required":
 		OS.shell_open(native_download_url)
+
+func _offer_native_update(download_native: bool) -> void:
+	# Startup discovers updates without downloading or interrupting the mission.
+	pending_patches.clear()
+	if download_native:
+		await _stage_native_update()
+	else:
+		_status("available", "Version %s is available. Select Download update to prepare it; a restart will be needed." % manifest["version"])
 
 func _stage_native_update() -> void:
 	staged_executable = ""
