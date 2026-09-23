@@ -123,6 +123,7 @@ func _build_catalog() -> void:
 	names.merge(EXTRA_NAMES)
 	for id in names:
 		_add_entry(id,names[id],false)
+		if id == "CARGO_PLANE": _add_entry(id,names[id]+" · cargo doors open",true)
 		if id in ["MEDICAL_HEMTT","REPAIR_HEMTT","FOB_HEMTT"]:
 			_add_entry(id,names[id]+" · deployed",true)
 	built = true
@@ -179,7 +180,8 @@ func _populate(entry: Dictionary) -> void:
 	preload("res://scripts/naval_material.gd").apply(model,file,team)
 	if file in Z_UP_MODEL_FILES: model.rotation_degrees.x = -90
 	if file == "soldier": _filter_gear(model,id)
-	if entry.deployed: preload("res://scripts/browser_support_models.gd").set_deployed(model,true)
+	if entry.deployed and id == "CARGO_PLANE": preload("res://scripts/galaxy_b_model.gd").set_cargo_doors(model,1.0)
+	elif entry.deployed: preload("res://scripts/browser_support_models.gd").set_deployed(model,true)
 	if id not in ["MOB","AIRFIELD"] and DisplayServer.get_name() != "headless":
 		var rim := ShaderMaterial.new(); rim.shader = preload("res://shaders/unit_fresnel.gdshader")
 		rim.set_shader_parameter("rim_color",Color.WHITE); rim.set_shader_parameter("strength",0.5)

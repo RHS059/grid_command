@@ -88,7 +88,10 @@ func _process(delta: float) -> void:
 		motor_root.transform = motor_boil.sample(role,motor_delta,preload("res://scripts/engine_boil.gd").powered(core_record),bool(core_record.get("moving",false)),is_alive,float(stats["size"]))
 	if is_instance_valid(vehicle_greebles):
 		vehicle_greebles.set_activity(is_alive and not route.is_empty(), delta)
-	if kind == "transport_heli" and is_instance_valid(source_model):
+	# Procedural aircraft name the script that spins their rotors or propeller.
+	if is_instance_valid(source_model) and source_model.has_meta("animate_with"):
+		if is_alive: load(str(source_model.get_meta("animate_with"))).animate(source_model, delta)
+	elif kind == "transport_heli" and is_instance_valid(source_model):
 		preload("res://scripts/browser_aircraft_models.gd").animate(source_model, delta, is_alive)
 	# Simulation records advance at 20 Hz. Retain the previous rendered transform
 	# and consume that offset during the next fixed interval, matching the

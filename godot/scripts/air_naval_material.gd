@@ -5,7 +5,8 @@ extends RefCounted
 const KINDS := ["fighter", "cas", "recon_uav", "aircraft_carrier", "missile_cruiser", "patrol_boat", "landing_craft", "transport_heli", "cargo_plane"]
 
 static func apply(model: Node, kind: String, team: int = 0) -> void:
-	if kind not in KINDS:
+	# Procedural airframes (A-29B, Galaxy-B, Black Hawk) carry their own palette paint.
+	if kind not in KINDS or model.has_meta("procedural_paint"):
 		return
 	var aircraft_texture: Texture2D
 	if kind in ["fighter", "cas", "recon_uav"]:

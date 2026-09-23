@@ -18,7 +18,7 @@ func _render() -> void:
 	var camera := Camera3D.new(); scene.add_child(camera); camera.current = true
 	DirAccess.make_dir_recursive_absolute("res://build/a29b-review")
 	for team in 2:
-		var model: Node3D = preload("res://scripts/browser_model_factory.gd").create("A29B", team)
+		var model: Node3D = preload("res://scripts/browser_model_factory.gd").create("CAS_FIGHTER", team)
 		scene.add_child(model)
 		for view in [["front_left", Vector3(-9, 4, -9), Vector3(0, 1.4, -.5), 38.0], ["rear_right", Vector3(9, 5, 10), Vector3(0, 1.5, 0), 38.0], ["side", Vector3(-15, 1.8, 0), Vector3(0, 1.8, 0), 38.0], ["top", Vector3(0, 20, 0.01), Vector3(0, 1, 0), 40.0], ["cockpit", Vector3(-4, 3.6, -4.2), Vector3(0, 2.1, -1.8), 35.0], ["far", Vector3(-30, 24, -26), Vector3(0, 1.5, 0), 30.0]]:
 			camera.position = view[1]; camera.fov = view[3]; camera.look_at(view[2])

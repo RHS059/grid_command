@@ -240,7 +240,7 @@ func _build_models() -> void:
 func _category(id: String) -> String:
 	if MODEL_FILES.get(id,"") == "soldier": return "Personnel"
 	if id in ["MOB","AIRFIELD"]: return "Structures"
-	if id in ["JET","CAS_FIGHTER","A29B","ATTACK_HELI","TRANSPORT_HELI","HEAVY_LIFT_HELI","RECON_UAV","CARGO_PLANE"]: return "Aircraft"
+	if id in ["JET","CAS_FIGHTER","ATTACK_HELI","TRANSPORT_HELI","HEAVY_LIFT_HELI","RECON_UAV","CARGO_PLANE"]: return "Aircraft"
 	return "Vehicles"
 
 func _populate_catalog(category: String) -> void:
@@ -343,7 +343,7 @@ func _find_animation(node: Node) -> void:
 func _set_team(value: int) -> void:
 	var changed := team != value
 	team = value
-	if changed and selected_model in ["TRUCK","FUEL_TRUCK","TROOP_HEMTT","MEDICAL_HEMTT","REPAIR_HEMTT","FOB_HEMTT","FORKLIFT","UAV_JAMMER","CARGO_PLANE","TRANSPORT_HELI","IFV","MOB","AIRFIELD"]:
+	if changed and selected_model in ["TRUCK","FUEL_TRUCK","TROOP_HEMTT","MEDICAL_HEMTT","REPAIR_HEMTT","FOB_HEMTT","FORKLIFT","AMPHIBIOUS_APC","CAS_FIGHTER","UAV_JAMMER","CARGO_PLANE","TRANSPORT_HELI","IFV","MOB","AIRFIELD"]:
 		_load_model(selected_model)
 		return
 	material_overlay = ShaderMaterial.new()
@@ -389,10 +389,9 @@ func _process(delta: float) -> void:
 	if is_instance_valid(preview_greebles):
 		var driving := is_instance_valid(animation) and animation.is_playing() and "drive" in animation.current_animation.to_lower()
 		preview_greebles.set_activity(driving, delta)
-	if model_page.visible and selected_model == "A29B" and is_instance_valid(model):
-		preload("res://scripts/a29b_model.gd").animate(model, delta)
-	if model_page.visible and selected_model == "TRANSPORT_HELI" and is_instance_valid(model):
-		preload("res://scripts/browser_aircraft_models.gd").animate(model, delta)
+	# Procedural aircraft name the script that spins their rotors or propeller.
+	if model_page.visible and is_instance_valid(model) and model.has_meta("animate_with"):
+		load(str(model.get_meta("animate_with"))).animate(model, delta)
 	if model_page.visible and auto_rotate:
 		yaw += delta*0.25
 		_update_camera()
