@@ -29,7 +29,7 @@ func _render() -> void:
 	var camera := Camera3D.new(); scene.add_child(camera); camera.current = true; camera.far = 2000.0
 	DirAccess.make_dir_recursive_absolute("res://build/aircraft-b-review")
 	var roles := OS.get_cmdline_user_args()
-	if roles.is_empty(): roles = PackedStringArray(["A29B", "GALAXY_B", "SUPPORT_HELI_B"])
+	if roles.is_empty(): roles = PackedStringArray(["CAS_FIGHTER", "CARGO_PLANE", "TRANSPORT_HELI"])
 	for role in roles:
 		for team in 2:
 			var model: Node3D = preload("res://scripts/browser_model_factory.gd").create(role, team)

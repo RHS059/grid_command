@@ -8,8 +8,6 @@ const MODEL_NAMES := {
 const MODEL_FILES := {"COMMAND":"soldier","RIFLE":"soldier","SCOUT":"soldier","MG":"soldier","AT":"soldier","MORTAR":"soldier","ENGINEER":"soldier","MEDIC":"soldier","LOGISTICS":"soldier","PILOT":"soldier","AA_TEAM":"soldier","TANK":"tank","APC":"apc","CANNON_APC":"cannon_apc","IFV":"ifv","AMPHIBIOUS_APC":"amphibious_apc","TROOP_TRUCK":"troop_transport","TRUCK":"truck","CAS_FIGHTER":"cas","JET":"fighter","ATTACK_HELI":"vtol_attack","TRANSPORT_HELI":"transport_heli","HEAVY_LIFT_HELI":"vtol_cargo","CARGO_PLANE":"cargo_plane","RECON_UAV":"recon_uav","AIRCRAFT_CARRIER":"aircraft_carrier","FRIGATE":"missile_cruiser","PATROL_BOAT":"patrol_boat","LANDING_CRAFT":"landing_craft","FORKLIFT":"forklift","UAV_JAMMER":"uav_jammer","MOB":"mob","AIRFIELD":"airfield"}
 const Z_UP_MODEL_FILES := ["fighter","troop_transport","vtol_attack","vtol_cargo"]
 const Factory = preload("res://scripts/browser_model_factory.gd")
-## B-series aircraft are separate variants listed right after their base model.
-const VARIANTS := {"CAS_FIGHTER":{"A29B":"A-29B Super Tucano"}, "CARGO_PLANE":{"GALAXY_B":"Galaxy-B"}, "TRANSPORT_HELI":{"SUPPORT_HELI_B":"Support Helicopter B"}}
 const EXTRA_NAMES := {"FUEL_TRUCK":"HEMTT fuel tanker", "TROOP_HEMTT":"HEMTT troop transport", "MEDICAL_HEMTT":"HEMTT medical", "REPAIR_HEMTT":"HEMTT recovery", "FOB_HEMTT":"HEMTT mobile base"}
 var world
 var viewport: SubViewport
@@ -125,9 +123,7 @@ func _build_catalog() -> void:
 	names.merge(EXTRA_NAMES)
 	for id in names:
 		_add_entry(id,names[id],false)
-		for variant in VARIANTS.get(id,{}):
-			_add_entry(variant,VARIANTS[id][variant],false)
-			if variant == "GALAXY_B": _add_entry(variant,VARIANTS[id][variant]+" · cargo doors open",true)
+		if id == "CARGO_PLANE": _add_entry(id,names[id]+" · cargo doors open",true)
 		if id in ["MEDICAL_HEMTT","REPAIR_HEMTT","FOB_HEMTT"]:
 			_add_entry(id,names[id]+" · deployed",true)
 	built = true
@@ -184,7 +180,7 @@ func _populate(entry: Dictionary) -> void:
 	preload("res://scripts/naval_material.gd").apply(model,file,team)
 	if file in Z_UP_MODEL_FILES: model.rotation_degrees.x = -90
 	if file == "soldier": _filter_gear(model,id)
-	if entry.deployed and id == "GALAXY_B": preload("res://scripts/galaxy_b_model.gd").set_cargo_doors(model,1.0)
+	if entry.deployed and id == "CARGO_PLANE": preload("res://scripts/galaxy_b_model.gd").set_cargo_doors(model,1.0)
 	elif entry.deployed: preload("res://scripts/browser_support_models.gd").set_deployed(model,true)
 	if id not in ["MOB","AIRFIELD"] and DisplayServer.get_name() != "headless":
 		var rim := ShaderMaterial.new(); rim.shader = preload("res://shaders/unit_fresnel.gdshader")

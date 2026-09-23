@@ -28,6 +28,8 @@ static func create(team: int = 0) -> Node3D:
 	S.palette_team = team
 	var root := Node3D.new()
 	root.name = "support_heli_b"
+	root.set_meta("procedural_paint", true)
+	root.set_meta("animate_with", "res://scripts/support_heli_b_model.gd")
 	var body := S.material(BODY, 0.9)
 	var dark := S.material("#262c29", 0.9)
 	var metal := S.material("#565f51", 0.8, 0.15)

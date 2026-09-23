@@ -29,6 +29,7 @@ static func create(team: int = 0) -> Node3D:
 	S.palette_team = team
 	var root := Node3D.new()
 	root.name = "galaxy_b"
+	root.set_meta("procedural_paint", true)
 	var body := S.material(BODY, 0.9)
 	# Scale the painted detail to a 75 m airframe so broad variation stays broad.
 	body.set_shader_parameter("tiles_per_unit", .1)
