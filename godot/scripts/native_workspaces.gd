@@ -13,6 +13,8 @@ var world
 var viewport: SubViewport
 var scene: Node3D
 var camera: Camera3D
+var preview_motor
+var preview_motor_base := Transform3D.IDENTITY
 var model_root: Node3D
 var model: Node3D
 var preview_greebles: VehicleGreebles
@@ -296,8 +298,11 @@ func _load_model(id: String) -> void:
 	var bounds := _bounds(model,Transform3D.IDENTITY)
 	var span := maxf(0.001,maxf(bounds.size.x,maxf(bounds.size.y,bounds.size.z)))
 	var factor := 3.0 / span
+	model_root.transform = Transform3D.IDENTITY
 	model_root.scale = Vector3.ONE*factor
 	model_root.position = Vector3(-bounds.get_center().x,-bounds.position.y,-bounds.get_center().z)*factor
+	preview_motor = preload("res://scripts/engine_boil.gd").new("preview:"+id)
+	preview_motor_base = model_root.transform
 	model_title.text = MODEL_NAMES[id]
 	_find_animation(model)
 	if animation:
@@ -370,6 +375,10 @@ func _update_camera() -> void:
 
 func _process(delta: float) -> void:
 	if not visible: return
+	if model_page.visible and preview_motor != null:
+		var running := not is_instance_valid(animation) or animation.is_playing()
+		var driving := is_instance_valid(animation) and "drive" in animation.current_animation.to_lower()
+		model_root.transform = preview_motor.sample(selected_model,delta if running else 0.0,true,driving,true,3.0)*preview_motor_base
 	if model_page.visible and is_instance_valid(preview_tank_fire) and is_instance_valid(animation):
 		var clip := animation.current_animation
 		var clip_time := animation.current_animation_position

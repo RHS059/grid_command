@@ -161,7 +161,10 @@ func _populate(entry: Dictionary) -> void:
 	if model == null:
 		entry.label.text = entry.caption+"\nAsset unavailable"
 		return
-	var centered := Node3D.new(); pivot.add_child(centered); centered.add_child(model)
+	var motor_root := Node3D.new(); pivot.add_child(motor_root)
+	entry.motor_root = motor_root
+	entry.motor = preload("res://scripts/engine_boil.gd").new("gallery:"+id)
+	var centered := Node3D.new(); motor_root.add_child(centered); centered.add_child(model)
 	if id == "TANK":
 		preload("res://scripts/tank_material.gd").apply(model)
 		var stowage := preload("res://scripts/vehicle_greebles.gd").new()
@@ -275,6 +278,9 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT: dragging = false
 
 func _process(delta: float) -> void:
-	if not visible or selected >= 0: return
+	if not visible: return
 	for entry in entries:
-		if entry.pivot.visible: entry.pivot.rotation.y += delta*0.16
+		if not entry.pivot.visible: continue
+		if selected < 0: entry.pivot.rotation.y += delta*0.16
+		if entry.has("motor_root"):
+			entry.motor_root.transform = entry.motor.sample(entry.id,delta,not entry.deployed,false,true,2.5)

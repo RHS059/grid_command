@@ -1,4 +1,5 @@
 'use client'
+import { EngineBoil, applyEngineBoil } from '@/lib/game/engine-boil'
 import { useEffect, useRef, useState } from 'react'
 import * as T from '@/lib/game/scene-data'
 import { GraphicsRenderer, OrbitControls } from '@/lib/game/graphics-preview'
@@ -42,7 +43,8 @@ export function ModelViewport(props: Props) {
       }
     }
     else batch = new SoldierBatch(scene, props.side, material)
-    if (object) { if(id==='TROOP_TRUCK')addCarrierOccupants(object,props.side,true);scene.add(object) }
+    const motorRoot = new T.Group(), motor = new EngineBoil(id,`preview:${id}`);scene.add(motorRoot)
+    if (object) { if(id==='TROOP_TRUCK')addCarrierOccupants(object,props.side,true);motorRoot.add(object) }
     // A studio scene honors each mesh's own cast/receive flags (unlike the battlefield
     // scene, which keeps its existing "everything casts and receives" behavior), so the
     // subject has to opt in explicitly. The grid deliberately does not.
@@ -75,6 +77,8 @@ export function ModelViewport(props: Props) {
         const soldier: Soldier = { id: 'preview:0', x: 0, y: 0, status: c.condition, stance: c.stance, action: c.action, heading: 0, aim: Math.sin(time * .6) * .5, since: Math.floor(time / 2) * 2, shotAt: c.action === 'fire' || c.action === 'peek' ? Math.floor(time * 3) / 3 : -10 }
         batch.begin(); batch.pose(soldier, id, time, 0, true); if (c.action === 'drag') batch.pose({ ...soldier, id: 'preview:1', x: -.5, y: -1.2, status: 'downed' }, id, time, 0, true); batch.end(true)
       }
+      motorRoot.position.set(0,0,0);motorRoot.rotation.set(0,0,0)
+      applyEngineBoil(motorRoot,motor.sample(time,true,c.clip==='drive',!c.damagePreview,Math.max(size.x,size.y,size.z)))
       orbit.autoRotate = c.rotate; orbit.update(); studio.update(camera, orbit.target, center, radius); renderer.render(scene, camera)
     }
     frame = requestAnimationFrame(render)

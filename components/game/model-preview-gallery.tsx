@@ -1,5 +1,6 @@
 'use client'
 
+import { EngineBoil, applyEngineBoil } from '@/lib/game/engine-boil'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Grid2X2, Pause, Play, X } from 'lucide-react'
@@ -57,10 +58,11 @@ function GalleryStage({ side, paused, onSelect }: { side: Side; paused: boolean;
       const bounds = object ? new T.Box3().setFromObject(object) : new T.Box3(new T.Vector3(-.7, -.7, 0), new T.Vector3(.7, .7, 2.1))
       const center = bounds.getCenter(new T.Vector3()), radius = Math.max(.01, bounds.getSize(new T.Vector3()).length() / 2)
       content.position.copy(center).multiplyScalar(-1)
-      pivot.add(content); scene.add(pivot)
-      return { id, pivot, content, radius, batch }
+      const motorRoot = new T.Group(), motor = new EngineBoil(id,`gallery:${id}`)
+      motorRoot.add(content);pivot.add(motorRoot); scene.add(pivot)
+      return { id, pivot, content, radius, batch, motorRoot, motor }
     })
-    let width = 1, height = 1, dirty = true, frame = 0, previous = performance.now(), angle = 0
+    let width = 1, height = 1, dirty = true, frame = 0, previous = performance.now(), angle = 0, motorTime = 0
     const resize = () => { width = Math.max(2, element.clientWidth); height = Math.max(2, element.clientHeight); renderer.setSize(width, height); camera.aspect = width / height; camera.updateProjectionMatrix(); dirty = true }
     const observer = new ResizeObserver(resize); observer.observe(element); resize()
     const onScroll = () => { dirty = true }; scroll.addEventListener('scroll', onScroll, { passive: true })
@@ -83,11 +85,13 @@ function GalleryStage({ side, paused, onSelect }: { side: Side; paused: boolean;
       // A slow turntable needs only 24 fps. Pause all GPU work in background tabs.
       if (document.hidden || now - previous < 1000 / 24) return
       const dt = Math.min(.1, (now - previous) / 1000); previous = now
-      if (!pause.current) angle += dt * .12
+      if (!pause.current) { angle += dt * .12; motorTime += dt }
       if (dirty) layout()
       for (const item of items) {
         if (!item.pivot.visible) continue
         item.pivot.rotation.z = angle
+        item.motorRoot.position.set(0,0,0);item.motorRoot.rotation.set(0,0,0)
+        applyEngineBoil(item.motorRoot,item.motor.sample(motorTime,true,false,true,item.radius*2))
         if (item.batch && item.id !== 'MOB' && item.id !== 'AIRFIELD') {
           item.batch.begin(); item.batch.pose({ id: `gallery:${item.id}`, x: 0, y: 0, status: 'active', stance: 'stand', action: 'idle', heading: 0, aim: 0, since: 0, shotAt: -10 }, item.id, 0, 0, true); item.batch.end(true)
         }
@@ -114,6 +118,6 @@ export function ModelPreviewGallery() {
   useEffect(() => { if (!selected && lastSelected.current) { const button = document.querySelector<HTMLButtonElement>(`[aria-label="Inspect ${MODEL_NAMES[lastSelected.current]}"]`); button?.focus({ preventScroll: true }); button?.scrollIntoView({ block: 'nearest' }) } }, [selected])
   return <main className={styles.root}>
     <header className={styles.header}><Link href="/" className={styles.back}><ArrowLeft size={16} /> Battlefield</Link><div><h1><Grid2X2 size={18} /> Model Preview Gallery</h1><p>{selected ? MODEL_NAMES[selected] : `${MODEL_CATALOG.length} production models · Select a model to inspect`}</p></div><div className={styles.actions}><div role="group" aria-label="Gallery livery">{(['BLU', 'RED'] as const).map(value => <button key={value} aria-pressed={side === value} onClick={() => setSide(value)}>{value} FORCE</button>)}</div>{!selected && <button onClick={() => setPaused(value => !value)} aria-label={paused ? 'Resume turntables' : 'Pause turntables'}>{paused ? <Play size={16} /> : <Pause size={16} />}</button>}<Link href="/model_preview">Model Preview</Link></div></header>
-    {selected ? <section className={styles.focus} aria-label={`${MODEL_NAMES[selected]} inspection`}><ModelViewport model={selected} side={side} active animate={false} rotate={false} action="idle" stance="stand" condition="active" reset={0} /><button autoFocus className={styles.close} onClick={close} aria-label="Return to model grid"><X size={22} /></button><p className={styles.hint}>Drag to rotate · Scroll to zoom · Esc to return</p></section> : <GalleryStage side={side} paused={paused} onSelect={select} />}
+    {selected ? <section className={styles.focus} aria-label={`${MODEL_NAMES[selected]} inspection`}><ModelViewport model={selected} side={side} active animate rotate={false} action="idle" stance="stand" condition="active" reset={0} /><button autoFocus className={styles.close} onClick={close} aria-label="Return to model grid"><X size={22} /></button><p className={styles.hint}>Drag to rotate · Scroll to zoom · Esc to return</p></section> : <GalleryStage side={side} paused={paused} onSelect={select} />}
   </main>
 }
