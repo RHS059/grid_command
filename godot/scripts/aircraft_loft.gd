@@ -87,6 +87,10 @@ static func airfoil(le: Vector3, chord: float, ratio: float, vertical: bool, n: 
 ## skip(r, i) -> true leaves that quad out (door openings); ring index i maps to
 ## angle TAU * (i + .5) / count on super_ring rings.
 static func loft(parent: Node3D, rings: Array, mat: Material, closed: bool, caps: bool, panels: Array = [], skip: Callable = Callable()) -> MeshInstance3D:
+	return build(parent, loft_triangles(rings, closed, caps, panels, skip), mat)
+
+## Loft as a triangle list: each triangle is three [native position, normal, uv2].
+static func loft_triangles(rings: Array, closed: bool, caps: bool, panels: Array = [], skip: Callable = Callable()) -> Array:
 	var count: int = rings[0].size()
 	var grid := []
 	for ring in rings:
@@ -109,8 +113,7 @@ static func loft(parent: Node3D, rings: Array, mat: Material, closed: bool, caps
 			if nrm == Vector3.ZERO: nrm = (grid[r][i] - centre).normalized()
 			row.append(nrm)
 		normals.append(row)
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var tris := []
 	var segments := count if closed else count - 1
 	var vert := func(r: int, i: int) -> Array:
 		var ii: int = i % count
@@ -119,8 +122,8 @@ static func loft(parent: Node3D, rings: Array, mat: Material, closed: bool, caps
 	for r in range(grid.size() - 1):
 		for i in range(segments):
 			if skip.is_valid() and skip.call(r, i): continue
-			emit(st, [vert.call(r, i), vert.call(r, i + 1), vert.call(r + 1, i + 1)])
-			emit(st, [vert.call(r, i), vert.call(r + 1, i + 1), vert.call(r + 1, i)])
+			tris.append([vert.call(r, i), vert.call(r, i + 1), vert.call(r + 1, i + 1)])
+			tris.append([vert.call(r, i), vert.call(r + 1, i + 1), vert.call(r + 1, i)])
 	if caps and closed:
 		for r in [0, grid.size() - 1]:
 			var centre := Vector3.ZERO
@@ -130,12 +133,61 @@ static func loft(parent: Node3D, rings: Array, mat: Material, closed: bool, caps
 			var other: Vector3 = grid[1 if r == 0 else r - 1][0]
 			if nrm.dot(centre - other) < 0.0: nrm = -nrm
 			for i in range(count):
-				emit(st, [[centre, nrm, Vector2(.5, .5)], [grid[r][i], nrm, Vector2(.5, .5)], [grid[r][(i + 1) % count], nrm, Vector2(.5, .5)]])
+				tris.append([[centre, nrm, Vector2(.5, .5)], [grid[r][i], nrm, Vector2(.5, .5)], [grid[r][(i + 1) % count], nrm, Vector2(.5, .5)]])
+	return tris
+
+static func build(parent: Node3D, tris: Array, mat: Material) -> MeshInstance3D:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for t in tris: emit(st, t)
 	var node := MeshInstance3D.new()
 	node.mesh = st.commit()
 	node.material_override = mat
 	parent.add_child(node)
 	return node
+
+## Splits triangles by a linear test f(browser point) -> float. Returns
+## [pieces where f >= 0, pieces where f < 0]; cut edges interpolate position,
+## normal and uv2, so door seams follow straight clean lines across the skin.
+static func split(tris: Array, f: Callable) -> Array:
+	var inside := []
+	var outside := []
+	for tri in tris:
+		var d := []
+		for v in tri: d.append(f.call(Vector3(v[0].x, -v[0].z, v[0].y)))
+		if d.min() >= 0.0:
+			inside.append(tri)
+			continue
+		if d.max() < 0.0:
+			outside.append(tri)
+			continue
+		var pos := []
+		var neg := []
+		for k in range(3):
+			var a: Array = tri[k]
+			var b: Array = tri[(k + 1) % 3]
+			var da: float = d[k]
+			var db: float = d[(k + 1) % 3]
+			(pos if da >= 0.0 else neg).append(a)
+			if (da >= 0.0) != (db >= 0.0):
+				var t := da / (da - db)
+				var m := [a[0].lerp(b[0], t), a[1].lerp(b[1], t).normalized(), a[2].lerp(b[2], t)]
+				pos.append(m)
+				neg.append(m)
+		for poly in [[pos, inside], [neg, outside]]:
+			var pts: Array = poly[0]
+			for k in range(1, pts.size() - 1): poly[1].append([pts[0], pts[k], pts[k + 1]])
+	return [inside, outside]
+
+## Region = all tests >= 0. Returns [pieces inside the region, the rest].
+static func carve(tris: Array, tests: Array) -> Array:
+	var rest := []
+	var cur := tris
+	for f in tests:
+		var parts := split(cur, f)
+		cur = parts[0]
+		rest.append_array(parts[1])
+	return [cur, rest]
 
 
 ## Point on a superellipse fuselage between [y, half width, half height, centre z,

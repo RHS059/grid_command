@@ -155,14 +155,28 @@ const NOSE_RAMP_HINGE := Vector3(0, 33.35, 1.6)
 const AFT_RAMP_HINGE := Vector3(0, -17.8, 1.62)
 const FLOOR_Z := 1.6
 
-## Which rigged part a fuselage quad (centre c, browser coords) belongs to.
-static func door_part(c: Vector3) -> String:
-	var cut := 33.2 + clampf((c.z - 1.4) / 5.5, 0.0, 1.0) * 3.2
-	if c.y > cut and c.z < 7.05: return "visor"
-	if c.y < -17.8 and c.y > -30.5 and c.z < 6.9:
-		if c.y > -23.2 and absf(c.x) < 2.2 and c.z < 3.4: return "aft-ramp"
-		return "clamshell-right" if c.x > 0.0 else "clamshell-left"
-	return "airframe"
+## Rigged door regions as half-space tests on browser points (all >= 0 inside).
+## The skin is clipped along these planes, so every seam is a clean straight cut.
+static func door_regions() -> Array:
+	var aft := [func(p): return -17.8 - p.y, func(p): return p.y + 30.5, func(p): return 6.9 - p.z]
+	return [
+		# Visor: forward of a cut slanting from the belly (y 33.2) up to the windscreen sill.
+		["visor", [func(p): return p.y - (33.2 + (p.z - 1.4) * 3.2 / 5.5), func(p): return 7.05 - p.z]],
+		["aft-ramp", aft + [func(p): return p.y + 23.2, func(p): return 2.2 - p.x, func(p): return 2.2 + p.x]],
+		["clamshell-right", aft + [func(p): return p.x]],
+		["clamshell-left", aft + [func(p): return -p.x]],
+	]
+
+## Splits a loft into {part: triangles} by door region; the remainder is "airframe".
+static func door_parts(tris: Array) -> Dictionary:
+	var parts := {}
+	var rest := tris
+	for region in door_regions():
+		var cut := L.carve(rest, region[1])
+		parts[region[0]] = cut[0]
+		rest = cut[1]
+	parts["airframe"] = rest
+	return parts
 
 ## Pivot node at a browser-space hinge with a holder that keeps child geometry
 ## in airframe coordinates.
@@ -183,10 +197,6 @@ static func cargo_fuselage(root: Node3D, body: Material, dark: Material, metal: 
 	for st in stations: rings.append(L.super_ring(st[0], st[1], st[2], st[3], 28, st[4]))
 	var panels := []
 	for st in stations: panels.append(st[0] * .25)
-	var part := func(r: int, i: int, ring_set: Array) -> String:
-		var n: int = ring_set[r].size()
-		var c: Vector3 = (ring_set[r][i] + ring_set[r][(i + 1) % n] + ring_set[r + 1][i] + ring_set[r + 1][(i + 1) % n]) * .25
-		return door_part(c)
 	var holders := {
 		"airframe": root,
 		"visor": pivot(root, "visor-pivot", VISOR_HINGE),
@@ -194,18 +204,15 @@ static func cargo_fuselage(root: Node3D, body: Material, dark: Material, metal: 
 		"clamshell-right": pivot(root, "clamshell-right-pivot", Vector3(2.7, -24.5, 6.9)),
 		"clamshell-left": pivot(root, "clamshell-left-pivot", Vector3(-2.7, -24.5, 6.9)),
 	}
-	for key in holders:
-		var k: String = key
-		L.loft(holders[k], rings, body, true, false, panels, func(r, i): return part.call(r, i, rings) != k)
+	var parts := door_parts(L.loft_triangles(rings, true, false, panels))
+	for key in holders: L.build(holders[key], parts[key], body)
 	# Hold: dark liner with the same openings, floor, ramp decks and the nose ramp.
 	var hold := S.material("#3a3f3c", .95)
 	var inner := []
-	var inner_panels := []
 	for st in stations:
 		if st[0] < 34.6 and st[0] > -31.5:
 			inner.append(L.super_ring(st[0], st[1] - .18, st[2] - .18, st[3], 28, st[4]))
-			inner_panels.append(0.0)
-	L.loft(root, inner, hold, true, false, [], func(r, i): return part.call(r, i, inner) != "airframe")
+	L.build(root, door_parts(L.loft_triangles(inner, true, false))["airframe"], hold)
 	S.box(root, Vector3(5.6, 51.0, .12), Vector3(0, 7.7, FLOOR_Z - .06), metal)
 	# Aft ramp deck lies along the upswept belly (10 degrees) when stowed.
 	var deck := S.box(holders["aft-ramp"], Vector3(4.2, 5.4, .15), AFT_RAMP_HINGE + Vector3(0, -2.66, .6), metal)
