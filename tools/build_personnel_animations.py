@@ -22,6 +22,7 @@ MAPS = {
     "commander": {"pelvis":"Bone_000", "spine":"Bone_008", "head":"Bone_019", "upper_arm.L":"Bone_023", "forearm.L":"Bone_022", "hand.L":"Bone_021", "upper_arm.R":"Bone_028", "forearm.R":"Bone_027", "hand.R":"Bone_026", "thigh.L":"Bone_016", "shin.L":"Bone_015", "foot.L":"Bone_014", "thigh.R":"Bone_012", "shin.R":"Bone_011", "foot.R":"Bone_010"},
     "logistics": {"pelvis":"Bone_000", "spine":"Bone_004", "head":"Bone_014", "upper_arm.L":"Bone_019", "forearm.L":"Bone_018", "hand.L":"Bone_017", "upper_arm.R":"Bone_024", "forearm.R":"Bone_023", "hand.R":"Bone_022", "thigh.L":"Bone_008", "shin.L":"Bone_007", "foot.L":"Bone_006", "thigh.R":"Bone_012", "shin.R":"Bone_011", "foot.R":"Bone_010"},
 }
+MAPS["soldier"] = MAPS["logistics"].copy()
 
 def mul(a, b):
     x,y,z,w = a; X,Y,Z,W = b
@@ -130,21 +131,21 @@ def build_rig(kind,target,source):
         clips.append({"name":clip["name"],"duration":round(duration,6),"loop":clip["name"] not in ("downed","dead","throw","peek"),"times":times,"tracks":list(tracks.values())})
     return {"schema":1,"model":kind,"source":"grid-command-authored-v1","mode":"skeletal","clips":clips}
 
-def build_rigid(target):
-    # Rifle.glb has 14 non-anatomical joints and no hip/knee/ankle chains.
-    # Never apply humanoid tracks to these unrelated joints. Keep its skin
-    # intact and provide explicit rigid presentation until its rig is repaired.
-    clips=[]
-    for name in CLIPS:
-        duration=1.0 if name=="walk" else .24 if name=="fire" else .8 if name in ("downed","dead") else 2.0
-        times=[round(i*duration/24,6) for i in range(25)]; rotations=[];positions=[]
-        for time in times:
-            phase=time/duration; falling=name in ("downed","dead","prone")
-            angle=min(1,phase*1.25)*math.pi/2 if falling else math.sin(phase*math.tau)*(.018 if name=="walk" else .006)
-            rotations.append(rounded(axis_angle([1,0,0],angle)))
-            positions.append([0,round(abs(math.sin(phase*math.tau))*.018 if name=="walk" else 0,6),round(-math.sin(phase*math.pi)*.025 if name=="fire" else 0,6)])
-        clips.append({"name":name,"duration":duration,"loop":name not in ("downed","dead","throw","peek"),"times":times,"tracks":[{"target":"UniRigArmature","type":"node","rotation":rotations,"position":positions}]})
-    return {"schema":1,"model":"soldier","source":"grid-command-rigid-presentation-v1","mode":"rigid-fallback","limitation":"Supplied 14-joint rifle rig lacks anatomical leg chains. No skeletal deformation is applied.","clips":clips}
+def equipment_for(kind, target, bundle):
+    """Calibrate the separate rifle to the real wrist in the ready pose.
+
+    Supplied rifle: muzzle along -X, Y up, 3.7578 source units long.
+    Keep that mesh intact; its display length is 0.82 metres. The grip is
+    translated to the palm, never the rifle's arbitrary exported origin.
+    """
+    hand = MAPS[kind]["hand.R"]
+    clip = next(c for c in bundle["clips"] if c["name"] == "idle_ready")
+    overrides = {t["target"]:{"rotation":t["rotation"][0],"translation":t["position"][0]} for t in clip["tracks"]}
+    pose = globals_for(compact_nodes(target),overrides)
+    rotation = mul(inv(pose[hand][1]),axis_angle([0,1,0],-math.pi/2))
+    return {"hand":hand,"rotation":rounded(norm(rotation)),
+            "legacy_rotation":rounded(norm(mul(inv(pose[hand][1]),axis_angle([1,0,0],-math.pi/2)))),
+            "palm_offset":[0,0.045,0],"grip":[0.2,0.72,0],"scale":round(0.82/3.7578322887420654,8)}
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument("--extract-source",type=Path);args=parser.parse_args()
@@ -155,7 +156,8 @@ def main():
     source=json.loads(SOURCE.read_text(encoding="utf-8"))
     for kind in ("soldier","commander","logistics"):
         target,_=read_glb(ROOT/f"public/models/{kind}.glb")
-        bundle=build_rigid(target) if kind=="soldier" else build_rig(kind,target,source)
+        bundle=build_rig(kind,target,source)
+        bundle["equipment"] = equipment_for(kind,target,bundle)
         bundle["model_sha256"]=hashlib.sha256((ROOT/f"public/models/{kind}.glb").read_bytes()).hexdigest()
         payload=json.dumps(bundle,separators=(",",":"))+"\n"
         for base in ("public/animations/personnel","godot/assets/animations/personnel"):

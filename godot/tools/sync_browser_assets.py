@@ -19,6 +19,7 @@ ASSETS = (
     "amphibious_apc_orm.png",
     "mec_lift.glb",
     "soldier.glb",
+    "rifle.glb",
     "commander.glb",
     "logistics.glb",
     "troop_transport.glb",
@@ -111,3 +112,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

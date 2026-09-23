@@ -7,9 +7,11 @@ interface GltfAccessor { bufferView?: number; byteOffset?: number; count: number
 interface GltfDocument { nodes?: GltfNode[]; scenes?: { nodes: number[] }[]; scene?: number; accessors?: GltfAccessor[]; bufferViews?: { byteOffset?: number; byteStride?: number }[]; animations?: { name?: string; samplers: { input: number; output: number }[]; channels: { sampler: number; target: { node: number; path: string } }[] }[] }
 export type SoldierModelKind = 'soldier' | 'commander' | 'logistics'
 interface PersonnelClip { name: string; duration: number; times: number[]; tracks: { target: string; rotation: number[][]; position: number[][] }[] }
-interface PersonnelAnimationBundle { schema: number; model: SoldierModelKind; clips: PersonnelClip[] }
+interface PersonnelEquipment { hand: string; rotation: number[]; legacy_rotation: number[]; palm_offset: number[]; grip: number[]; scale: number }
+interface PersonnelAnimationBundle { schema: number; model: SoldierModelKind; clips: PersonnelClip[]; equipment: PersonnelEquipment }
 const soldierAssets = new Map<SoldierModelKind, Promise<RigAsset>>()
 let soldierWeaponAsset: Promise<RigAsset> | undefined
+let rifleAsset: Promise<RigAsset> | undefined
 export type SoldierWeapon = 'RIFLE' | 'MG' | 'AT' | 'AA_TEAM'
 /** Parse hierarchy and animation metadata; Babylon owns GPU meshes and skeletons. */
 async function loadRig(url: string): Promise<RigAsset> {
@@ -56,11 +58,12 @@ async function loadRig(url: string): Promise<RigAsset> {
 export function loadSoldierAsset(kind: SoldierModelKind = 'soldier') {
   let asset = soldierAssets.get(kind)
   if (!asset) {
-    asset = loadRig(assetPath(`/models/${kind}.glb`)).then(async rig => {
+    asset = loadRig(assetPath(`/models/${kind === 'commander' ? 'commander' : 'soldier'}.glb`)).then(async rig => {
       const response = await fetch(assetPath(`/animations/personnel/${kind}.json`))
       if (!response.ok) throw new Error(`Personnel animation request failed (${response.status})`)
       const bundle: PersonnelAnimationBundle = await response.json()
       if (bundle.schema !== 1 || bundle.model !== kind) throw new Error(`Wrong personnel animation bundle: ${kind}`)
+      rig.scene.userData.personnelEquipment = bundle.equipment
       for (const clip of bundle.clips) {
         const tracks: D.KeyframeTrack[] = []
         for (const track of clip.tracks) {
@@ -78,6 +81,30 @@ export function loadSoldierAsset(kind: SoldierModelKind = 'soldier') {
   return asset
 }
 export function loadSoldierWeaponAsset() { return soldierWeaponAsset ??= loadRig(assetPath('/models/soldier-weapons.glb')) }
+export function loadRifleAsset() { return rifleAsset ??= loadRig(assetPath('/models/rifle.glb')) }
+export function findPersonnelHand(model: D.Object3D) {
+  const equipment = model.userData.personnelEquipment as PersonnelEquipment | undefined
+  const exact = equipment?.hand ? model.getObjectByName(equipment.hand) : undefined
+  if (exact) return exact
+  let hand: D.Object3D | undefined
+  model.traverse(node => {
+    const name = node.name.toLowerCase().replace(/[^a-z0-9]/g, '').replace(/^mixamorig\d*/, '')
+    if (!hand && ['righthand', 'handr', 'rhand', 'bip01rhand'].includes(name)) hand = node
+  })
+  return hand || model.getObjectByName('weapon')
+}
+export function placePersonnelWeapon(model: D.Object3D, weapon: D.Object3D, rifle: boolean) {
+  const equipment = model.userData.personnelEquipment as PersonnelEquipment | undefined
+  if (!equipment) return
+  const rotation = rifle ? equipment.rotation : equipment.legacy_rotation
+  weapon.quaternion.set(rotation[0], rotation[1], rotation[2], rotation[3])
+  weapon.position.fromArray(equipment.palm_offset)
+  if (rifle) {
+    weapon.scale.setScalar(equipment.scale)
+    const grip = new D.Vector3().fromArray(equipment.grip).multiplyScalar(-equipment.scale).applyQuaternion(weapon.quaternion)
+    weapon.position.add(grip)
+  }
+}
 export function cloneSoldierWeapon(source: D.Object3D, weapon: SoldierWeapon) {
   const node = source.getObjectByName(`Weapon_${weapon}`)
   if (!node) return undefined

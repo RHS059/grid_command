@@ -18,15 +18,24 @@ The browser and Godot load identical animation JSON. Runtime clip state follows
 movement, engagement, shots, downed state, and death. Native Model Preview lists
 the clips. Non-looping death clips hold their last pose.
 
-## Armed infantry rig limitation
+## Body and equipment mapping
 
-The supplied `grid_commander_rifle.glb` contains 14 joints, no anatomical
-hip/knee/ankle chains, and a 3.76 m-wide mesh at 1.7 m height. Applying humanoid
-leg motion to these joints would deform unrelated geometry. Its original skin
-is preserved. The bundle explicitly uses `rigid-fallback`: a small movement
-bob, shot motion, and whole-model fall. These are not a skeletal walk cycle.
-The infantry model needs a corrected humanoid skin before true leg, arm, and
-hand animation can be enabled. Commander and logistics use skeletal animation.
+`grid_commander_soldier.glb` supplies the humanoid body for all non-commander
+personnel, including unarmed logistics workers. `grid_commander_commander.glb`
+is the commander's separate body. The source files use UniRig bone names; the
+right wrists are `Bone_022` and `Bone_026`, respectively.
+
+`grid_commander_rifle.glb` is a rifle prop. It ships separately as `rifle.glb`
+and is attached to the animated right hand. It never receives humanoid motion.
+The animation builder stores a calibrated grip, 0.82 m length, and orientation
+in each sidecar. Both engines consume the same values. Named Mixamo RightHand
+bones are supported as a fallback. Missing hand bones report an attachment
+failure instead of substituting a weapon for the soldier.
+
+Soldier and logistics aliases use the same humanoid mesh and the same full
+skeletal retargeting. There is no rigid infantry fallback. The browser and
+Godot model previews use the same attachment as the game. Logistics and pilots
+remain unarmed. The commander retains the original full-resolution texture.
 
 ## Replacing the motion source with Mixamo
 
@@ -41,4 +50,5 @@ Mixamo assets.
 References: [Mixamo](https://www.mixamo.com/),
 [Adobe's download instructions](https://helpx.adobe.com/creative-cloud/help/mixamo-rigging-animation.html),
 [Adobe's Mixamo FAQ](https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html).
+
 

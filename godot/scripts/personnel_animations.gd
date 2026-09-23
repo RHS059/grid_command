@@ -1,7 +1,6 @@
 extends RefCounted
 ## Shared animation sidecars retain the user's model files unchanged.
-## Commander/logistics use retargeted owned clips. Rifle's malformed rig uses
-## rigid presentation only; see docs/personnel-animations.md.
+## All humanoid roles use retargeted owned clips. Rifles are separate hand props.
 
 static var _bundles: Dictionary = {}
 static var _libraries: Dictionary = {}
@@ -35,6 +34,7 @@ static func install(model: Node3D, kind: String) -> AnimationPlayer:
 			return null
 		_bundles[kind] = parsed
 	var bundle: Dictionary = _bundles[kind]
+	model.set_meta("personnel_equipment",bundle.get("equipment",{}))
 	var skeleton := _find_skeleton(model)
 	var skeleton_path := str(model.get_path_to(skeleton)) if skeleton != null else ""
 	var cache_key := kind+":"+skeleton_path

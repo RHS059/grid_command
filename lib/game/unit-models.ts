@@ -7,7 +7,7 @@ import { createAircraft, disposeModel } from './aircraft-models'
 import { shell, profile, rod } from './model-geometry'
 import { armoredGeometry } from './armored-models'
 import { hasBlenderVehicle, blenderVehicleGeometry } from './blender-vehicles'
-import { cloneSoldierRig, cloneSoldierWeapon, createSoldierTemplate, loadSoldierAsset, loadSoldierWeaponAsset, type SoldierModelKind, type SoldierWeapon } from './soldier-asset'
+import { cloneSoldierRig, cloneSoldierWeapon, findPersonnelHand, placePersonnelWeapon, loadRifleAsset, createSoldierTemplate, loadSoldierAsset, loadSoldierWeaponAsset, type SoldierModelKind, type SoldierWeapon } from './soldier-asset'
 
 const kit = '#68694c', armor = '#30332d', black = '#222524', face = '#b6a084'
 const clothLight = '#7b7b59', clothDark = '#505640', steel = '#454945'
@@ -87,8 +87,7 @@ export function soldierParts(side:Side){
 
 const READY_AFTER_FIRE_SECONDS=8
 const SOLDIER_WEAPONS:SoldierWeapon[]=['RIFLE','MG','AT','AA_TEAM']
-const weaponForRole=(role:Role):SoldierWeapon|undefined=>role==='PILOT'?undefined:role==='MG'?'MG':role==='AT'?'AT':role==='AA_TEAM'?'AA_TEAM':'RIFLE'
-const WEAPON_HAND_CANT=Math.PI/4
+const weaponForRole=(role:Role):SoldierWeapon|undefined=>['PILOT','LOGISTICS'].includes(role)?undefined:role==='MG'?'MG':role==='AT'?'AT':role==='AA_TEAM'?'AA_TEAM':'RIFLE'
 
 type SoldierRig={id:string;variant:SoldierModelKind;root:T.Group;model:T.Object3D;mixer:T.AnimationMixer;actions:Map<string,T.AnimationAction>;gears:T.Object3D[];weaponBone?:T.Object3D;weapons:Map<SoldierWeapon,T.Object3D>;clip?:string;role?:Role;atAction?:T.AnimationAction;state?:string;stateSince:number}
 
@@ -126,11 +125,12 @@ export class SoldierBatch {
     for(const key of ['medic','radio','engineer','supplies'] as const)add(key,this.torso);add('pilot',this.head);add('mortar',this.root)
     this.torso.add(this.weapon);this.weapon.position.set(.17,.39,.27);add('rifle',this.weapon);add('mg',this.weapon);add('launcher',this.weapon);add('aaLauncher',this.weapon)
     Promise.all((['soldier','commander','logistics'] as SoldierModelKind[]).map(async kind=>[kind,await loadSoldierAsset(kind)] as const)).then(assets=>{if(this.disposed)return;for(const [kind,gltf] of assets){const template=createSoldierTemplate(gltf.scene,this.side);this.templates.set(kind,template);const clips=new Map<string,T.AnimationClip>();for(const clip of gltf.animations)clips.set(clip.name.toLowerCase().replace(/^__personnel_/,''),clip);this.clips.set(kind,clips);if(kind==='soldier')this.atOverlay=createAtOverlay(template,clips.get('ik_at'))}this.asset='ready'}).catch(()=>{if(!this.disposed)this.asset='error'})
-    loadSoldierWeaponAsset().then(gltf=>{if(this.disposed)return;for(const weapon of SOLDIER_WEAPONS){const template=cloneSoldierWeapon(gltf.scene,weapon);if(template)this.weaponTemplates.set(weapon,template)}}).catch(()=>{})
+    loadSoldierWeaponAsset().then(gltf=>{if(this.disposed)return;for(const weapon of SOLDIER_WEAPONS.filter(value=>value!=='RIFLE')){const template=cloneSoldierWeapon(gltf.scene,weapon);if(template)this.weaponTemplates.set(weapon,template)}}).catch(()=>{})
+    loadRifleAsset().then(gltf=>{if(this.disposed)return;const rifle=gltf.scene.clone(true);rifle.userData.unitSurface=true;this.weaponTemplates.set('RIFLE',rifle)}).catch(()=>{})
   }
   begin(){this.counts.clear();this.used.clear()}
   private rig(id:string,role:Role){const variant:SoldierModelKind=role==='COMMAND'?'commander':role==='LOGISTICS'?'logistics':'soldier';let rig=this.rigs.get(id);if(rig?.variant===variant)return rig;if(rig){rig.mixer.stopAllAction();rig.root.parent?.remove(rig.root);this.rigs.delete(id)}const template=this.templates.get(variant);if(!template)return undefined
-    const root=new T.Group(),model=cloneSoldierRig(template),gears:T.Object3D[]=[];let weaponBone:T.Object3D|undefined;model.visible=true;model.rotation.x=Math.PI/2;model.traverse(node=>{if(node.name.startsWith('Gear_'))gears.push(node);if(node.name==='weapon')weaponBone=node;if(node.name.startsWith('Weapon_'))node.visible=false});root.add(model);this.scene.add(root);rig={id,variant,root,model,mixer:new T.AnimationMixer(model),actions:new Map(),gears,weaponBone,weapons:new Map(),stateSince:0};this.rigs.set(id,rig);return rig
+    const root=new T.Group(),model=cloneSoldierRig(template),gears:T.Object3D[]=[];let weaponBone:T.Object3D|undefined;model.visible=true;model.rotation.x=Math.PI/2;model.traverse(node=>{if(node.name.startsWith('Gear_'))gears.push(node);if(node.name.startsWith('Weapon_'))node.visible=false});weaponBone=findPersonnelHand(model);root.add(model);this.scene.add(root);rig={id,variant,root,model,mixer:new T.AnimationMixer(model),actions:new Map(),gears,weaponBone,weapons:new Map(),stateSince:0};this.rigs.set(id,rig);return rig
   }
   private firstClip(kind:SoldierModelKind,...names:string[]){for(const name of names){const clip=this.clips.get(kind)?.get(name);if(clip)return clip}return undefined}
   private clipFor(s:Soldier,role:Role,time:number,rig:SoldierRig){
@@ -152,7 +152,7 @@ export class SoldierBatch {
     if(role==='AT'||role==='AA_TEAM')return{clip:this.firstClip(rig.variant,'idle_passive_at','idle_passive','idle_passive_rifle','idle_ready','idle'),once:false}
     return{clip:this.firstClip(rig.variant,'idle_passive','idle_passive_rifle','idle_ready','idle'),once:false}
   }
-  private syncWeapon(rig:SoldierRig,role:Role){const wanted=weaponForRole(role);for(const weapon of rig.weapons.values())weapon.visible=false;if(!wanted||!rig.weaponBone)return;let weapon=rig.weapons.get(wanted);if(!weapon){const template=this.weaponTemplates.get(wanted);if(!template)return;weapon=template.clone(true);weapon.rotation.x=WEAPON_HAND_CANT;rig.weaponBone.add(weapon);rig.weapons.set(wanted,weapon)}weapon.visible=true}
+  private syncWeapon(rig:SoldierRig,role:Role){const wanted=weaponForRole(role);for(const weapon of rig.weapons.values())weapon.visible=false;if(!wanted||!rig.weaponBone)return;let weapon=rig.weapons.get(wanted);if(!weapon){const template=this.weaponTemplates.get(wanted);if(!template)return;weapon=template.clone(true);placePersonnelWeapon(rig.model,weapon,wanted==='RIFLE');rig.weaponBone.add(weapon);rig.weapons.set(wanted,weapon)}weapon.visible=true}
   private syncAtOverlay(rig:SoldierRig,enabled:boolean,time:number){if(!enabled||!this.atOverlay){rig.atAction?.stop();rig.atAction=undefined;return}if(!rig.atAction){rig.atAction=rig.mixer.clipAction(this.atOverlay);rig.atAction.setLoop(T.LoopRepeat,Infinity).setEffectiveWeight(1).play()}rig.atAction.time=this.atOverlay.duration?time%this.atOverlay.duration:0}
   private poseAsset(s:Soldier,role:Role,time:number,z:number){const rig=this.rig(s.id,role);if(!rig)return;this.used.add(s.id);rig.root.visible=true;rig.root.position.set(s.x,s.y,z);rig.root.rotation.set(0,0,-s.heading);const state=`${s.status}:${s.stance}:${s.action}`;if(rig.state!==state){rig.state=state;rig.stateSince=time}if(rig.role!==role){const gear=`Gear_${role}`;for(const node of rig.gears)node.visible=node.name===gear;rig.role=role}this.syncWeapon(rig,role)
     const selected=this.clipFor(s,role,time,rig),clip=selected.clip;if(!clip)return;let action=rig.actions.get(clip.name);if(!action){action=rig.mixer.clipAction(clip);rig.actions.set(clip.name,action)}action.setLoop(selected.once?T.LoopOnce:T.LoopRepeat,selected.once?1:Infinity);action.clampWhenFinished=selected.once;if(rig.clip!==clip.name){if(rig.clip)rig.actions.get(rig.clip)?.stop();action.reset().play();rig.clip=clip.name}const phase=time+(s.id.charCodeAt(s.id.length-1)||0)*.037,offset=selected.offset??phase;action.time=selected.once?Math.min(clip.duration,offset):clip.duration?offset%clip.duration:0;this.syncAtOverlay(rig,role==='AT'&&s.status==='active',time);rig.mixer.update(0)
@@ -165,7 +165,7 @@ export class SoldierBatch {
     if(s.action==='throw'){this.shoulders[1].rotation.x=-1.8+Math.min(1,time-s.since)*3.5;this.elbows[1].rotation.x=.3}
     if(s.action==='drag'){this.shoulders[0].rotation.x=-.7;this.elbows[0].rotation.x=.3}
     this.weapon.position.y=(prone?-.08:.4)-recoil*.055;this.weapon.position.z=prone?.65:.27;this.weapon.rotation.x=(prone?Math.PI/2:0)+recoil*-.065;this.root.updateMatrixWorld(true)
-    for(const {key,node}of this.nodes){const equipment:Record<string,Role[]>={medic:['MEDIC'],radio:['COMMAND','SCOUT','AA_TEAM'],engineer:['ENGINEER'],supplies:['LOGISTICS'],pilot:['PILOT'],mortar:['MORTAR']};if(equipment[key]&&!equipment[key].includes(role))continue;if(key==='mortar'&&(walking||dead))continue;if(key==='aaLauncher'&&role!=='AA_TEAM'||key==='launcher'&&role!=='AT'||key==='mg'&&role!=='MG'||key==='rifle'&&['AT','MG','AA_TEAM'].includes(role))continue;const mesh=this.parts.get(key)!,n=this.counts.get(key)||0;if(n<1024){mesh.setMatrixAt(n,node.matrixWorld);this.counts.set(key,n+1)}}
+    for(const {key,node}of this.nodes){const equipment:Record<string,Role[]>={medic:['MEDIC'],radio:['COMMAND','SCOUT','AA_TEAM'],engineer:['ENGINEER'],supplies:['LOGISTICS'],pilot:['PILOT'],mortar:['MORTAR']};if(equipment[key]&&!equipment[key].includes(role))continue;if(key==='mortar'&&(walking||dead))continue;if(key==='aaLauncher'&&role!=='AA_TEAM'||key==='launcher'&&role!=='AT'||key==='mg'&&role!=='MG'||key==='rifle'&&['AT','MG','AA_TEAM','LOGISTICS','PILOT'].includes(role))continue;const mesh=this.parts.get(key)!,n=this.counts.get(key)||0;if(n<1024){mesh.setMatrixAt(n,node.matrixWorld);this.counts.set(key,n+1)}}
   }
   pose(s:Soldier,role:Role,time:number,z:number,detail=true){const weapon=weaponForRole(role);if(this.asset==='ready'&&detail&&(!weapon||this.weaponTemplates.has(weapon)))this.poseAsset(s,role,time,z);else this.poseFallback(s,role,time,z,detail)}
   end(visible:boolean){for(const rig of this.rigs.values())rig.root.visible=visible&&this.used.has(rig.id);for(const [key,mesh]of this.parts){mesh.count=visible?this.counts.get(key)||0:0;mesh.visible=mesh.count>0;if(mesh.count)mesh.instanceMatrix.needsUpdate=true}}
@@ -177,4 +177,5 @@ export function vehicleGeometry(role:Role,side:Side,attachment=false){
   if(isAir(role)||isSupportModel(role)){const model=isAir(role)?createAircraft(role,side):createSupportModel(role,side);model.updateMatrixWorld(true);const source=attachment&&role==='ATTACK_HELI'?model.getObjectByName('main-rotor')!:model;source.traverse(o=>{if(o instanceof T.Mesh){const g=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();g.applyMatrix4(o.matrixWorld);parts.push(colored(g,`#${(o.material as T.MeshStandardMaterial).color.getHexString()}`))}});disposeModel(model);return combine(parts)}
   return armoredGeometry(role,side,attachment)
 }
+
 

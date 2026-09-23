@@ -249,7 +249,7 @@ export class BabylonRuntime {
       }).catch(error=>console.warn('Model asset failed to load',url,error))
     }
     const parent=source.parent?this.nativeNodes.get(source.parent.id):undefined
-    if(parent){record.pivot.parent=parent;record.pivot.position.copyFromFloats(source.position.x,source.position.y,source.position.z);record.pivot.rotationQuaternion=new Quaternion(source.quaternion.x,source.quaternion.y,source.quaternion.z,source.quaternion.w);record.pivot.scaling.copyFromFloats(source.scale.x,source.scale.y,source.scale.z)}else record.pivot.freezeWorldMatrix(Matrix.FromArray(source.matrixWorld.elements))
+    if(parent){if(record.pivot.isWorldMatrixFrozen)record.pivot.unfreezeWorldMatrix();record.pivot.parent=parent;record.pivot.position.copyFromFloats(source.position.x,source.position.y,source.position.z);record.pivot.rotationQuaternion=new Quaternion(source.quaternion.x,source.quaternion.y,source.quaternion.z,source.quaternion.w);record.pivot.scaling.copyFromFloats(source.scale.x,source.scale.y,source.scale.z)}else record.pivot.freezeWorldMatrix(Matrix.FromArray(source.matrixWorld.elements))
     record.pivot.setEnabled(source.visible)
     if(record.entries){
       const destroyed=hasDestroyedAppearance(source)
@@ -331,4 +331,5 @@ export class BabylonRuntime {
   render(){if(this.disposed)return;this.engine.beginFrame();try{this.scene.render()}finally{this.engine.endFrame()}}
   dispose(){if(this.disposed)return;this.disposed=true;this.effects.dispose();this.scene.dispose();this.engine.dispose();for(const record of this.draws.values())if(record.ownedGeometry)record.geometry.dispose();this.draws.clear();this.materials.clear();this.refreshedMaterials.clear();this.textures.clear();this.destroyedMaterials.clear();this.nativeOriginalMaterials.clear();this.native.clear();this.nativeNodes.clear();this.casters.clear()}
 }
+
 
