@@ -5,8 +5,8 @@ signal closed
 
 const MODEL_NAMES := {
   "PATROL_BOAT":"Patrol boat", "FRIGATE":"Missile cruiser", "AIRCRAFT_CARRIER":"Aircraft carrier", "LANDING_CRAFT":"Landing craft", "AMPHIBIOUS_APC":"Amphibious APC",
-  "FORKLIFT":"Supply forklift", "CARGO_PLANE":"Tactical cargo plane", "UAV_JAMMER":"UAV jammer", "AA_TEAM":"Anti-air launcher team", "TRANSPORT_HELI":"Troop transport helicopter", "HEAVY_LIFT_HELI":"Heavy-lift helicopter", "TROOP_TRUCK":"Light troop carrier",
-  "RIFLE":"Rifle squad", "SCOUT":"Scout team", "MG":"Machine gun team", "AT":"Anti-tank team", "MORTAR":"Mortar team", "ENGINEER":"Combat engineer", "MEDIC":"Combat medic", "LOGISTICS":"Logistics team", "TANK":"Main battle tank", "PILOT":"Pilot", "COMMAND":"Command officer", "TRUCK":"Supply truck", "FUEL_TRUCK":"Fuel HEMTT", "TROOP_HEMTT":"Troop HEMTT", "MEDICAL_HEMTT":"Medical HEMTT", "REPAIR_HEMTT":"Repair HEMTT", "FOB_HEMTT":"FOB HEMTT", "RECON_UAV":"Reconnaissance UAV", "APC":"Armored personnel carrier", "CANNON_APC":"Cannon APC", "IFV":"Infantry fighting vehicle", "CAS_FIGHTER":"CAS fighter", "JET":"FQ-44 Fury strike fighter", "ATTACK_HELI":"Attack helicopter", "MOB":"Main operating base", "AIRFIELD":"Airfield compound",}
+  "FORKLIFT":"Supply forklift", "CARGO_PLANE":"Tactical cargo plane", "GALAXY_B":"Galaxy-B", "UAV_JAMMER":"UAV jammer", "AA_TEAM":"Anti-air launcher team", "TRANSPORT_HELI":"Troop transport helicopter", "SUPPORT_HELI_B":"Support Helicopter B", "HEAVY_LIFT_HELI":"Heavy-lift helicopter", "TROOP_TRUCK":"Light troop carrier",
+  "RIFLE":"Rifle squad", "SCOUT":"Scout team", "MG":"Machine gun team", "AT":"Anti-tank team", "MORTAR":"Mortar team", "ENGINEER":"Combat engineer", "MEDIC":"Combat medic", "LOGISTICS":"Logistics team", "TANK":"Main battle tank", "PILOT":"Pilot", "COMMAND":"Command officer", "TRUCK":"Supply truck", "FUEL_TRUCK":"Fuel HEMTT", "TROOP_HEMTT":"Troop HEMTT", "MEDICAL_HEMTT":"Medical HEMTT", "REPAIR_HEMTT":"Repair HEMTT", "FOB_HEMTT":"FOB HEMTT", "RECON_UAV":"Reconnaissance UAV", "APC":"Armored personnel carrier", "CANNON_APC":"Cannon APC", "IFV":"Infantry fighting vehicle", "CAS_FIGHTER":"CAS fighter", "A29B":"A-29B Super Tucano", "JET":"FQ-44 Fury strike fighter", "ATTACK_HELI":"Attack helicopter", "MOB":"Main operating base", "AIRFIELD":"Airfield compound",}
 const MODEL_FILES := {"COMMAND":"soldier","RIFLE":"soldier","SCOUT":"soldier","MG":"soldier","AT":"soldier","MORTAR":"soldier","ENGINEER":"soldier","MEDIC":"soldier","LOGISTICS":"soldier","PILOT":"soldier","AA_TEAM":"soldier","TANK":"tank","APC":"apc","CANNON_APC":"cannon_apc","IFV":"ifv","AMPHIBIOUS_APC":"amphibious_apc","TROOP_TRUCK":"troop_transport","TRUCK":"truck","CAS_FIGHTER":"cas","JET":"fighter","ATTACK_HELI":"vtol_attack","TRANSPORT_HELI":"transport_heli","HEAVY_LIFT_HELI":"vtol_cargo","CARGO_PLANE":"cargo_plane","RECON_UAV":"recon_uav","AIRCRAFT_CARRIER":"aircraft_carrier","FRIGATE":"missile_cruiser","PATROL_BOAT":"patrol_boat","LANDING_CRAFT":"landing_craft","FORKLIFT":"forklift","UAV_JAMMER":"uav_jammer","MOB":"mob","AIRFIELD":"airfield"}
 const Z_UP_MODEL_FILES := ["fighter","troop_transport","vtol_attack","vtol_cargo"]
 var world
@@ -240,7 +240,7 @@ func _build_models() -> void:
 func _category(id: String) -> String:
 	if MODEL_FILES.get(id,"") == "soldier": return "Personnel"
 	if id in ["MOB","AIRFIELD"]: return "Structures"
-	if id in ["JET","CAS_FIGHTER","A29B","ATTACK_HELI","TRANSPORT_HELI","HEAVY_LIFT_HELI","RECON_UAV","CARGO_PLANE"]: return "Aircraft"
+	if id in ["JET","CAS_FIGHTER","A29B","GALAXY_B","SUPPORT_HELI_B","ATTACK_HELI","TRANSPORT_HELI","HEAVY_LIFT_HELI","RECON_UAV","CARGO_PLANE"]: return "Aircraft"
 	return "Vehicles"
 
 func _populate_catalog(category: String) -> void:
@@ -343,7 +343,7 @@ func _find_animation(node: Node) -> void:
 func _set_team(value: int) -> void:
 	var changed := team != value
 	team = value
-	if changed and selected_model in ["TRUCK","FUEL_TRUCK","TROOP_HEMTT","MEDICAL_HEMTT","REPAIR_HEMTT","FOB_HEMTT","FORKLIFT","UAV_JAMMER","CARGO_PLANE","TRANSPORT_HELI","IFV","MOB","AIRFIELD"]:
+	if changed and selected_model in ["TRUCK","FUEL_TRUCK","TROOP_HEMTT","MEDICAL_HEMTT","REPAIR_HEMTT","FOB_HEMTT","FORKLIFT","A29B","GALAXY_B","SUPPORT_HELI_B","UAV_JAMMER","CARGO_PLANE","TRANSPORT_HELI","IFV","MOB","AIRFIELD"]:
 		_load_model(selected_model)
 		return
 	material_overlay = ShaderMaterial.new()
@@ -391,6 +391,8 @@ func _process(delta: float) -> void:
 		preview_greebles.set_activity(driving, delta)
 	if model_page.visible and selected_model == "A29B" and is_instance_valid(model):
 		preload("res://scripts/a29b_model.gd").animate(model, delta)
+	if model_page.visible and selected_model == "SUPPORT_HELI_B" and is_instance_valid(model):
+		preload("res://scripts/support_heli_b_model.gd").animate(model, delta)
 	if model_page.visible and selected_model == "TRANSPORT_HELI" and is_instance_valid(model):
 		preload("res://scripts/browser_aircraft_models.gd").animate(model, delta)
 	if model_page.visible and auto_rotate:
