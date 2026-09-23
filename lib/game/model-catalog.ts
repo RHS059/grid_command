@@ -1,13 +1,14 @@
 import { CATALOG, isAir, isVehicle, type Role } from './types'
 import type { BaseKind } from './base-models'
-export type ModelId = Role | BaseKind
+import { HEMTT_VARIANTS, isHemttVariant, type HemttVariant } from './hemtt-model'
+export type ModelId = Role | BaseKind | HemttVariant
 export const MODEL_NAMES: Record<ModelId, string> = {
   PATROL_BOAT: 'Patrol boat', FRIGATE: 'Missile cruiser', AIRCRAFT_CARRIER: 'Aircraft carrier', LANDING_CRAFT: 'Landing craft', AMPHIBIOUS_APC: 'Amphibious APC',
   FORKLIFT: 'Supply forklift', CARGO_PLANE: 'Tactical cargo plane', UAV_JAMMER: 'UAV jammer', AA_TEAM: 'Anti-air launcher team', TRANSPORT_HELI: 'Troop transport helicopter', HEAVY_LIFT_HELI: 'Heavy-lift helicopter', TROOP_TRUCK: 'Light troop carrier',
-  RIFLE: 'Rifle squad', SCOUT: 'Scout team', MG: 'Machine gun team', AT: 'Anti-tank team', MORTAR: 'Mortar team', ENGINEER: 'Combat engineer', MEDIC: 'Combat medic', LOGISTICS: 'Logistics team', TANK: 'Main battle tank', PILOT: 'Pilot', COMMAND: 'Command officer', TRUCK: 'Supply truck', RECON_UAV: 'Reconnaissance UAV', APC: 'Armored personnel carrier', CANNON_APC: 'Cannon APC', IFV: 'Infantry fighting vehicle', CAS_FIGHTER: 'CAS fighter', JET: 'FQ-44 Fury strike fighter', ATTACK_HELI: 'Attack helicopter', MOB: 'Main operating base', AIRFIELD: 'Airfield compound',
+  RIFLE: 'Rifle squad', SCOUT: 'Scout team', MG: 'Machine gun team', AT: 'Anti-tank team', MORTAR: 'Mortar team', ENGINEER: 'Combat engineer', MEDIC: 'Combat medic', LOGISTICS: 'Logistics team', TANK: 'Main battle tank', PILOT: 'Pilot', COMMAND: 'Command officer', TRUCK: 'Supply truck', FUEL_TRUCK: 'Fuel HEMTT', TROOP_HEMTT: 'Troop HEMTT', MEDICAL_HEMTT: 'Medical HEMTT', REPAIR_HEMTT: 'Repair HEMTT', FOB_HEMTT: 'FOB HEMTT', RECON_UAV: 'Reconnaissance UAV', APC: 'Armored personnel carrier', CANNON_APC: 'Cannon APC', IFV: 'Infantry fighting vehicle', CAS_FIGHTER: 'CAS fighter', JET: 'FQ-44 Fury strike fighter', ATTACK_HELI: 'Attack helicopter', MOB: 'Main operating base', AIRFIELD: 'Airfield compound',
 }
-export const MODEL_CATALOG = [...Object.keys(CATALOG) as Role[], 'MOB', 'AIRFIELD'] as ModelId[]
-export const modelCategory = (id: ModelId) => id === 'MOB' || id === 'AIRFIELD' ? 'Structures' : isAir(id) ? 'Aircraft' : isVehicle(id) ? 'Vehicles' : 'Personnel'
+export const MODEL_CATALOG = [...(Object.keys(CATALOG) as Role[]).flatMap(id => id === 'TRUCK' ? [id, ...HEMTT_VARIANTS] : [id]), 'MOB', 'AIRFIELD'] as ModelId[]
+export const modelCategory = (id: ModelId) => isHemttVariant(id) ? 'Vehicles' : id === 'MOB' || id === 'AIRFIELD' ? 'Structures' : isAir(id) ? 'Aircraft' : isVehicle(id) ? 'Vehicles' : 'Personnel'
 export const MODEL_NOTES: Partial<Record<ModelId, string>> = {
   PATROL_BOAT: 'Patrol boat', FRIGATE: 'Guided-missile surface combatant with VLS, radar arrays, fore gun, hangar and flight deck.', AIRCRAFT_CARRIER: 'Fleet carrier with angled flight deck, island, elevators, defensive mounts and parked aircraft.', LANDING_CRAFT: 'Landing craft', AMPHIBIOUS_APC: 'Amphibious APC',
   FORKLIFT: 'Articulated forks and visible pallets. Transfers up to 750 supply units between apron and storage. Airfield tiers provide one, two or four forklifts.',
@@ -25,5 +26,10 @@ export const MODEL_NOTES: Partial<Record<ModelId, string>> = {
   RECON_UAV: 'Long-span reconnaissance airframe with a V-tail, rear pusher propeller and stabilized sensor turret.',
   MOB: 'Headquarters, communications mast, service shelter, supply containers and a perimeter with open vehicle access. Visual scenery; existing gameplay is unchanged.',
   AIRFIELD: 'Runway and threshold markings, taxiway, apron, hangars, glazed control tower, helipads and fuel tanks. 1,200 m runway used by physical cargo deliveries; supplies are handled by forklifts before onward transport.',
+  FUEL_TRUCK: 'HEMTT base with an elliptical fuel tank, rear pump and hose-reel module, top catwalk and ladder. Preview only; refuelling gameplay is not implemented yet.',
+  TROOP_HEMTT: 'HEMTT base with a drop-side bed under a canvas cover, rolled rear flap, tailgate and ladder. Preview only.',
+  MEDICAL_HEMTT: 'HEMTT base with a red-cross shelter and roof AC; deploys an awning, tent walls and litters. Preview only.',
+  REPAIR_HEMTT: 'HEMTT wrecker with a pedestal crane, tool lockers and rear underlift; deploys boom and outriggers. Preview only.',
+  FOB_HEMTT: 'HEMTT with an expandable command shelter, generator, mast and dish; deploys expansions and a camo net. Preview only.',
   TRUCK: 'Eight-wheel cab-over container supply truck: 900-unit cargo body. Tier 3 provides four trucks with two 900-unit trailers each, for 2,700 units per vehicle.',
 }

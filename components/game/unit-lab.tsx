@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { RotateCcw, Volume2, VolumeX } from 'lucide-react'
 import { vehicleClips } from '@/lib/game/vehicle-animation'
 import { ModelViewport } from './model-viewport'
+import { isHemttVariant } from '@/lib/game/hemtt-model'
 import { MODEL_CATALOG, MODEL_NAMES, MODEL_NOTES, modelCategory, type ModelId } from '@/lib/game/model-catalog'
 import { CATALOG, isVehicle, type Role, type Side, type SoldierAction, type Stance, type Soldier } from '@/lib/game/types'
 import { BattlefieldAudio } from '@/lib/game/audio'
@@ -33,7 +34,7 @@ export function UnitLab({ embedded = false, active = true, soundEngine }: { embe
   const [soundSpeed, setSoundSpeed] = useState(.35)
   const [soundDistance, setSoundDistance] = useState(30)
   const [soundAngle, setSoundAngle] = useState(0)
-  const role: Role | undefined = model === 'MOB' || model === 'AIRFIELD' ? undefined : model
+  const role: Role | undefined = model === 'MOB' || model === 'AIRFIELD' || isHemttVariant(model) ? undefined : model
   const vehicleRole = role && isVehicle(role) ? role : undefined
   const personnel = modelCategory(model) === 'Personnel'
   const info = role ? CATALOG[role] : null

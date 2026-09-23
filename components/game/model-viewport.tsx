@@ -11,6 +11,7 @@ import { createBase } from '@/lib/game/base-models'
 import { isAir, isVehicle, type Side, type SoldierAction, type Stance, type Soldier } from '@/lib/game/types'
 import { vehicleClips, poseVehicleClip, advanceVehiclePlayback } from '@/lib/game/vehicle-animation'
 import { MODEL_NAMES, type ModelId } from '@/lib/game/model-catalog'
+import { isHemttVariant } from '@/lib/game/hemtt-model'
 import { addStudioLighting } from '@/lib/game/scene-lighting'
 
 interface Props { model: ModelId; side: Side; active: boolean; animate: boolean; rotate: boolean; action: SoldierAction; stance: Stance; condition: Soldier['status']; damagePreview?: boolean; destruction?: number; reset: number; clip?:string; loop?:boolean; seek?:{serial:number;time:number}; onTime?:(time:number)=>void }
@@ -31,6 +32,7 @@ export function ModelViewport(props: Props) {
     let object: T.Object3D | null = null, batch: SoldierBatch | null = null
     const id = props.model
     if (id === 'MOB' || id === 'AIRFIELD') object = createBase(id, props.side)
+    else if (isHemttVariant(id)) object = createSupportModel(id, props.side)
     else if (isAir(id)) object = createAircraft(id, props.side)
     else if (isSupportModel(id)) object = createSupportModel(id, props.side)
     else if (isVehicle(id)) {
@@ -73,7 +75,7 @@ export function ModelViewport(props: Props) {
       }
       if (lastReset !== c.reset) { lastReset = c.reset; frameModel() }
       if(object?.userData.blenderVehicle){const clip=vehicleClips(id).find(v=>v.id===c.clip)||vehicleClips(id)[0];if(lastClip!==clip.id){lastClip=clip.id;clipTime=0}if(c.seek&&lastSeek!==c.seek.serial){lastSeek=c.seek.serial;clipTime=c.seek.time}else clipTime=advanceVehiclePlayback(clipTime,dt,c.animate,clip.duration,c.loop??clip.loop);poseVehicleClip(object,clip.id,clipTime);if(now-lastReport>80){c.onTime?.(clipTime);lastReport=now}}else if(object){animateAircraft(object,time);animateSupport(object,time)}
-      if (batch && id !== 'MOB' && id !== 'AIRFIELD') {
+      if (batch && id !== 'MOB' && id !== 'AIRFIELD' && !isHemttVariant(id)) {
         const soldier: Soldier = { id: 'preview:0', x: 0, y: 0, status: c.condition, stance: c.stance, action: c.action, heading: 0, aim: Math.sin(time * .6) * .5, since: Math.floor(time / 2) * 2, shotAt: c.action === 'fire' || c.action === 'peek' ? Math.floor(time * 3) / 3 : -10 }
         batch.begin(); batch.pose(soldier, id, time, 0, true); if (c.action === 'drag') batch.pose({ ...soldier, id: 'preview:1', x: -.5, y: -1.2, status: 'downed' }, id, time, 0, true); batch.end(true)
       }

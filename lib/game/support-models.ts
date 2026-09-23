@@ -1,12 +1,13 @@
-import { createCargoContainer } from './container-model'
-import { containerOnTruck, truckContainerPose } from './mob'
+import { containerOnTruck } from './mob'
+import { createHemtt, isHemttVariant, type HemttVariant } from './hemtt-model'
 import { createBlenderVehicle } from './blender-vehicles'
 import * as T from './scene-data'
 import { mergeGeometries } from './scene-data'
 import { shell, rod } from './model-geometry'
 import { SIDE_COLOR, type Role, type Side, type MissionState } from './types'
-export const isSupportModel=(role:Role)=>['FORKLIFT','TRUCK','TROOP_TRUCK','UAV_JAMMER','APC','CANNON_APC','TANK','AMPHIBIOUS_APC','PATROL_BOAT','LANDING_CRAFT','FRIGATE','AIRCRAFT_CARRIER'].includes(role)
-export function createSupportModel(role:Role,side:Side){
+export const isSupportModel=(role:string)=>isHemttVariant(role)||['FORKLIFT','TRUCK','TROOP_TRUCK','UAV_JAMMER','APC','CANNON_APC','TANK','AMPHIBIOUS_APC','PATROL_BOAT','LANDING_CRAFT','FRIGATE','AIRCRAFT_CARRIER'].includes(role)
+export function createSupportModel(role:Role|HemttVariant,side:Side){
+  if(role==='TRUCK'||isHemttVariant(role))return createHemtt(role,side)
   if(['TROOP_TRUCK','APC','CANNON_APC','TANK','AMPHIBIOUS_APC','PATROL_BOAT','LANDING_CRAFT','FRIGATE','AIRCRAFT_CARRIER'].includes(role))return createBlenderVehicle(role,side)
   const root=new T.Group();root.name=role;root.userData.unitSurface=true
   const body=new T.MeshStandardMaterial({color:'#73765a',roughness:.9,flatShading:true}),dark=new T.MeshStandardMaterial({color:'#262c29',roughness:.9,flatShading:true}),metal=new T.MeshStandardMaterial({color:'#565f51',metalness:.15,roughness:.8,flatShading:true}),glass=new T.MeshStandardMaterial({color:'#293e4c',metalness:.6,roughness:.15}),mark=new T.MeshStandardMaterial({color:SIDE_COLOR[side]})
@@ -20,32 +21,6 @@ export function createSupportModel(role:Role,side:Side){
     for(const x of [-.5,.5])b(.18,1.65,.08,x,2.1,.35,metal,forks)
     const pallet=new T.Group();pallet.name='pallet';forks.add(pallet);b(1.5,1.25,.18,0,2,.5,metal,pallet);b(1.25,1.1,.8,0,2,1,body,pallet);b(.07,1.15,.85,0,2,1,dark,pallet);b(1.25,.04,.24,0,2.56,1,mark,pallet)
     b(1,.03,.25,0,-1.36,1.2,mark)
-  }else if(role==='TRUCK'){
-    // Eight-wheel cab-over logistics carrier with a ribbed container.
-    b(2.45,9.2,.28,0,-.25,.95,dark);b(2.6,5.4,.18,0,-1.9,1.38,metal)
-    const cab=new T.Mesh(shell([{z:1.1,w:2.15,d:2.2,y:3.05},{z:1.7,w:2.65,d:2.65,y:3.1},{z:3.05,w:2.5,d:1.85,y:2.9},{z:3.2,w:2.25,d:1.65,y:2.86}],'#ffffff'),body);root.add(cab)
-    for(const x of [-.62,.62]){const screen=b(1.08,.035,.98,x,3.96,2.49,glass);screen.rotation.x=.31}
-    b(2.7,.2,.23,0,4.43,1.48,metal);b(1.35,.06,.35,0,4.33,1.79,dark)
-    for(let i=0;i<4;i++)b(1.3,.025,.025,0,4.37,1.67+i*.07,metal)
-    for(const sign of [-1,1]){
-      for(const y of [3.1,1.55,-2.5,-4.1]){wheel(sign*1.35,y,.7,.69);b(.5,1.5,.1,sign*1.15,y,1.43)}
-      b(.025,1,.7,sign*1.28,2.95,2.48,glass);b(.04,.9,.035,sign*1.29,2.9,1.84,metal)
-      b(.075,.23,.045,sign*1.32,2.57,2,dark);b(.38,.62,.1,sign*1.39,2.58,1.14,metal)
-      const mirror=new T.Mesh(rod([sign*1.2,3.35,2.7],[sign*1.65,3.5,2.75],.025,'#ffffff'),metal);root.add(mirror);b(.09,.27,.4,sign*1.65,3.5,2.68,glass)
-      for(const x of [sign*.95,sign*1.17])b(.17,.045,.18,x,4.43,1.83,metal)
-      b(.055,.75,.2,sign*1.33,1.02,1.83,mark)
-      const tank=new T.Mesh(new T.CylinderGeometry(.43,.43,1.4,10),metal);tank.position.set(sign*1.05,-.15,1.04);root.add(tank)
-      for(const y of [-.7,.4])b(.88,.045,.65,sign*1.05,y,1.03,dark)
-      b(.08,.65,.55,sign*1.35,-4.55,.75,dark)
-    }
-    const container=createCargoContainer();container.name='truck-container-0';const pose=truckContainerPose(0);container.position.set(pose.x,pose.y,pose.z);root.add(container)
-    b(2.65,.17,.2,0,-4.83,1.18,metal)
-    const spare=new T.Mesh(new T.CylinderGeometry(.64,.64,.3,12),dark);spare.rotation.z=Math.PI/2;spare.position.set(0,1.15,2.05);root.add(spare)
-    for(let i=0;i<2;i++){
-      const trailer=new T.Group();trailer.name=`cargo-trailer-${i+1}`;trailer.position.y=-7-i*6.2;trailer.visible=false;root.add(trailer)
-      b(.2,2,.2,0,3,.6,metal,trailer);b(2.5,4.8,.3,0,0,.8,dark,trailer);const cargo=createCargoContainer();cargo.name=`truck-container-${i+1}`;cargo.position.z=truckContainerPose(i+1).z;trailer.add(cargo)
-      for(const x of [-1.3,1.3])for(const y of [-1.3,1.3]){const tire=new T.Mesh(new T.CylinderGeometry(.5,.5,.3,16),dark);tire.rotation.z=Math.PI/2;tire.position.set(x,y,.5);trailer.add(tire)}
-    }
   }else if(role==='TROOP_TRUCK'){
     const sculpt=(rings:Parameters<typeof shell>[0],m=body)=>{const o=new T.Mesh(shell(rings,'#ffffff'),m);root.add(o);return o}
     const rail=(a:[number,number,number],end:[number,number,number],r=.04,m=body)=>{const o=new T.Mesh(rod(a,end,r,'#ffffff'),m);root.add(o);return o}
@@ -94,14 +69,6 @@ export function createSupportModel(role:Role,side:Side){
     for(let i=0;i<6;i++)b(.85,.04,.04,0,-.62,.55+i*.12,dark)
     b(.13,.13,5,0,0,3.8,metal);for(const x of [-.7,.7]){b(.08,.08,2,x,0,5.1,dark);b(1.5,.09,.08,0,0,4.6,metal)}
     b(.65,.7,.6,1.15,0,.45,dark);b(.35,.05,.13,1.15,.36,.5,mark)
-  }
-  if(role==='TRUCK'){
-    const meshes=root.children.filter((o):o is T.Mesh=>o instanceof T.Mesh&&!o.name.startsWith('truck-container-'))
-    for(const material of [body,dark,metal,glass,mark]){
-      const group=meshes.filter(m=>m.material===material);if(!group.length)continue
-      const geos=group.map(m=>{m.updateMatrix();const g=m.geometry.index?m.geometry.toNonIndexed():m.geometry.clone();g.deleteAttribute('color');g.applyMatrix4(m.matrix);return g})
-      const merged=mergeGeometries(geos);geos.forEach(g=>g.dispose());group.forEach(m=>{root.remove(m);m.geometry.dispose()});root.add(new T.Mesh(merged,material))
-    }
   }
   return root
 }

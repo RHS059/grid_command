@@ -174,6 +174,6 @@ export class SoldierBatch {
 export function vehicleGeometry(role:Role,side:Side,attachment=false){
   if(hasBlenderVehicle(role))return blenderVehicleGeometry(role,side,attachment)
   if(isNaval(role))return maritimeGeometry(role,side);const parts:T.BufferGeometry[]=[]
-  if(isAir(role)||isSupportModel(role)){const model=isAir(role)?createAircraft(role,side):createSupportModel(role,side);model.updateMatrixWorld(true);const source=attachment&&role==='ATTACK_HELI'?model.getObjectByName('main-rotor')!:model;source.traverse(o=>{if(o instanceof T.Mesh){const g=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();g.applyMatrix4(o.matrixWorld);parts.push(colored(g,`#${(o.material as T.MeshStandardMaterial).color.getHexString()}`))}});disposeModel(model);return combine(parts)}
+  if(isAir(role)||isSupportModel(role)){const model=isAir(role)?createAircraft(role,side):createSupportModel(role,side);model.updateMatrixWorld(true);const source=attachment&&role==='ATTACK_HELI'?model.getObjectByName('main-rotor')!:model;source.traverse(o=>{if(o instanceof T.Mesh){const g=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();g.applyMatrix4(o.matrixWorld);const m=o.material as T.MeshStandardMaterial;parts.push(colored(g,`#${(m.uniforms.baseColor?.value??m.color).getHexString()}`))}});disposeModel(model);return combine(parts)}
   return armoredGeometry(role,side,attachment)
 }
