@@ -6,6 +6,8 @@ interface GltfNode { name?: string; children?: number[]; translation?: number[];
 interface GltfAccessor { bufferView?: number; byteOffset?: number; count: number; type: string; componentType: number }
 interface GltfDocument { nodes?: GltfNode[]; scenes?: { nodes: number[] }[]; scene?: number; accessors?: GltfAccessor[]; bufferViews?: { byteOffset?: number; byteStride?: number }[]; animations?: { name?: string; samplers: { input: number; output: number }[]; channels: { sampler: number; target: { node: number; path: string } }[] }[] }
 export type SoldierModelKind = 'soldier' | 'commander' | 'logistics'
+interface PersonnelClip { name: string; duration: number; times: number[]; tracks: { target: string; rotation: number[][]; position: number[][] }[] }
+interface PersonnelAnimationBundle { schema: number; model: SoldierModelKind; clips: PersonnelClip[] }
 const soldierAssets = new Map<SoldierModelKind, Promise<RigAsset>>()
 let soldierWeaponAsset: Promise<RigAsset> | undefined
 export type SoldierWeapon = 'RIFLE' | 'MG' | 'AT' | 'AA_TEAM'
@@ -53,7 +55,26 @@ async function loadRig(url: string): Promise<RigAsset> {
 }
 export function loadSoldierAsset(kind: SoldierModelKind = 'soldier') {
   let asset = soldierAssets.get(kind)
-  if (!asset) { asset = loadRig(assetPath(`/models/${kind}.glb`)); soldierAssets.set(kind, asset) }
+  if (!asset) {
+    asset = loadRig(assetPath(`/models/${kind}.glb`)).then(async rig => {
+      const response = await fetch(assetPath(`/animations/personnel/${kind}.json`))
+      if (!response.ok) throw new Error(`Personnel animation request failed (${response.status})`)
+      const bundle: PersonnelAnimationBundle = await response.json()
+      if (bundle.schema !== 1 || bundle.model !== kind) throw new Error(`Wrong personnel animation bundle: ${kind}`)
+      for (const clip of bundle.clips) {
+        const tracks: D.KeyframeTrack[] = []
+        for (const track of clip.tracks) {
+          if (!rig.scene.getObjectByName(track.target)) throw new Error(`Missing ${kind} animation target ${track.target}`)
+          tracks.push(new D.QuaternionKeyframeTrack(`${track.target}.quaternion`, clip.times, track.rotation.flat()))
+          tracks.push(new D.VectorKeyframeTrack(`${track.target}.position`, clip.times, track.position.flat()))
+        }
+        // Native Babylon groups are constructed for names with this prefix.
+        rig.animations.push(new D.AnimationClip(`__personnel_${clip.name}`, clip.duration, tracks))
+      }
+      return rig
+    })
+    soldierAssets.set(kind, asset)
+  }
   return asset
 }
 export function loadSoldierWeaponAsset() { return soldierWeaponAsset ??= loadRig(assetPath('/models/soldier-weapons.glb')) }
@@ -68,3 +89,4 @@ export function createSoldierTemplate(source: D.Object3D, side: Side) {
   return template
 }
 export const cloneSoldierRig = (template: D.Object3D) => template.clone(true)
+

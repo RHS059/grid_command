@@ -42,6 +42,8 @@ var exhaust: CPUParticles3D
 var animation_player: AnimationPlayer
 var anim_idle := ""
 var anim_move := ""
+var personnel_animated := false
+var last_personnel_shot := -100.0
 var phase := 0.0
 var imported_model := false
 var source_model: Node3D
@@ -88,10 +90,7 @@ func _process(delta: float) -> void:
 		motor_root.transform = motor_boil.sample(role,motor_delta,preload("res://scripts/engine_boil.gd").powered(core_record),bool(core_record.get("moving",false)),is_alive,float(stats["size"]))
 	if is_instance_valid(vehicle_greebles):
 		vehicle_greebles.set_activity(is_alive and not route.is_empty(), delta)
-	# Procedural aircraft name the script that spins their rotors or propeller.
-	if is_instance_valid(source_model) and source_model.has_meta("animate_with"):
-		if is_alive: load(str(source_model.get_meta("animate_with"))).animate(source_model, delta)
-	elif kind == "transport_heli" and is_instance_valid(source_model):
+	if kind == "transport_heli" and is_instance_valid(source_model):
 		preload("res://scripts/browser_aircraft_models.gd").animate(source_model, delta, is_alive)
 	# Simulation records advance at 20 Hz. Retain the previous rendered transform
 	# and consume that offset during the next fixed interval, matching the
@@ -156,7 +155,11 @@ func _create_model() -> void:
 				orient.scale = Vector3.ONE * factor
 				orient.position = Vector3(-bounds.get_center().x, -bounds.position.y, -bounds.get_center().z) * factor
 				imported_model = true
-			_find_animations(model)
+			if source_kind in ["soldier","commander","logistics"]:
+				animation_player = preload("res://scripts/personnel_animations.gd").install(model,source_kind)
+				personnel_animated = animation_player != null
+			else:
+				_find_animations(model)
 		if not imported_model:
 			orient.queue_free()
 			visual_meshes.clear()
@@ -190,6 +193,10 @@ func _create_model() -> void:
 		tank_fire.setup(content, source_model)
 
 func _present_shot(_unit: CombatUnit, _target: CombatUnit) -> void:
+	last_personnel_shot = Time.get_ticks_msec()/1000.0
+	if personnel_animated and animation_player != null:
+		animation_player.play("fire",0.06)
+		animation_player.seek(0.0,true)
 	if is_alive and is_instance_valid(tank_fire):
 		tank_fire.fire()
 
@@ -478,6 +485,8 @@ func tick(delta: float, units: Array[CombatUnit], elapsed: float) -> void:
 		exhaust.emitting = can_move
 	if animation_player != null:
 		var desired := anim_idle if route.is_empty() else anim_move
+		if personnel_animated:
+			desired = preload("res://scripts/personnel_animations.gd").select_clip(is_alive,core_record.get("status","") == "downed",not route.is_empty(),engaged,Time.get_ticks_msec()/1000.0-last_personnel_shot < 0.24)
 		if not desired.is_empty() and animation_player.current_animation != desired:
 			animation_player.play(desired, 0.2)
 
@@ -513,6 +522,8 @@ func take_damage(amount: float) -> void:
 	if health <= 0.0:
 		is_alive = false
 		order = "LOST"
+		if personnel_animated and animation_player != null:
+			animation_player.play("dead",0.10)
 		route.clear()
 		selection_ring.hide()
 		team_marker.hide()
@@ -522,7 +533,8 @@ func take_damage(amount: float) -> void:
 			tank_fire.reset()
 		for mesh in visual_meshes:
 			mesh.material_overlay = null
-			mesh.material_override = TacticalMap.material(Color("3d4948"), 1.0)
+			if not personnel_animated:
+				mesh.material_override = TacticalMap.material(Color("3d4948"), 1.0)
 		if airborne:
 			visual.position.y = 0.002
 			visual.rotation.z = 0.22
@@ -531,3 +543,4 @@ func take_damage(amount: float) -> void:
 func set_fresnel(enabled: bool) -> void:
 	for mesh in visual_meshes:
 		mesh.material_overlay = overlay if enabled and is_alive and DisplayServer.get_name() != "headless" else null
+
