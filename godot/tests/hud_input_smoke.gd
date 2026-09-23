@@ -20,6 +20,10 @@ func _run() -> void:
 	create_timer(25.0).timeout.connect(func(): push_error("HUD pointer test timed out."); quit(1))
 	ProjectSettings.set_setting("geography/network_enabled",false)
 	root.size = Vector2i(1440,900)
+	# This test owns the updater state below. Suppress the normal deferred startup
+	# request so it cannot race the manual-button scenario on CI.
+	var updater = root.get_node("UpdateService")
+	updater._check_started = true
 	var world = load("res://scenes/main.tscn").instantiate()
 	root.add_child(world)
 	await process_frame
@@ -40,7 +44,8 @@ func _run() -> void:
 		assert(hud.drawer.visible and not hud.menu.visible,"Menu entry did not receive pointer input: "+title)
 	hud.close_panels()
 	await click(hud.workspace_button)
-	var updater = root.get_node("UpdateService")
+	updater._check_started = false
+	updater.phase = "idle"
 	var original_channel: String = ProjectSettings.get_setting("updates/channel_url")
 	ProjectSettings.set_setting("updates/channel_url","https://invalid.example/test-channel")
 	await click(hud.update_button)
