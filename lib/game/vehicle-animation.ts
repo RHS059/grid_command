@@ -16,6 +16,7 @@ import landingCraft from './generated/landing_craft_rig.json'
 import aircraftCarrier from './generated/aircraft_carrier_rig.json'
 import missileCruiser from './generated/missile_cruiser_rig.json'
 import { updateVehicleEffects } from './vehicle-effects'
+import { nativeVehicleAsset, setNativeVehicleClip } from './native-vehicle-assets'
 
 export interface VehicleClip { id:string; label:string; duration:number; loop:boolean }
 export interface RigNode { pivot:number[]; kind:string; parent?:string; closed?:number; open?:number; phase?:number; trackRotationSign?:number; retractLift?:number; anchor?:number[]; rampPoint?:number[]; parentRamp?:string }
@@ -41,7 +42,7 @@ function bindVehicle(root:T.Object3D,rig:VehicleRig){
   return binding
 }
 export const vehicleRig=(role:string)=>rigs[role as Role]
-export const vehicleClips=(role:string):VehicleClip[]=>vehicleRig(role)?.clips||[]
+export const vehicleClips=(role:string):VehicleClip[]=>[...(nativeVehicleAsset(role)?.clips||vehicleRig(role)?.clips||[])]
 export function advanceVehiclePlayback(time:number,dt:number,playing:boolean,duration:number,loop:boolean){
   if(!playing)return Math.max(0,Math.min(duration,time))
   const next=time+Math.max(0,dt);return loop&&duration>0?next%duration:Math.min(duration,next)
@@ -76,6 +77,7 @@ export function sampleVehicleNode(node:RigNode,clip:string,time:number,duration:
   return{rotation,offset,scale}
 }
 export function poseVehicleClip(root:T.Object3D,clipId:string,time:number){
+  if(root.userData.nativeVehicle){setNativeVehicleClip(root,clipId,time);return}
   const rig=vehicleRig(root.name);if(!rig)return
   const clip=rig.clips.find(c=>c.id===clipId)||rig.clips[0],t=Math.max(0,Math.min(clip.duration,time))
   for(const {node,object,base} of bindVehicle(root,rig).nodes){

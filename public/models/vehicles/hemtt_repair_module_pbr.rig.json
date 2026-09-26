@@ -1,0 +1,142 @@
+{
+  "asset": "hemtt_repair_module_pbr",
+  "role": "repair",
+  "classification": "runtime-rear-module",
+  "containsBaseTruck": false,
+  "attachMount": "Mount_rear_module",
+  "mountTransform": {
+    "position": [
+      0.0,
+      -1.5,
+      1.3968939781188965
+    ],
+    "rotationQuaternion": [
+      0,
+      0,
+      0,
+      1
+    ],
+    "scale": [
+      1,
+      1,
+      1
+    ]
+  },
+  "attachLocalTransform": {
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "rotationQuaternion": [
+      0,
+      0,
+      0,
+      1
+    ],
+    "scale": [
+      1,
+      1,
+      1
+    ]
+  },
+  "axisConvention": "+Y forward, +Z up",
+  "units": "meters",
+  "triangles": 1304,
+  "bounds": {
+    "min": [
+      -1.693261,
+      -3.402874,
+      -0.657086
+    ],
+    "max": [
+      1.69326,
+      3.370168,
+      1.478318
+    ]
+  },
+  "composedBounds": {
+    "min": [
+      -1.693261,
+      -4.902874,
+      0.739808
+    ],
+    "max": [
+      1.69326,
+      1.870168,
+      2.875212
+    ]
+  },
+  "materials": [
+    "LP_HEMTT_hd_ps2",
+    "MOD_repair_mat"
+  ],
+  "images": [
+    {
+      "name": "LP_HEMTT_hd_metal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "LP_HEMTT_hd_normal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "LP_HEMTT_hd_ps2_512",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "LP_HEMTT_hd_rough",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_repair_metal",
+      "size": [
+        256,
+        256
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_repair_normal",
+      "size": [
+        256,
+        256
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_repair_rough",
+      "size": [
+        256,
+        256
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_repair_tex",
+      "size": [
+        256,
+        256
+      ],
+      "packed": true
+    }
+  ],
+  "glb": "public/models/vehicles/hemtt_repair_module_pbr.glb",
+  "blend": "assets/vehicles/rigged/modules/hemtt_repair_module_pbr.blend"
+}

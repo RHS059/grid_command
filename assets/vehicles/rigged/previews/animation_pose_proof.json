@@ -1,0 +1,143 @@
+{
+  "revision": "approved-pbr-animation-and-module-proof-v1",
+  "proofs": [
+    {
+      "asset": "hemtt_base_pbr",
+      "clip": "steer",
+      "sampleSeconds": 0.5,
+      "sampleFrame": 13,
+      "camera": "front_close",
+      "actionTargets": [
+        "Assembly_wheel_L_0",
+        "Assembly_wheel_L_1",
+        "Assembly_wheel_R_0",
+        "Assembly_wheel_R_1"
+      ],
+      "image": "proof_hemtt_steer_t0p5.png",
+      "sourceBlend": "hemtt_base_pbr_rigged.blend",
+      "usesSavedActionTracks": true
+    },
+    {
+      "asset": "hemtt_base_pbr",
+      "clip": "drive",
+      "sampleSeconds": 0.3125,
+      "sampleFrame": 9,
+      "camera": "front_close",
+      "actionTargets": [
+        "Assembly_wheel_L_0",
+        "Assembly_wheel_L_1",
+        "Assembly_wheel_L_2",
+        "Assembly_wheel_L_3",
+        "Assembly_wheel_R_0",
+        "Assembly_wheel_R_1",
+        "Assembly_wheel_R_2",
+        "Assembly_wheel_R_3"
+      ],
+      "image": "proof_hemtt_drive_t0p3125.png",
+      "sourceBlend": "hemtt_base_pbr_rigged.blend",
+      "usesSavedActionTracks": true
+    },
+    {
+      "asset": "apc_30mm_pbr",
+      "clip": "aim",
+      "sampleSeconds": 1,
+      "sampleFrame": 25,
+      "camera": "front3q",
+      "actionTargets": [
+        "Assembly_gun",
+        "Assembly_turret"
+      ],
+      "image": "proof_apc_30mm_aim_t1p0.png",
+      "sourceBlend": "apc_30mm_pbr_rigged.blend",
+      "usesSavedActionTracks": true
+    },
+    {
+      "asset": "apc_30mm_pbr",
+      "clip": "shoot",
+      "sampleSeconds": 0.12,
+      "sampleFrame": 4,
+      "camera": "front_close",
+      "actionTargets": [
+        "Assembly_gun"
+      ],
+      "image": "proof_apc_30mm_shoot_t0p12.png",
+      "sourceBlend": "apc_30mm_pbr_rigged.blend",
+      "usesSavedActionTracks": true
+    },
+    {
+      "asset": "apc_30mm_pbr",
+      "clip": "open",
+      "sampleSeconds": 2,
+      "sampleFrame": 49,
+      "camera": "rear3q",
+      "actionTargets": [
+        "Assembly_ramp"
+      ],
+      "image": "proof_apc_30mm_open_t2p0.png",
+      "sourceBlend": "apc_30mm_pbr_rigged.blend",
+      "usesSavedActionTracks": true
+    },
+    {
+      "base": "hemtt_base_pbr",
+      "module": "hemtt_supply_module_pbr",
+      "importedGlb": "hemtt_supply_module_pbr.glb",
+      "parentMount": "Mount_rear_module",
+      "attachLocalTransform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationQuaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "mountWorldPosition": [
+        0,
+        -1.5,
+        1.396894
+      ],
+      "image": "proof_hemtt_base_plus_supply_module.png",
+      "usesStagedModuleGlb": true
+    },
+    {
+      "base": "hemtt_base_pbr",
+      "module": "hemtt_fob_module_pbr",
+      "importedGlb": "hemtt_fob_module_pbr.glb",
+      "parentMount": "Mount_rear_module",
+      "attachLocalTransform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationQuaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "mountWorldPosition": [
+        0,
+        -1.5,
+        1.396894
+      ],
+      "image": "proof_hemtt_base_plus_fob_module.png",
+      "usesStagedModuleGlb": true
+    }
+  ]
+}

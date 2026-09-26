@@ -1,0 +1,421 @@
+{
+  "asset": "hemtt_troop_pbr",
+  "source": "hemtt_variants_pbr.blend",
+  "revision": "approved-pbr-rig-v1",
+  "axisConvention": "+Y forward, +Z up",
+  "units": "meters",
+  "groundDatum": 0.0,
+  "normalization": {
+    "sourceNose": "-X",
+    "rotationZDegrees": -90.0,
+    "uniformScale": 5.054509398541877
+  },
+  "bounds": {
+    "min": [
+      -1.577006,
+      -5.079782,
+      0.0
+    ],
+    "max": [
+      1.577007,
+      5.352725,
+      3.833167
+    ]
+  },
+  "dimensions": [
+    3.154013,
+    10.432506,
+    3.833167
+  ],
+  "triangles": 4624,
+  "materials": [
+    "LP_HEMTT_hd_ps2",
+    "MOD_troop_mat"
+  ],
+  "images": [
+    {
+      "name": "LP_HEMTT_hd_metal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "LP_HEMTT_hd_normal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "LP_HEMTT_hd_ps2_512",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "LP_HEMTT_hd_rough",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_ammo_metal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_ammo_normal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_ammo_rough",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_ammo_tex",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_fob_metal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_fob_normal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_fob_rough",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_fob_tex",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_fuel_metal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_fuel_normal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_fuel_rough",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_fuel_tex",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_medical_metal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_medical_normal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_medical_rough",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_medical_tex",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_repair_metal",
+      "size": [
+        256,
+        256
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_repair_normal",
+      "size": [
+        256,
+        256
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_repair_rough",
+      "size": [
+        256,
+        256
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_repair_tex",
+      "size": [
+        256,
+        256
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_supply_metal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_supply_normal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_supply_rough",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_supply_tex",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_troop_metal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_troop_normal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_troop_rough",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_troop_tex",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    }
+  ],
+  "clips": [
+    {
+      "id": "idle",
+      "label": "Rest pose",
+      "duration": 2.0,
+      "loop": true
+    },
+    {
+      "id": "drive",
+      "label": "Wheel drive",
+      "duration": 2.0,
+      "loop": true
+    },
+    {
+      "id": "steer",
+      "label": "Steering sweep",
+      "duration": 2.0,
+      "loop": true
+    }
+  ],
+  "exportedAnimations": [
+    "idle",
+    "drive",
+    "steer"
+  ],
+  "nodes": {
+    "hull": {
+      "object": "Assembly_hull",
+      "kind": "fixed",
+      "pivot": [
+        0.0,
+        0.0,
+        1.396894
+      ]
+    },
+    "module": {
+      "object": "Assembly_module",
+      "kind": "fixed",
+      "pivot": [
+        0.0,
+        0.0,
+        1.396894
+      ]
+    },
+    "wheel_L_0": {
+      "object": "Assembly_wheel_L_0",
+      "kind": "wheel",
+      "pivot": [
+        -1.122101,
+        3.45,
+        0.66399
+      ]
+    },
+    "wheel_L_1": {
+      "object": "Assembly_wheel_L_1",
+      "kind": "wheel",
+      "pivot": [
+        -1.122101,
+        1.45,
+        0.66399
+      ]
+    },
+    "wheel_L_2": {
+      "object": "Assembly_wheel_L_2",
+      "kind": "wheel",
+      "pivot": [
+        -1.122101,
+        -1.6,
+        0.66399
+      ]
+    },
+    "wheel_L_3": {
+      "object": "Assembly_wheel_L_3",
+      "kind": "wheel",
+      "pivot": [
+        -1.122101,
+        -3.65,
+        0.66399
+      ]
+    },
+    "wheel_R_0": {
+      "object": "Assembly_wheel_R_0",
+      "kind": "wheel",
+      "pivot": [
+        1.122101,
+        3.45,
+        0.66399
+      ]
+    },
+    "wheel_R_1": {
+      "object": "Assembly_wheel_R_1",
+      "kind": "wheel",
+      "pivot": [
+        1.122101,
+        1.45,
+        0.66399
+      ]
+    },
+    "wheel_R_2": {
+      "object": "Assembly_wheel_R_2",
+      "kind": "wheel",
+      "pivot": [
+        1.122101,
+        -1.6,
+        0.66399
+      ]
+    },
+    "wheel_R_3": {
+      "object": "Assembly_wheel_R_3",
+      "kind": "wheel",
+      "pivot": [
+        1.122101,
+        -3.65,
+        0.66399
+      ]
+    }
+  },
+  "canonicalWheelMesh": [
+    "hemtt_troop_pbr_CanonicalWheelMesh"
+  ],
+  "allWheelInstancesLinked": true,
+  "glb": "public/models/vehicles/hemtt_troop_pbr.glb",
+  "blend": "assets/vehicles/rigged/hemtt_troop_pbr_rigged.blend",
+  "limitations": [
+    "Rigid-object animation only; no deformation armature is introduced.",
+    "Steering is a authored preview/state clip; runtime steering blend must be driven by gameplay.",
+    "Weapon and ramp clips are authored but require gameplay event binding by integration code."
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "asset": "hemtt_fuel_module_pbr",
+  "role": "fuel",
+  "classification": "runtime-rear-module",
+  "containsBaseTruck": false,
+  "attachMount": "Mount_rear_module",
+  "mountTransform": {
+    "position": [
+      0.0,
+      -1.5,
+      1.3968939781188965
+    ],
+    "rotationQuaternion": [
+      0,
+      0,
+      0,
+      1
+    ],
+    "scale": [
+      1,
+      1,
+      1
+    ]
+  },
+  "attachLocalTransform": {
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "rotationQuaternion": [
+      0,
+      0,
+      0,
+      1
+    ],
+    "scale": [
+      1,
+      1,
+      1
+    ]
+  },
+  "axisConvention": "+Y forward, +Z up",
+  "units": "meters",
+  "triangles": 1260,
+  "bounds": {
+    "min": [
+      -1.262526,
+      -3.529237,
+      0.267889
+    ],
+    "max": [
+      1.113801,
+      3.395441,
+      2.385728
+    ]
+  },
+  "composedBounds": {
+    "min": [
+      -1.262526,
+      -5.029237,
+      1.664783
+    ],
+    "max": [
+      1.113801,
+      1.895441,
+      3.782622
+    ]
+  },
+  "materials": [
+    "MOD_fuel_mat"
+  ],
+  "images": [
+    {
+      "name": "MOD_fuel_metal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_fuel_normal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_fuel_rough",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_fuel_tex",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    }
+  ],
+  "glb": "public/models/vehicles/hemtt_fuel_module_pbr.glb",
+  "blend": "assets/vehicles/rigged/modules/hemtt_fuel_module_pbr.blend"
+}

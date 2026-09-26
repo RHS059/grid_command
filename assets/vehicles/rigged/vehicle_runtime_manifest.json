@@ -1,0 +1,249 @@
+{
+  "revision": "approved-pbr-modular-runtime-v1",
+  "axisConvention": "+Y forward, +Z up",
+  "units": "meters",
+  "hemtt": {
+    "base": "public/models/vehicles/hemtt_base_pbr.glb",
+    "mountNode": "Mount_rear_module",
+    "mountTransform": {
+      "position": [
+        0,
+        -1.5,
+        1.396894
+      ],
+      "rotationQuaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    "modules": {
+      "ammo": {
+        "glb": "public/models/vehicles/hemtt_ammo_module_pbr.glb",
+        "rig": "public/models/vehicles/hemtt_ammo_module_pbr.rig.json",
+        "triangles": 1920,
+        "composedBounds": {
+          "min": [
+            -1.577006,
+            -5.079782,
+            0
+          ],
+          "max": [
+            1.577007,
+            5.120218,
+            3.064882
+          ]
+        }
+      },
+      "fob": {
+        "glb": "public/models/vehicles/hemtt_fob_module_pbr.glb",
+        "rig": "public/models/vehicles/hemtt_fob_module_pbr.rig.json",
+        "triangles": 1176,
+        "composedBounds": {
+          "min": [
+            -1.577006,
+            -5.079782,
+            0
+          ],
+          "max": [
+            1.577007,
+            5.120218,
+            4.358836
+          ]
+        }
+      },
+      "fuel": {
+        "glb": "public/models/vehicles/hemtt_fuel_module_pbr.glb",
+        "rig": "public/models/vehicles/hemtt_fuel_module_pbr.rig.json",
+        "triangles": 1260,
+        "composedBounds": {
+          "min": [
+            -1.577006,
+            -5.079782,
+            0
+          ],
+          "max": [
+            1.577007,
+            5.120218,
+            3.782622
+          ]
+        }
+      },
+      "medical": {
+        "glb": "public/models/vehicles/hemtt_medical_module_pbr.glb",
+        "rig": "public/models/vehicles/hemtt_medical_module_pbr.rig.json",
+        "triangles": 712,
+        "composedBounds": {
+          "min": [
+            -1.577006,
+            -5.079782,
+            0
+          ],
+          "max": [
+            1.577007,
+            5.120218,
+            3.823058
+          ]
+        }
+      },
+      "repair": {
+        "glb": "public/models/vehicles/hemtt_repair_module_pbr.glb",
+        "rig": "public/models/vehicles/hemtt_repair_module_pbr.rig.json",
+        "triangles": 1304,
+        "composedBounds": {
+          "min": [
+            -1.693261,
+            -5.079782,
+            0
+          ],
+          "max": [
+            1.69326,
+            5.120218,
+            3.064882
+          ]
+        }
+      },
+      "supply": {
+        "glb": "public/models/vehicles/hemtt_supply_module_pbr.glb",
+        "rig": "public/models/vehicles/hemtt_supply_module_pbr.rig.json",
+        "triangles": 960,
+        "composedBounds": {
+          "min": [
+            -1.577006,
+            -5.079782,
+            0
+          ],
+          "max": [
+            1.577007,
+            5.120218,
+            3.069937
+          ]
+        }
+      },
+      "troop": {
+        "glb": "public/models/vehicles/hemtt_troop_module_pbr.glb",
+        "rig": "public/models/vehicles/hemtt_troop_module_pbr.rig.json",
+        "triangles": 980,
+        "composedBounds": {
+          "min": [
+            -1.577006,
+            -5.079782,
+            0
+          ],
+          "max": [
+            1.577007,
+            5.352725,
+            3.833167
+          ]
+        }
+      }
+    }
+  },
+  "apcs": [
+    {
+      "id": "apc_base_pbr",
+      "glb": "public/models/vehicles/apc_base_pbr.glb",
+      "rig": "public/models/vehicles/apc_base_pbr.rig.json",
+      "triangles": 4640,
+      "bounds": {
+        "min": [
+          -1.62656,
+          -3.913439,
+          0
+        ],
+        "max": [
+          1.62656,
+          3.886561,
+          3.042592
+        ]
+      }
+    },
+    {
+      "id": "apc_30mm_pbr",
+      "glb": "public/models/vehicles/apc_30mm_pbr.glb",
+      "rig": "public/models/vehicles/apc_30mm_pbr.rig.json",
+      "triangles": 5338,
+      "bounds": {
+        "min": [
+          -1.62656,
+          -3.913439,
+          0
+        ],
+        "max": [
+          1.62656,
+          4.203722,
+          4.09621
+        ]
+      }
+    },
+    {
+      "id": "apc_aa_pbr",
+      "glb": "public/models/vehicles/apc_aa_pbr.glb",
+      "rig": "public/models/vehicles/apc_aa_pbr.rig.json",
+      "triangles": 5246,
+      "bounds": {
+        "min": [
+          -1.62656,
+          -3.913439,
+          0
+        ],
+        "max": [
+          1.62656,
+          3.886561,
+          4.0102
+        ]
+      }
+    },
+    {
+      "id": "apc_mg_pbr",
+      "glb": "public/models/vehicles/apc_mg_pbr.glb",
+      "rig": "public/models/vehicles/apc_mg_pbr.rig.json",
+      "triangles": 5306,
+      "bounds": {
+        "min": [
+          -1.62656,
+          -3.913439,
+          0
+        ],
+        "max": [
+          1.62656,
+          3.886561,
+          3.150104
+        ]
+      }
+    },
+    {
+      "id": "apc_tankkiller_pbr",
+      "glb": "public/models/vehicles/apc_tankkiller_pbr.glb",
+      "rig": "public/models/vehicles/apc_tankkiller_pbr.rig.json",
+      "triangles": 5686,
+      "bounds": {
+        "min": [
+          -1.62656,
+          -3.913439,
+          0
+        ],
+        "max": [
+          1.62656,
+          7.224811,
+          3.934942
+        ]
+      }
+    }
+  ],
+  "reviewOnlyFullHemttVariants": [
+    "hemtt_ammo_pbr",
+    "hemtt_fob_pbr",
+    "hemtt_fuel_pbr",
+    "hemtt_medical_pbr",
+    "hemtt_repair_pbr",
+    "hemtt_supply_pbr",
+    "hemtt_troop_pbr"
+  ]
+}

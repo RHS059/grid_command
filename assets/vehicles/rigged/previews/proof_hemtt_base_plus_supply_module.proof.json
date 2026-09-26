@@ -1,0 +1,31 @@
+{
+  "base": "hemtt_base_pbr",
+  "module": "hemtt_supply_module_pbr",
+  "importedGlb": "hemtt_supply_module_pbr.glb",
+  "parentMount": "Mount_rear_module",
+  "attachLocalTransform": {
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "rotationQuaternion": [
+      0,
+      0,
+      0,
+      1
+    ],
+    "scale": [
+      1,
+      1,
+      1
+    ]
+  },
+  "mountWorldPosition": [
+    0.0,
+    -1.5,
+    1.396894
+  ],
+  "image": "proof_hemtt_base_plus_supply_module.png",
+  "usesStagedModuleGlb": true
+}

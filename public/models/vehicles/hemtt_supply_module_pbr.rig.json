@@ -1,0 +1,109 @@
+{
+  "asset": "hemtt_supply_module_pbr",
+  "role": "supply",
+  "classification": "runtime-rear-module",
+  "containsBaseTruck": false,
+  "attachMount": "Mount_rear_module",
+  "mountTransform": {
+    "position": [
+      0.0,
+      -1.5,
+      1.3968939781188965
+    ],
+    "rotationQuaternion": [
+      0,
+      0,
+      0,
+      1
+    ],
+    "scale": [
+      1,
+      1,
+      1
+    ]
+  },
+  "attachLocalTransform": {
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "rotationQuaternion": [
+      0,
+      0,
+      0,
+      1
+    ],
+    "scale": [
+      1,
+      1,
+      1
+    ]
+  },
+  "axisConvention": "+Y forward, +Z up",
+  "units": "meters",
+  "triangles": 960,
+  "bounds": {
+    "min": [
+      -1.111992,
+      -3.316947,
+      0.267889
+    ],
+    "max": [
+      1.111992,
+      3.370168,
+      1.673043
+    ]
+  },
+  "composedBounds": {
+    "min": [
+      -1.111992,
+      -4.816947,
+      1.664783
+    ],
+    "max": [
+      1.111992,
+      1.870168,
+      3.069937
+    ]
+  },
+  "materials": [
+    "MOD_supply_mat"
+  ],
+  "images": [
+    {
+      "name": "MOD_supply_metal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_supply_normal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_supply_rough",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_supply_tex",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    }
+  ],
+  "glb": "public/models/vehicles/hemtt_supply_module_pbr.glb",
+  "blend": "assets/vehicles/rigged/modules/hemtt_supply_module_pbr.blend"
+}

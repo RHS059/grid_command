@@ -1,0 +1,404 @@
+{
+  "asset": "apc_tankkiller_pbr",
+  "source": "apc_variants.blend",
+  "revision": "approved-pbr-rig-v1",
+  "axisConvention": "+Y forward, +Z up",
+  "units": "meters",
+  "groundDatum": 0.0,
+  "normalization": {
+    "sourceNose": "-X",
+    "rotationZDegrees": -90.0,
+    "uniformScale": 5.375603124252888
+  },
+  "bounds": {
+    "min": [
+      -1.62656,
+      -3.913439,
+      0.0
+    ],
+    "max": [
+      1.62656,
+      7.224811,
+      3.934942
+    ]
+  },
+  "dimensions": [
+    3.25312,
+    11.13825,
+    3.934942
+  ],
+  "triangles": 5686,
+  "materials": [
+    "APC_TankKiller_mat",
+    "APC_mat",
+    "APC_wheel_mat"
+  ],
+  "images": [
+    {
+      "name": "APC_30mm_metal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_30mm_normal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_30mm_rough",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_30mm_tex",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_AA_metal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_AA_normal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_AA_rough",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_AA_tex",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_MG_metal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_MG_normal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_MG_rough",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_MG_tex",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_TankKiller_metal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_TankKiller_normal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_TankKiller_rough",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_TankKiller_tex",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_metal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_normal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_rough",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_tex",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_wheel_metal",
+      "size": [
+        256,
+        256
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_wheel_normal",
+      "size": [
+        256,
+        256
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_wheel_rough",
+      "size": [
+        256,
+        256
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_wheel_tex",
+      "size": [
+        256,
+        256
+      ],
+      "packed": true
+    }
+  ],
+  "clips": [
+    {
+      "id": "idle",
+      "label": "Rest pose",
+      "duration": 2.0,
+      "loop": true
+    },
+    {
+      "id": "drive",
+      "label": "Wheel drive",
+      "duration": 2.0,
+      "loop": true
+    },
+    {
+      "id": "steer",
+      "label": "Steering sweep",
+      "duration": 2.0,
+      "loop": true
+    },
+    {
+      "id": "open",
+      "label": "Open rear ramp",
+      "duration": 2.0,
+      "loop": false
+    },
+    {
+      "id": "close",
+      "label": "Close rear ramp",
+      "duration": 2.0,
+      "loop": false
+    },
+    {
+      "id": "aim",
+      "label": "Turret traverse and weapon elevation",
+      "duration": 4.0,
+      "loop": true
+    },
+    {
+      "id": "shoot",
+      "label": "Weapon recoil",
+      "duration": 1.2,
+      "loop": false
+    }
+  ],
+  "exportedAnimations": [
+    "idle",
+    "open",
+    "close",
+    "aim",
+    "shoot",
+    "drive",
+    "steer"
+  ],
+  "nodes": {
+    "gun": {
+      "object": "Assembly_gun",
+      "kind": "weapon",
+      "pivot": [
+        0.0,
+        1.128877,
+        0.344039
+      ]
+    },
+    "hull": {
+      "object": "Assembly_hull",
+      "kind": "fixed",
+      "pivot": [
+        0.0,
+        0.0,
+        1.510545
+      ]
+    },
+    "ramp": {
+      "object": "Assembly_ramp",
+      "kind": "ramp",
+      "pivot": [
+        -0.0,
+        -3.746796,
+        0.688077
+      ]
+    },
+    "turret": {
+      "object": "Assembly_turret",
+      "kind": "turret",
+      "pivot": [
+        0.0,
+        0.430048,
+        2.376017
+      ]
+    },
+    "wheel_L_0": {
+      "object": "Assembly_wheel_L_0",
+      "kind": "wheel",
+      "pivot": [
+        -1.182633,
+        2.52,
+        0.628946
+      ]
+    },
+    "wheel_L_1": {
+      "object": "Assembly_wheel_L_1",
+      "kind": "wheel",
+      "pivot": [
+        -1.182633,
+        0.84,
+        0.628946
+      ]
+    },
+    "wheel_L_2": {
+      "object": "Assembly_wheel_L_2",
+      "kind": "wheel",
+      "pivot": [
+        -1.182633,
+        -0.84,
+        0.628946
+      ]
+    },
+    "wheel_L_3": {
+      "object": "Assembly_wheel_L_3",
+      "kind": "wheel",
+      "pivot": [
+        -1.182633,
+        -2.52,
+        0.628946
+      ]
+    },
+    "wheel_R_0": {
+      "object": "Assembly_wheel_R_0",
+      "kind": "wheel",
+      "pivot": [
+        1.182633,
+        2.52,
+        0.628946
+      ]
+    },
+    "wheel_R_1": {
+      "object": "Assembly_wheel_R_1",
+      "kind": "wheel",
+      "pivot": [
+        1.182633,
+        0.84,
+        0.628946
+      ]
+    },
+    "wheel_R_2": {
+      "object": "Assembly_wheel_R_2",
+      "kind": "wheel",
+      "pivot": [
+        1.182633,
+        -0.84,
+        0.628946
+      ]
+    },
+    "wheel_R_3": {
+      "object": "Assembly_wheel_R_3",
+      "kind": "wheel",
+      "pivot": [
+        1.182633,
+        -2.52,
+        0.628946
+      ]
+    }
+  },
+  "canonicalWheelMesh": [
+    "apc_tankkiller_pbr_CanonicalWheelMesh"
+  ],
+  "allWheelInstancesLinked": true,
+  "glb": "public/models/vehicles/apc_tankkiller_pbr.glb",
+  "blend": "assets/vehicles/rigged/apc_tankkiller_pbr_rigged.blend",
+  "limitations": [
+    "Rigid-object animation only; no deformation armature is introduced.",
+    "Steering is a authored preview/state clip; runtime steering blend must be driven by gameplay.",
+    "Weapon and ramp clips are authored but require gameplay event binding by integration code."
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "asset": "hemtt_troop_module_pbr",
+  "role": "troop",
+  "classification": "runtime-rear-module",
+  "containsBaseTruck": false,
+  "attachMount": "Mount_rear_module",
+  "mountTransform": {
+    "position": [
+      0.0,
+      -1.5,
+      1.3968939781188965
+    ],
+    "rotationQuaternion": [
+      0,
+      0,
+      0,
+      1
+    ],
+    "scale": [
+      1,
+      1,
+      1
+    ]
+  },
+  "attachLocalTransform": {
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "rotationQuaternion": [
+      0,
+      0,
+      0,
+      1
+    ],
+    "scale": [
+      1,
+      1,
+      1
+    ]
+  },
+  "axisConvention": "+Y forward, +Z up",
+  "units": "meters",
+  "triangles": 980,
+  "bounds": {
+    "min": [
+      -1.354609,
+      -3.579782,
+      0.267889
+    ],
+    "max": [
+      1.354608,
+      6.852725,
+      2.436273
+    ]
+  },
+  "composedBounds": {
+    "min": [
+      -1.354609,
+      -5.079782,
+      1.664783
+    ],
+    "max": [
+      1.354608,
+      5.352725,
+      3.833167
+    ]
+  },
+  "materials": [
+    "MOD_troop_mat"
+  ],
+  "images": [
+    {
+      "name": "MOD_troop_metal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_troop_normal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_troop_rough",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_troop_tex",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    }
+  ],
+  "glb": "public/models/vehicles/hemtt_troop_module_pbr.glb",
+  "blend": "assets/vehicles/rigged/modules/hemtt_troop_module_pbr.blend"
+}

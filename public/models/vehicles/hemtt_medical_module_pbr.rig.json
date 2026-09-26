@@ -1,0 +1,109 @@
+{
+  "asset": "hemtt_medical_module_pbr",
+  "role": "medical",
+  "classification": "runtime-rear-module",
+  "containsBaseTruck": false,
+  "attachMount": "Mount_rear_module",
+  "mountTransform": {
+    "position": [
+      0.0,
+      -1.5,
+      1.3968939781188965
+    ],
+    "rotationQuaternion": [
+      0,
+      0,
+      0,
+      1
+    ],
+    "scale": [
+      1,
+      1,
+      1
+    ]
+  },
+  "attachLocalTransform": {
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "rotationQuaternion": [
+      0,
+      0,
+      0,
+      1
+    ],
+    "scale": [
+      1,
+      1,
+      1
+    ]
+  },
+  "axisConvention": "+Y forward, +Z up",
+  "units": "meters",
+  "triangles": 712,
+  "bounds": {
+    "min": [
+      -1.3445,
+      -2.619425,
+      0.267889
+    ],
+    "max": [
+      1.3445,
+      3.395441,
+      2.426164
+    ]
+  },
+  "composedBounds": {
+    "min": [
+      -1.3445,
+      -4.119425,
+      1.664783
+    ],
+    "max": [
+      1.3445,
+      1.895441,
+      3.823058
+    ]
+  },
+  "materials": [
+    "MOD_medical_mat"
+  ],
+  "images": [
+    {
+      "name": "MOD_medical_metal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_medical_normal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_medical_rough",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_medical_tex",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    }
+  ],
+  "glb": "public/models/vehicles/hemtt_medical_module_pbr.glb",
+  "blend": "assets/vehicles/rigged/modules/hemtt_medical_module_pbr.blend"
+}

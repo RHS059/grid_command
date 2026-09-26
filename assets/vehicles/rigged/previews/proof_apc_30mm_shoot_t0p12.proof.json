@@ -1,0 +1,13 @@
+{
+  "asset": "apc_30mm_pbr",
+  "clip": "shoot",
+  "sampleSeconds": 0.12,
+  "sampleFrame": 4,
+  "camera": "front_close",
+  "actionTargets": [
+    "Assembly_gun"
+  ],
+  "image": "proof_apc_30mm_shoot_t0p12.png",
+  "sourceBlend": "apc_30mm_pbr_rigged.blend",
+  "usesSavedActionTracks": true
+}

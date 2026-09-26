@@ -7,6 +7,7 @@ import { createAircraft, animateAircraft, disposeModel } from '../lib/game/aircr
 import { BASE_GRADE_CLEARANCE, baseSurfaceElevation, createBase, conformBase } from '../lib/game/base-models'
 import { soldierParts, vehicleGeometry } from '../lib/game/unit-models'
 import { HEMTT_VARIANTS } from '../lib/game/hemtt-model'
+import { NATIVE_VEHICLE_IDS } from '../lib/game/native-vehicle-assets'
 import { createSupportModel } from '../lib/game/support-models'
 
 function finite(root: T.Object3D) {
@@ -16,7 +17,7 @@ function finite(root: T.Object3D) {
   assert.ok(vertices > 0); assert.ok(!bounds.isEmpty()); assert.ok(bounds.getSize(new T.Vector3()).toArray().every(Number.isFinite))
 }
 test('model browser covers every catalog role and both compound types', () => {
-  assert.equal(new Set(MODEL_CATALOG).size, Object.keys(CATALOG).length + 2 + HEMTT_VARIANTS.length)
+  assert.equal(new Set(MODEL_CATALOG).size, Object.keys(CATALOG).length + 2 + HEMTT_VARIANTS.length + NATIVE_VEHICLE_IDS.length)
   for (const role of Object.keys(CATALOG)) assert.ok(MODEL_CATALOG.includes(role as Role))
   for (const id of MODEL_CATALOG) assert.ok(MODEL_NAMES[id])
   assert.ok(MODEL_CATALOG.includes('MOB')); assert.ok(MODEL_CATALOG.includes('AIRFIELD'))

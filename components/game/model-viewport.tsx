@@ -14,6 +14,7 @@ import { MODEL_NAMES, type ModelId } from '@/lib/game/model-catalog'
 import { createHemtt, isHemttVariant } from '@/lib/game/hemtt-model'
 import { addStudioLighting } from '@/lib/game/scene-lighting'
 import { MODEL_DIMENSIONS, modelScale, modelDimensionLabel, modelGridSpacing, visibleModelBounds } from '@/lib/game/model-dimensions'
+import { createNativeVehicle, isNativeVehicleId, nativeVehicleBounds } from '@/lib/game/native-vehicle-assets'
 
 interface Props { model: ModelId; side: Side; active: boolean; animate: boolean; rotate: boolean; action: SoldierAction; stance: Stance; condition: Soldier['status']; damagePreview?: boolean; destruction?: number; reset: number; clip?:string; loop?:boolean; seek?:{serial:number;time:number}; onTime?:(time:number)=>void }
 export function ModelViewport(props: Props) {
@@ -33,7 +34,8 @@ export function ModelViewport(props: Props) {
     let object: T.Object3D | null = null, batch: SoldierBatch | null = null
     const modelScene = new T.Scene()
     const id = props.model
-    if (id === 'MOB' || id === 'AIRFIELD') object = createBase(id, props.side)
+    if (isNativeVehicleId(id)) object = createNativeVehicle(id, props.side)
+    else if (id === 'MOB' || id === 'AIRFIELD') object = createBase(id, props.side)
     else if (isHemttVariant(id)) object = createHemtt(id, props.side)
     else if (isAir(id)) object = createAircraft(id, props.side)
     else if (isSupportModel(id)) object = createSupportModel(id, props.side)
@@ -55,7 +57,7 @@ export function ModelViewport(props: Props) {
     // subject has to opt in explicitly. The grid deliberately does not.
     object?.traverse(node => { if (node instanceof T.Mesh) { node.castShadow = true; node.receiveShadow = true } })
     if (batch) for (const mesh of batch.parts.values()) { mesh.castShadow = true; mesh.receiveShadow = true }
-    const sourceBounds = object ? visibleModelBounds(object) : new T.Box3(new T.Vector3(-1, -1, 0), new T.Vector3(1.5, 1, 1.7))
+    const sourceBounds = isNativeVehicleId(id) ? nativeVehicleBounds(id) : object ? visibleModelBounds(object) : new T.Box3(new T.Vector3(-1, -1, 0), new T.Vector3(1.5, 1, 1.7))
     const factor = modelScale(id, sourceBounds.getSize(new T.Vector3()))
     modelScene.scale.setScalar(factor)
     const bounds = new T.Box3(sourceBounds.min.clone().multiplyScalar(factor), sourceBounds.max.clone().multiplyScalar(factor))
@@ -82,8 +84,8 @@ export function ModelViewport(props: Props) {
         object.userData.vehicleDamage = c.damagePreview ? { damage: 1, destruction: Math.max(0, Math.min(1, c.destruction ?? 0)), heat: 0.72 } : undefined
       }
       if (lastReset !== c.reset) { lastReset = c.reset; frameModel() }
-      if(object?.userData.blenderVehicle){const clip=vehicleClips(id).find(v=>v.id===c.clip)||vehicleClips(id)[0];if(lastClip!==clip.id){lastClip=clip.id;clipTime=0}if(c.seek&&lastSeek!==c.seek.serial){lastSeek=c.seek.serial;clipTime=c.seek.time}else clipTime=advanceVehiclePlayback(clipTime,dt,c.animate,clip.duration,c.loop??clip.loop);poseVehicleClip(object,clip.id,clipTime);if(now-lastReport>80){c.onTime?.(clipTime);lastReport=now}}else if(object){animateAircraft(object,time);animateSupport(object,time)}
-      if (batch && id !== 'MOB' && id !== 'AIRFIELD' && !isHemttVariant(id)) {
+      if(object&&(object.userData.blenderVehicle||object.userData.nativeVehicle)){const clip=vehicleClips(id).find(v=>v.id===c.clip)||vehicleClips(id)[0];if(lastClip!==clip.id){lastClip=clip.id;clipTime=0}if(c.seek&&lastSeek!==c.seek.serial){lastSeek=c.seek.serial;clipTime=c.seek.time}else clipTime=advanceVehiclePlayback(clipTime,dt,c.animate,clip.duration,c.loop??clip.loop);poseVehicleClip(object,clip.id,clipTime);if(now-lastReport>80){c.onTime?.(clipTime);lastReport=now}}else if(object){animateAircraft(object,time);animateSupport(object,time)}
+      if (batch && id !== 'MOB' && id !== 'AIRFIELD' && !isHemttVariant(id) && !isNativeVehicleId(id)) {
         // Imported bodies are 1.7 m tall; the temporary procedural body is 2.1 m.
         modelScene.scale.setScalar(MODEL_DIMENSIONS[id].metres / (batch.asset === 'ready' ? 1.7 : 2.1))
         const soldier: Soldier = { id: 'preview:0', x: 0, y: 0, status: c.condition, stance: c.stance, action: c.action, heading: 0, aim: Math.sin(time * .6) * .5, since: Math.floor(time / 2) * 2, shotAt: c.action === 'fire' || c.action === 'peek' ? Math.floor(time * 3) / 3 : -10 }

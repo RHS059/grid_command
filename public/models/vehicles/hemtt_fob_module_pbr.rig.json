@@ -1,0 +1,109 @@
+{
+  "asset": "hemtt_fob_module_pbr",
+  "role": "fob",
+  "classification": "runtime-rear-module",
+  "containsBaseTruck": false,
+  "attachMount": "Mount_rear_module",
+  "mountTransform": {
+    "position": [
+      0.0,
+      -1.5,
+      1.3968939781188965
+    ],
+    "rotationQuaternion": [
+      0,
+      0,
+      0,
+      1
+    ],
+    "scale": [
+      1,
+      1,
+      1
+    ]
+  },
+  "attachLocalTransform": {
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "rotationQuaternion": [
+      0,
+      0,
+      0,
+      1
+    ],
+    "scale": [
+      1,
+      1,
+      1
+    ]
+  },
+  "axisConvention": "+Y forward, +Z up",
+  "units": "meters",
+  "triangles": 1176,
+  "bounds": {
+    "min": [
+      -1.213082,
+      -3.428146,
+      0.267889
+    ],
+    "max": [
+      1.273736,
+      3.167988,
+      2.961942
+    ]
+  },
+  "composedBounds": {
+    "min": [
+      -1.213082,
+      -4.928146,
+      1.664783
+    ],
+    "max": [
+      1.273736,
+      1.667988,
+      4.358836
+    ]
+  },
+  "materials": [
+    "MOD_fob_mat"
+  ],
+  "images": [
+    {
+      "name": "MOD_fob_metal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_fob_normal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_fob_rough",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "MOD_fob_tex",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    }
+  ],
+  "glb": "public/models/vehicles/hemtt_fob_module_pbr.glb",
+  "blend": "assets/vehicles/rigged/modules/hemtt_fob_module_pbr.blend"
+}

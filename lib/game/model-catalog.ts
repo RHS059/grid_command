@@ -1,14 +1,16 @@
 import { CATALOG, isAir, isVehicle, type Role } from './types'
 import type { BaseKind } from './base-models'
 import { HEMTT_VARIANTS, isHemttVariant, type HemttVariant } from './hemtt-model'
-export type ModelId = Role | BaseKind | HemttVariant
+import { NATIVE_VEHICLE_ASSETS, NATIVE_VEHICLE_IDS, isNativeVehicleId, type NativeVehicleId } from './native-vehicle-assets'
+export type ModelId = Role | BaseKind | HemttVariant | NativeVehicleId
 export const MODEL_NAMES: Record<ModelId, string> = {
   PATROL_BOAT: 'Patrol boat', FRIGATE: 'Missile cruiser', AIRCRAFT_CARRIER: 'Aircraft carrier', LANDING_CRAFT: 'Landing craft', AMPHIBIOUS_APC: 'Amphibious APC',
   FORKLIFT: 'Supply forklift', CARGO_PLANE: 'Tactical cargo plane', UAV_JAMMER: 'UAV jammer', AA_TEAM: 'Anti-air launcher team', TRANSPORT_HELI: 'Troop transport helicopter', HEAVY_LIFT_HELI: 'Heavy-lift helicopter', TROOP_TRUCK: 'Light troop carrier',
   RIFLE: 'Rifle squad', SCOUT: 'Scout team', MG: 'Machine gun team', AT: 'Anti-tank team', MORTAR: 'Mortar team', ENGINEER: 'Combat engineer', MEDIC: 'Combat medic', LOGISTICS: 'Logistics team', TANK: 'Main battle tank', PILOT: 'Pilot', COMMAND: 'Command officer', TRUCK: 'Supply truck', FUEL_TRUCK: 'Fuel HEMTT', TROOP_HEMTT: 'Troop HEMTT', MEDICAL_HEMTT: 'Medical HEMTT', REPAIR_HEMTT: 'Repair HEMTT', FOB_HEMTT: 'FOB HEMTT', RECON_UAV: 'Reconnaissance UAV', APC: 'Armored personnel carrier', CANNON_APC: 'Cannon APC', IFV: 'Infantry fighting vehicle', CAS_FIGHTER: 'CAS fighter', JET: 'FQ-44 Fury strike fighter', ATTACK_HELI: 'Attack helicopter', MOB: 'Main operating base', AIRFIELD: 'Airfield compound',
+  ...Object.fromEntries(NATIVE_VEHICLE_IDS.map(id=>[id,NATIVE_VEHICLE_ASSETS[id].label])) as Record<NativeVehicleId,string>,
 }
-export const MODEL_CATALOG = [...(Object.keys(CATALOG) as Role[]).flatMap(id => id === 'TRUCK' ? [id, ...HEMTT_VARIANTS] : [id]), 'MOB', 'AIRFIELD'] as ModelId[]
-export const modelCategory = (id: ModelId) => isHemttVariant(id) ? 'Vehicles' : id === 'MOB' || id === 'AIRFIELD' ? 'Structures' : isAir(id) ? 'Aircraft' : isVehicle(id) ? 'Vehicles' : 'Personnel'
+export const MODEL_CATALOG = [...(Object.keys(CATALOG) as Role[]).flatMap(id => id === 'TRUCK' ? [id, ...HEMTT_VARIANTS] : [id]), ...NATIVE_VEHICLE_IDS, 'MOB', 'AIRFIELD'] as ModelId[]
+export const modelCategory = (id: ModelId) => isHemttVariant(id) || isNativeVehicleId(id) ? 'Vehicles' : id === 'MOB' || id === 'AIRFIELD' ? 'Structures' : isAir(id) ? 'Aircraft' : isVehicle(id) ? 'Vehicles' : 'Personnel'
 export const MODEL_NOTES: Partial<Record<ModelId, string>> = {
   PATROL_BOAT: 'Patrol boat', FRIGATE: 'Guided-missile surface combatant with VLS, radar arrays, fore gun, hangar and flight deck.', AIRCRAFT_CARRIER: 'Fleet carrier with angled flight deck, island, elevators, defensive mounts and parked aircraft.', LANDING_CRAFT: 'Landing craft', AMPHIBIOUS_APC: 'Amphibious APC',
   FORKLIFT: 'Articulated forks and visible pallets. Transfers up to 750 supply units between apron and storage. Airfield tiers provide one, two or four forklifts.',
@@ -32,4 +34,5 @@ export const MODEL_NOTES: Partial<Record<ModelId, string>> = {
   REPAIR_HEMTT: 'HEMTT wrecker with a pedestal crane, tool lockers and rear underlift; deploys boom and outriggers. Preview only.',
   FOB_HEMTT: 'HEMTT with an expandable command shelter, generator, mast and dish; deploys expansions and a camo net. Preview only.',
   TRUCK: 'Eight-wheel cab-over container supply truck: 900-unit cargo body. Tier 3 provides four trucks with two 900-unit trailers each, for 2,700 units per vehicle.',
+  ...Object.fromEntries(NATIVE_VEHICLE_IDS.map(id=>[id,`${NATIVE_VEHICLE_ASSETS[id].label}. Native GLB preview preserves the authored PBR materials and embedded animation clips.`])) as Partial<Record<NativeVehicleId,string>>,
 }

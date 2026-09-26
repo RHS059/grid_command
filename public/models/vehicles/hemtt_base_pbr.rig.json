@@ -1,0 +1,196 @@
+{
+  "asset": "hemtt_base_pbr",
+  "source": "hemtt_base_pbr.blend",
+  "revision": "approved-pbr-rig-v1",
+  "axisConvention": "+Y forward, +Z up",
+  "units": "meters",
+  "groundDatum": 0.0,
+  "normalization": {
+    "sourceNose": "-X",
+    "rotationZDegrees": -90.0,
+    "uniformScale": 5.054509398541877
+  },
+  "bounds": {
+    "min": [
+      -1.577006,
+      -5.079782,
+      0.0
+    ],
+    "max": [
+      1.577007,
+      5.120218,
+      3.064882
+    ]
+  },
+  "dimensions": [
+    3.154013,
+    10.199999,
+    3.064882
+  ],
+  "triangles": 3644,
+  "materials": [
+    "LP_HEMTT_hd_ps2"
+  ],
+  "images": [
+    {
+      "name": "LP_HEMTT_hd_metal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "LP_HEMTT_hd_normal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "LP_HEMTT_hd_ps2_512",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "LP_HEMTT_hd_rough",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    }
+  ],
+  "clips": [
+    {
+      "id": "idle",
+      "label": "Rest pose",
+      "duration": 2.0,
+      "loop": true
+    },
+    {
+      "id": "drive",
+      "label": "Wheel drive",
+      "duration": 2.0,
+      "loop": true
+    },
+    {
+      "id": "steer",
+      "label": "Steering sweep",
+      "duration": 2.0,
+      "loop": true
+    }
+  ],
+  "exportedAnimations": [
+    "idle",
+    "drive",
+    "steer"
+  ],
+  "nodes": {
+    "hull": {
+      "object": "Assembly_hull",
+      "kind": "fixed",
+      "pivot": [
+        0.0,
+        0.0,
+        1.396894
+      ]
+    },
+    "rear_module": {
+      "object": "Assembly_rear_module",
+      "kind": "module_mount",
+      "pivot": [
+        0.0,
+        -1.5,
+        1.396894
+      ]
+    },
+    "wheel_L_0": {
+      "object": "Assembly_wheel_L_0",
+      "kind": "wheel",
+      "pivot": [
+        -1.122101,
+        3.45,
+        0.66399
+      ]
+    },
+    "wheel_L_1": {
+      "object": "Assembly_wheel_L_1",
+      "kind": "wheel",
+      "pivot": [
+        -1.122101,
+        1.45,
+        0.66399
+      ]
+    },
+    "wheel_L_2": {
+      "object": "Assembly_wheel_L_2",
+      "kind": "wheel",
+      "pivot": [
+        -1.122101,
+        -1.6,
+        0.66399
+      ]
+    },
+    "wheel_L_3": {
+      "object": "Assembly_wheel_L_3",
+      "kind": "wheel",
+      "pivot": [
+        -1.122101,
+        -3.65,
+        0.66399
+      ]
+    },
+    "wheel_R_0": {
+      "object": "Assembly_wheel_R_0",
+      "kind": "wheel",
+      "pivot": [
+        1.122101,
+        3.45,
+        0.66399
+      ]
+    },
+    "wheel_R_1": {
+      "object": "Assembly_wheel_R_1",
+      "kind": "wheel",
+      "pivot": [
+        1.122101,
+        1.45,
+        0.66399
+      ]
+    },
+    "wheel_R_2": {
+      "object": "Assembly_wheel_R_2",
+      "kind": "wheel",
+      "pivot": [
+        1.122101,
+        -1.6,
+        0.66399
+      ]
+    },
+    "wheel_R_3": {
+      "object": "Assembly_wheel_R_3",
+      "kind": "wheel",
+      "pivot": [
+        1.122101,
+        -3.65,
+        0.66399
+      ]
+    }
+  },
+  "canonicalWheelMesh": [
+    "hemtt_base_pbr_CanonicalWheelMesh"
+  ],
+  "allWheelInstancesLinked": true,
+  "glb": "public/models/vehicles/hemtt_base_pbr.glb",
+  "blend": "assets/vehicles/rigged/hemtt_base_pbr_rigged.blend",
+  "limitations": [
+    "Rigid-object animation only; no deformation armature is introduced.",
+    "Steering is a authored preview/state clip; runtime steering blend must be driven by gameplay.",
+    "Weapon and ramp clips are authored but require gameplay event binding by integration code."
+  ]
+}

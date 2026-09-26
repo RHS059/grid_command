@@ -1,0 +1,1051 @@
+{
+  "revision": "approved-pbr-rig-v1",
+  "root": "E:\\Grid Command Dev Branch\\upload",
+  "passed": true,
+  "assets": [
+    {
+      "id": "hemtt_base_pbr",
+      "classification": "runtime-vehicle",
+      "triangles": 3644,
+      "clips": [
+        "drive",
+        "idle",
+        "steer"
+      ],
+      "bounds": {
+        "min": [
+          -1.577006,
+          -5.079782,
+          0
+        ],
+        "max": [
+          1.577007,
+          5.120218,
+          3.064882
+        ]
+      },
+      "dimensions": [
+        3.154013,
+        10.199999,
+        3.064882
+      ],
+      "materials": [
+        "LP_HEMTT_hd_ps2"
+      ],
+      "images": 3,
+      "assemblies": 10,
+      "mounts": 10,
+      "linkedWheelMesh": 1,
+      "animationTargets": {
+        "drive": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_L_2",
+          "Assembly_wheel_L_3",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1",
+          "Assembly_wheel_R_2",
+          "Assembly_wheel_R_3"
+        ],
+        "idle": [
+          "GC_ASSET"
+        ],
+        "steer": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1"
+        ]
+      }
+    },
+    {
+      "id": "hemtt_ammo_pbr",
+      "classification": "review-extraction-source",
+      "triangles": 5564,
+      "clips": [
+        "drive",
+        "idle",
+        "steer"
+      ],
+      "bounds": {
+        "min": [
+          -1.577006,
+          -5.079782,
+          0
+        ],
+        "max": [
+          1.577007,
+          5.120218,
+          3.064882
+        ]
+      },
+      "dimensions": [
+        3.154013,
+        10.199999,
+        3.064882
+      ],
+      "materials": [
+        "LP_HEMTT_hd_ps2",
+        "MOD_ammo_mat"
+      ],
+      "images": 6,
+      "assemblies": 10,
+      "mounts": 10,
+      "linkedWheelMesh": 2,
+      "animationTargets": {
+        "drive": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_L_2",
+          "Assembly_wheel_L_3",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1",
+          "Assembly_wheel_R_2",
+          "Assembly_wheel_R_3"
+        ],
+        "idle": [
+          "GC_ASSET"
+        ],
+        "steer": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1"
+        ]
+      }
+    },
+    {
+      "id": "hemtt_fob_pbr",
+      "classification": "review-extraction-source",
+      "triangles": 4820,
+      "clips": [
+        "drive",
+        "idle",
+        "steer"
+      ],
+      "bounds": {
+        "min": [
+          -1.577006,
+          -5.079782,
+          0
+        ],
+        "max": [
+          1.577007,
+          5.120218,
+          4.358836
+        ]
+      },
+      "dimensions": [
+        3.154013,
+        10.199999,
+        4.358836
+      ],
+      "materials": [
+        "LP_HEMTT_hd_ps2",
+        "MOD_fob_mat"
+      ],
+      "images": 6,
+      "assemblies": 10,
+      "mounts": 10,
+      "linkedWheelMesh": 2,
+      "animationTargets": {
+        "drive": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_L_2",
+          "Assembly_wheel_L_3",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1",
+          "Assembly_wheel_R_2",
+          "Assembly_wheel_R_3"
+        ],
+        "idle": [
+          "GC_ASSET"
+        ],
+        "steer": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1"
+        ]
+      }
+    },
+    {
+      "id": "hemtt_fuel_pbr",
+      "classification": "review-extraction-source",
+      "triangles": 4904,
+      "clips": [
+        "drive",
+        "idle",
+        "steer"
+      ],
+      "bounds": {
+        "min": [
+          -1.577006,
+          -5.079782,
+          0
+        ],
+        "max": [
+          1.577007,
+          5.120218,
+          3.782622
+        ]
+      },
+      "dimensions": [
+        3.154013,
+        10.199999,
+        3.782622
+      ],
+      "materials": [
+        "LP_HEMTT_hd_ps2",
+        "MOD_fuel_mat"
+      ],
+      "images": 6,
+      "assemblies": 10,
+      "mounts": 10,
+      "linkedWheelMesh": 2,
+      "animationTargets": {
+        "drive": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_L_2",
+          "Assembly_wheel_L_3",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1",
+          "Assembly_wheel_R_2",
+          "Assembly_wheel_R_3"
+        ],
+        "idle": [
+          "GC_ASSET"
+        ],
+        "steer": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1"
+        ]
+      }
+    },
+    {
+      "id": "hemtt_medical_pbr",
+      "classification": "review-extraction-source",
+      "triangles": 4356,
+      "clips": [
+        "drive",
+        "idle",
+        "steer"
+      ],
+      "bounds": {
+        "min": [
+          -1.577006,
+          -5.079782,
+          0
+        ],
+        "max": [
+          1.577007,
+          5.120218,
+          3.823058
+        ]
+      },
+      "dimensions": [
+        3.154013,
+        10.199999,
+        3.823058
+      ],
+      "materials": [
+        "LP_HEMTT_hd_ps2",
+        "MOD_medical_mat"
+      ],
+      "images": 6,
+      "assemblies": 10,
+      "mounts": 10,
+      "linkedWheelMesh": 2,
+      "animationTargets": {
+        "drive": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_L_2",
+          "Assembly_wheel_L_3",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1",
+          "Assembly_wheel_R_2",
+          "Assembly_wheel_R_3"
+        ],
+        "idle": [
+          "GC_ASSET"
+        ],
+        "steer": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1"
+        ]
+      }
+    },
+    {
+      "id": "hemtt_repair_pbr",
+      "classification": "review-extraction-source",
+      "triangles": 4948,
+      "clips": [
+        "drive",
+        "idle",
+        "steer"
+      ],
+      "bounds": {
+        "min": [
+          -1.693261,
+          -5.079782,
+          0
+        ],
+        "max": [
+          1.69326,
+          5.120218,
+          3.064882
+        ]
+      },
+      "dimensions": [
+        3.386521,
+        10.199999,
+        3.064882
+      ],
+      "materials": [
+        "LP_HEMTT_hd_ps2",
+        "MOD_repair_mat"
+      ],
+      "images": 6,
+      "assemblies": 11,
+      "mounts": 11,
+      "linkedWheelMesh": 3,
+      "animationTargets": {
+        "drive": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_L_2",
+          "Assembly_wheel_L_3",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1",
+          "Assembly_wheel_R_2",
+          "Assembly_wheel_R_3"
+        ],
+        "idle": [
+          "GC_ASSET"
+        ],
+        "steer": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1"
+        ]
+      }
+    },
+    {
+      "id": "hemtt_supply_pbr",
+      "classification": "review-extraction-source",
+      "triangles": 4604,
+      "clips": [
+        "drive",
+        "idle",
+        "steer"
+      ],
+      "bounds": {
+        "min": [
+          -1.577006,
+          -5.079782,
+          0
+        ],
+        "max": [
+          1.577007,
+          5.120218,
+          3.069937
+        ]
+      },
+      "dimensions": [
+        3.154013,
+        10.199999,
+        3.069937
+      ],
+      "materials": [
+        "LP_HEMTT_hd_ps2",
+        "MOD_supply_mat"
+      ],
+      "images": 6,
+      "assemblies": 10,
+      "mounts": 10,
+      "linkedWheelMesh": 2,
+      "animationTargets": {
+        "drive": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_L_2",
+          "Assembly_wheel_L_3",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1",
+          "Assembly_wheel_R_2",
+          "Assembly_wheel_R_3"
+        ],
+        "idle": [
+          "GC_ASSET"
+        ],
+        "steer": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1"
+        ]
+      }
+    },
+    {
+      "id": "hemtt_troop_pbr",
+      "classification": "review-extraction-source",
+      "triangles": 4624,
+      "clips": [
+        "drive",
+        "idle",
+        "steer"
+      ],
+      "bounds": {
+        "min": [
+          -1.577006,
+          -5.079782,
+          0
+        ],
+        "max": [
+          1.577007,
+          5.352725,
+          3.833167
+        ]
+      },
+      "dimensions": [
+        3.154013,
+        10.432506,
+        3.833167
+      ],
+      "materials": [
+        "LP_HEMTT_hd_ps2",
+        "MOD_troop_mat"
+      ],
+      "images": 6,
+      "assemblies": 10,
+      "mounts": 10,
+      "linkedWheelMesh": 2,
+      "animationTargets": {
+        "drive": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_L_2",
+          "Assembly_wheel_L_3",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1",
+          "Assembly_wheel_R_2",
+          "Assembly_wheel_R_3"
+        ],
+        "idle": [
+          "GC_ASSET"
+        ],
+        "steer": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1"
+        ]
+      }
+    },
+    {
+      "id": "apc_base_pbr",
+      "classification": "runtime-vehicle",
+      "triangles": 4640,
+      "clips": [
+        "close",
+        "drive",
+        "idle",
+        "open",
+        "steer"
+      ],
+      "bounds": {
+        "min": [
+          -1.62656,
+          -3.913439,
+          0
+        ],
+        "max": [
+          1.62656,
+          3.886561,
+          3.042592
+        ]
+      },
+      "dimensions": [
+        3.25312,
+        7.8,
+        3.042592
+      ],
+      "materials": [
+        "APC_mat",
+        "APC_wheel_mat"
+      ],
+      "images": 6,
+      "assemblies": 10,
+      "mounts": 11,
+      "linkedWheelMesh": 3,
+      "animationTargets": {
+        "close": [
+          "Assembly_ramp"
+        ],
+        "drive": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_L_2",
+          "Assembly_wheel_L_3",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1",
+          "Assembly_wheel_R_2",
+          "Assembly_wheel_R_3"
+        ],
+        "idle": [
+          "GC_ASSET"
+        ],
+        "open": [
+          "Assembly_ramp"
+        ],
+        "steer": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1"
+        ]
+      }
+    },
+    {
+      "id": "apc_30mm_pbr",
+      "classification": "runtime-vehicle",
+      "triangles": 5338,
+      "clips": [
+        "aim",
+        "close",
+        "drive",
+        "idle",
+        "open",
+        "shoot",
+        "steer"
+      ],
+      "bounds": {
+        "min": [
+          -1.62656,
+          -3.913439,
+          0
+        ],
+        "max": [
+          1.62656,
+          4.203722,
+          4.09621
+        ]
+      },
+      "dimensions": [
+        3.25312,
+        8.117161,
+        4.09621
+      ],
+      "materials": [
+        "APC_mat",
+        "APC_30mm_mat",
+        "APC_wheel_mat"
+      ],
+      "images": 9,
+      "assemblies": 12,
+      "mounts": 13,
+      "linkedWheelMesh": 5,
+      "animationTargets": {
+        "aim": [
+          "Assembly_gun",
+          "Assembly_turret"
+        ],
+        "close": [
+          "Assembly_ramp"
+        ],
+        "drive": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_L_2",
+          "Assembly_wheel_L_3",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1",
+          "Assembly_wheel_R_2",
+          "Assembly_wheel_R_3"
+        ],
+        "idle": [
+          "GC_ASSET"
+        ],
+        "open": [
+          "Assembly_ramp"
+        ],
+        "shoot": [
+          "Assembly_gun"
+        ],
+        "steer": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1"
+        ]
+      }
+    },
+    {
+      "id": "apc_aa_pbr",
+      "classification": "runtime-vehicle",
+      "triangles": 5246,
+      "clips": [
+        "aim",
+        "close",
+        "drive",
+        "idle",
+        "open",
+        "shoot",
+        "steer"
+      ],
+      "bounds": {
+        "min": [
+          -1.62656,
+          -3.913439,
+          0
+        ],
+        "max": [
+          1.62656,
+          3.886561,
+          4.0102
+        ]
+      },
+      "dimensions": [
+        3.25312,
+        7.8,
+        4.0102
+      ],
+      "materials": [
+        "APC_mat",
+        "APC_AA_mat",
+        "APC_wheel_mat"
+      ],
+      "images": 9,
+      "assemblies": 12,
+      "mounts": 13,
+      "linkedWheelMesh": 5,
+      "animationTargets": {
+        "aim": [
+          "Assembly_gun",
+          "Assembly_turret"
+        ],
+        "close": [
+          "Assembly_ramp"
+        ],
+        "drive": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_L_2",
+          "Assembly_wheel_L_3",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1",
+          "Assembly_wheel_R_2",
+          "Assembly_wheel_R_3"
+        ],
+        "idle": [
+          "GC_ASSET"
+        ],
+        "open": [
+          "Assembly_ramp"
+        ],
+        "shoot": [
+          "Assembly_gun"
+        ],
+        "steer": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1"
+        ]
+      }
+    },
+    {
+      "id": "apc_mg_pbr",
+      "classification": "runtime-vehicle",
+      "triangles": 5306,
+      "clips": [
+        "aim",
+        "close",
+        "drive",
+        "idle",
+        "open",
+        "shoot",
+        "steer"
+      ],
+      "bounds": {
+        "min": [
+          -1.62656,
+          -3.913439,
+          0
+        ],
+        "max": [
+          1.62656,
+          3.886561,
+          3.150104
+        ]
+      },
+      "dimensions": [
+        3.25312,
+        7.8,
+        3.150104
+      ],
+      "materials": [
+        "APC_mat",
+        "APC_MG_mat",
+        "APC_wheel_mat"
+      ],
+      "images": 9,
+      "assemblies": 12,
+      "mounts": 13,
+      "linkedWheelMesh": 5,
+      "animationTargets": {
+        "aim": [
+          "Assembly_gun",
+          "Assembly_turret"
+        ],
+        "close": [
+          "Assembly_ramp"
+        ],
+        "drive": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_L_2",
+          "Assembly_wheel_L_3",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1",
+          "Assembly_wheel_R_2",
+          "Assembly_wheel_R_3"
+        ],
+        "idle": [
+          "GC_ASSET"
+        ],
+        "open": [
+          "Assembly_ramp"
+        ],
+        "shoot": [
+          "Assembly_gun"
+        ],
+        "steer": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1"
+        ]
+      }
+    },
+    {
+      "id": "apc_tankkiller_pbr",
+      "classification": "runtime-vehicle",
+      "triangles": 5686,
+      "clips": [
+        "aim",
+        "close",
+        "drive",
+        "idle",
+        "open",
+        "shoot",
+        "steer"
+      ],
+      "bounds": {
+        "min": [
+          -1.62656,
+          -3.913439,
+          0
+        ],
+        "max": [
+          1.62656,
+          7.224811,
+          3.934942
+        ]
+      },
+      "dimensions": [
+        3.25312,
+        11.13825,
+        3.934942
+      ],
+      "materials": [
+        "APC_mat",
+        "APC_TankKiller_mat",
+        "APC_wheel_mat"
+      ],
+      "images": 9,
+      "assemblies": 12,
+      "mounts": 13,
+      "linkedWheelMesh": 5,
+      "animationTargets": {
+        "aim": [
+          "Assembly_gun",
+          "Assembly_turret"
+        ],
+        "close": [
+          "Assembly_ramp"
+        ],
+        "drive": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_L_2",
+          "Assembly_wheel_L_3",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1",
+          "Assembly_wheel_R_2",
+          "Assembly_wheel_R_3"
+        ],
+        "idle": [
+          "GC_ASSET"
+        ],
+        "open": [
+          "Assembly_ramp"
+        ],
+        "shoot": [
+          "Assembly_gun"
+        ],
+        "steer": [
+          "Assembly_wheel_L_0",
+          "Assembly_wheel_L_1",
+          "Assembly_wheel_R_0",
+          "Assembly_wheel_R_1"
+        ]
+      }
+    }
+  ],
+  "errors": [],
+  "modules": [
+    {
+      "id": "hemtt_ammo_module_pbr",
+      "classification": "runtime-rear-module",
+      "triangles": 1920,
+      "bounds": {
+        "min": [
+          -1.2889,
+          -3.453419,
+          0.267889
+        ],
+        "max": [
+          1.2889,
+          3.420713,
+          1.516353
+        ]
+      },
+      "composedBounds": {
+        "min": [
+          -1.2889,
+          -4.953419,
+          1.664783
+        ],
+        "max": [
+          1.2889,
+          1.920713,
+          2.913247
+        ]
+      },
+      "materials": [
+        "MOD_ammo_mat"
+      ],
+      "images": 3
+    },
+    {
+      "id": "hemtt_fob_module_pbr",
+      "classification": "runtime-rear-module",
+      "triangles": 1176,
+      "bounds": {
+        "min": [
+          -1.213082,
+          -3.428146,
+          0.267889
+        ],
+        "max": [
+          1.273736,
+          3.167988,
+          2.961942
+        ]
+      },
+      "composedBounds": {
+        "min": [
+          -1.213082,
+          -4.928146,
+          1.664783
+        ],
+        "max": [
+          1.273736,
+          1.667988,
+          4.358836
+        ]
+      },
+      "materials": [
+        "MOD_fob_mat"
+      ],
+      "images": 3
+    },
+    {
+      "id": "hemtt_fuel_module_pbr",
+      "classification": "runtime-rear-module",
+      "triangles": 1260,
+      "bounds": {
+        "min": [
+          -1.262526,
+          -3.529237,
+          0.267889
+        ],
+        "max": [
+          1.113801,
+          3.395441,
+          2.385728
+        ]
+      },
+      "composedBounds": {
+        "min": [
+          -1.262526,
+          -5.029237,
+          1.664783
+        ],
+        "max": [
+          1.113801,
+          1.895441,
+          3.782622
+        ]
+      },
+      "materials": [
+        "MOD_fuel_mat"
+      ],
+      "images": 3
+    },
+    {
+      "id": "hemtt_medical_module_pbr",
+      "classification": "runtime-rear-module",
+      "triangles": 712,
+      "bounds": {
+        "min": [
+          -1.3445,
+          -2.619425,
+          0.267889
+        ],
+        "max": [
+          1.3445,
+          3.395441,
+          2.426164
+        ]
+      },
+      "composedBounds": {
+        "min": [
+          -1.3445,
+          -4.119425,
+          1.664783
+        ],
+        "max": [
+          1.3445,
+          1.895441,
+          3.823058
+        ]
+      },
+      "materials": [
+        "MOD_medical_mat"
+      ],
+      "images": 3
+    },
+    {
+      "id": "hemtt_repair_module_pbr",
+      "classification": "runtime-rear-module",
+      "triangles": 1304,
+      "bounds": {
+        "min": [
+          -1.693261,
+          -3.402874,
+          -0.657086
+        ],
+        "max": [
+          1.69326,
+          3.370168,
+          1.478318
+        ]
+      },
+      "composedBounds": {
+        "min": [
+          -1.693261,
+          -4.902874,
+          0.739808
+        ],
+        "max": [
+          1.69326,
+          1.870168,
+          2.875212
+        ]
+      },
+      "materials": [
+        "MOD_repair_mat",
+        "LP_HEMTT_hd_ps2"
+      ],
+      "images": 6
+    },
+    {
+      "id": "hemtt_supply_module_pbr",
+      "classification": "runtime-rear-module",
+      "triangles": 960,
+      "bounds": {
+        "min": [
+          -1.111992,
+          -3.316947,
+          0.267889
+        ],
+        "max": [
+          1.111992,
+          3.370168,
+          1.673043
+        ]
+      },
+      "composedBounds": {
+        "min": [
+          -1.111992,
+          -4.816947,
+          1.664783
+        ],
+        "max": [
+          1.111992,
+          1.870168,
+          3.069937
+        ]
+      },
+      "materials": [
+        "MOD_supply_mat"
+      ],
+      "images": 3
+    },
+    {
+      "id": "hemtt_troop_module_pbr",
+      "classification": "runtime-rear-module",
+      "triangles": 980,
+      "bounds": {
+        "min": [
+          -1.354609,
+          -3.579782,
+          0.267889
+        ],
+        "max": [
+          1.354608,
+          6.852725,
+          2.436273
+        ]
+      },
+      "composedBounds": {
+        "min": [
+          -1.354609,
+          -5.079782,
+          1.664783
+        ],
+        "max": [
+          1.354608,
+          5.352725,
+          3.833167
+        ]
+      },
+      "materials": [
+        "MOD_troop_mat"
+      ],
+      "images": 3
+    }
+  ],
+  "proofs": "assets/vehicles/rigged/previews/animation_pose_proof.json",
+  "runtimeManifest": "assets/vehicles/rigged/vehicle_runtime_manifest.json"
+}

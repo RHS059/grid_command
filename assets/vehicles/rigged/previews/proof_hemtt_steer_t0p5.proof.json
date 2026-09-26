@@ -1,0 +1,16 @@
+{
+  "asset": "hemtt_base_pbr",
+  "clip": "steer",
+  "sampleSeconds": 0.5,
+  "sampleFrame": 13,
+  "camera": "front_close",
+  "actionTargets": [
+    "Assembly_wheel_L_0",
+    "Assembly_wheel_L_1",
+    "Assembly_wheel_R_0",
+    "Assembly_wheel_R_1"
+  ],
+  "image": "proof_hemtt_steer_t0p5.png",
+  "sourceBlend": "hemtt_base_pbr_rigged.blend",
+  "usesSavedActionTracks": true
+}

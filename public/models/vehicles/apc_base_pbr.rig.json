@@ -1,0 +1,243 @@
+{
+  "asset": "apc_base_pbr",
+  "source": "apc_base.blend",
+  "revision": "approved-pbr-rig-v1",
+  "axisConvention": "+Y forward, +Z up",
+  "units": "meters",
+  "groundDatum": 0.0,
+  "normalization": {
+    "sourceNose": "-X",
+    "rotationZDegrees": -90.0,
+    "uniformScale": 5.375603124252888
+  },
+  "bounds": {
+    "min": [
+      -1.62656,
+      -3.913439,
+      0.0
+    ],
+    "max": [
+      1.62656,
+      3.886561,
+      3.042592
+    ]
+  },
+  "dimensions": [
+    3.25312,
+    7.8,
+    3.042592
+  ],
+  "triangles": 4640,
+  "materials": [
+    "APC_mat",
+    "APC_wheel_mat"
+  ],
+  "images": [
+    {
+      "name": "APC_metal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_normal",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_rough",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_tex",
+      "size": [
+        512,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_wheel_metal",
+      "size": [
+        256,
+        256
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_wheel_normal",
+      "size": [
+        256,
+        256
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_wheel_rough",
+      "size": [
+        256,
+        256
+      ],
+      "packed": true
+    },
+    {
+      "name": "APC_wheel_tex",
+      "size": [
+        256,
+        256
+      ],
+      "packed": true
+    }
+  ],
+  "clips": [
+    {
+      "id": "idle",
+      "label": "Rest pose",
+      "duration": 2.0,
+      "loop": true
+    },
+    {
+      "id": "drive",
+      "label": "Wheel drive",
+      "duration": 2.0,
+      "loop": true
+    },
+    {
+      "id": "steer",
+      "label": "Steering sweep",
+      "duration": 2.0,
+      "loop": true
+    },
+    {
+      "id": "open",
+      "label": "Open rear ramp",
+      "duration": 2.0,
+      "loop": false
+    },
+    {
+      "id": "close",
+      "label": "Close rear ramp",
+      "duration": 2.0,
+      "loop": false
+    }
+  ],
+  "exportedAnimations": [
+    "idle",
+    "open",
+    "close",
+    "drive",
+    "steer"
+  ],
+  "nodes": {
+    "hull": {
+      "object": "Assembly_hull",
+      "kind": "fixed",
+      "pivot": [
+        0.0,
+        0.0,
+        1.510545
+      ]
+    },
+    "ramp": {
+      "object": "Assembly_ramp",
+      "kind": "ramp",
+      "pivot": [
+        -0.0,
+        -3.746796,
+        0.688077
+      ]
+    },
+    "wheel_L_0": {
+      "object": "Assembly_wheel_L_0",
+      "kind": "wheel",
+      "pivot": [
+        -1.182633,
+        2.52,
+        0.628946
+      ]
+    },
+    "wheel_L_1": {
+      "object": "Assembly_wheel_L_1",
+      "kind": "wheel",
+      "pivot": [
+        -1.182633,
+        0.84,
+        0.628946
+      ]
+    },
+    "wheel_L_2": {
+      "object": "Assembly_wheel_L_2",
+      "kind": "wheel",
+      "pivot": [
+        -1.182633,
+        -0.84,
+        0.628946
+      ]
+    },
+    "wheel_L_3": {
+      "object": "Assembly_wheel_L_3",
+      "kind": "wheel",
+      "pivot": [
+        -1.182633,
+        -2.52,
+        0.628946
+      ]
+    },
+    "wheel_R_0": {
+      "object": "Assembly_wheel_R_0",
+      "kind": "wheel",
+      "pivot": [
+        1.182633,
+        2.52,
+        0.628946
+      ]
+    },
+    "wheel_R_1": {
+      "object": "Assembly_wheel_R_1",
+      "kind": "wheel",
+      "pivot": [
+        1.182633,
+        0.84,
+        0.628946
+      ]
+    },
+    "wheel_R_2": {
+      "object": "Assembly_wheel_R_2",
+      "kind": "wheel",
+      "pivot": [
+        1.182633,
+        -0.84,
+        0.628946
+      ]
+    },
+    "wheel_R_3": {
+      "object": "Assembly_wheel_R_3",
+      "kind": "wheel",
+      "pivot": [
+        1.182633,
+        -2.52,
+        0.628946
+      ]
+    }
+  },
+  "canonicalWheelMesh": [
+    "apc_base_pbr_CanonicalWheelMesh"
+  ],
+  "allWheelInstancesLinked": true,
+  "glb": "public/models/vehicles/apc_base_pbr.glb",
+  "blend": "assets/vehicles/rigged/apc_base_pbr_rigged.blend",
+  "limitations": [
+    "Rigid-object animation only; no deformation armature is introduced.",
+    "Steering is a authored preview/state clip; runtime steering blend must be driven by gameplay.",
+    "Weapon and ramp clips are authored but require gameplay event binding by integration code."
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "asset": "apc_30mm_pbr",
+  "clip": "open",
+  "sampleSeconds": 2.0,
+  "sampleFrame": 49,
+  "camera": "rear3q",
+  "actionTargets": [
+    "Assembly_ramp"
+  ],
+  "image": "proof_apc_30mm_open_t2p0.png",
+  "sourceBlend": "apc_30mm_pbr_rigged.blend",
+  "usesSavedActionTracks": true
+}

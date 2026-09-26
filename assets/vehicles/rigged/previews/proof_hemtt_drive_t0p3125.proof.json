@@ -1,0 +1,20 @@
+{
+  "asset": "hemtt_base_pbr",
+  "clip": "drive",
+  "sampleSeconds": 0.3125,
+  "sampleFrame": 9,
+  "camera": "front_close",
+  "actionTargets": [
+    "Assembly_wheel_L_0",
+    "Assembly_wheel_L_1",
+    "Assembly_wheel_L_2",
+    "Assembly_wheel_L_3",
+    "Assembly_wheel_R_0",
+    "Assembly_wheel_R_1",
+    "Assembly_wheel_R_2",
+    "Assembly_wheel_R_3"
+  ],
+  "image": "proof_hemtt_drive_t0p3125.png",
+  "sourceBlend": "hemtt_base_pbr_rigged.blend",
+  "usesSavedActionTracks": true
+}

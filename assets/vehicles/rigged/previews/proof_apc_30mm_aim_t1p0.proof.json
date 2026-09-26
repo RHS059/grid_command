@@ -1,0 +1,14 @@
+{
+  "asset": "apc_30mm_pbr",
+  "clip": "aim",
+  "sampleSeconds": 1.0,
+  "sampleFrame": 25,
+  "camera": "front3q",
+  "actionTargets": [
+    "Assembly_gun",
+    "Assembly_turret"
+  ],
+  "image": "proof_apc_30mm_aim_t1p0.png",
+  "sourceBlend": "apc_30mm_pbr_rigged.blend",
+  "usesSavedActionTracks": true
+}
