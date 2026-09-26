@@ -109,6 +109,18 @@ def main() -> None:
             raise SystemExit(f"Vehicle asset copy failed verification: {name}")
         print(f"SHARED_ASSET_OK {name} {digest(destination)}")
 
+    vehicle_source = args.source / "vehicles"
+    if vehicle_source.is_dir():
+        for source in sorted(path for path in vehicle_source.rglob("*") if path.is_file()):
+            relative = source.relative_to(args.source)
+            destination = args.destination / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            if not destination.is_file() or digest(source) != digest(destination):
+                shutil.copy2(source, destination)
+            if digest(source) != digest(destination):
+                raise SystemExit(f"Nested vehicle asset copy failed verification: {relative}")
+            print(f"SHARED_ASSET_OK {relative.as_posix()} {digest(destination)}")
+
 
 if __name__ == "__main__":
     main()

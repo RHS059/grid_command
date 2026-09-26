@@ -5,6 +5,10 @@ extends RefCounted
 static func create(role: String, team: int = 0) -> Node3D:
 	match role:
 		"TRUCK", "FUEL_TRUCK", "TROOP_HEMTT", "MEDICAL_HEMTT", "REPAIR_HEMTT", "FOB_HEMTT", "FORKLIFT", "UAV_JAMMER":
+			if role in ["TRUCK", "FUEL_TRUCK", "TROOP_HEMTT", "MEDICAL_HEMTT", "REPAIR_HEMTT", "FOB_HEMTT"]:
+				var pbr_model := preload("res://scripts/pbr_vehicle_models.gd").create_hemtt(role, team)
+				if pbr_model != null:
+					return pbr_model
 			return preload("res://scripts/browser_support_models.gd").create(role, team)
 		"CAS_FIGHTER":
 			return preload("res://scripts/a29b_model.gd").create(team)
