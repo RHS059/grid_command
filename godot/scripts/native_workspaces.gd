@@ -296,6 +296,19 @@ func _load_model(id: String) -> void:
 		var packed: PackedScene = load(path)
 		model = packed.instantiate()
 	model_root.add_child(model)
+	# Imported HEMTT geometry is authored with +Z up. Keep this guard at the
+	# final viewer boundary as well as in the asset factory so an old cached
+	# factory resource cannot leave a live-patched model standing on its rear.
+	if id in ["TRUCK","FUEL_TRUCK","TROOP_HEMTT","MEDICAL_HEMTT","REPAIR_HEMTT","FOB_HEMTT"]:
+		var orientation_probe := _bounds(model, Transform3D.IDENTITY)
+		if orientation_probe.size.y > orientation_probe.size.z * 1.5:
+			var correction := Node3D.new()
+			correction.name = "HEMTT_AXIS_CORRECTION"
+			correction.rotation = Vector3(-PI * 0.5, 0.0, 0.0)
+			model_root.remove_child(model)
+			correction.add_child(model)
+			model_root.add_child(correction)
+			model = correction
 	if id == "TANK":
 		preload("res://scripts/tank_material.gd").apply(model)
 	preload("res://scripts/ground_vehicle_material.gd").apply(model, team, str(MODEL_FILES.get(id, id)))

@@ -30,7 +30,8 @@ static func create_hemtt(role: String, team: int = 0) -> Node3D:
 	oriented.name = role.to_lower()
 	oriented.set_meta("pbr_vehicle", true)
 	oriented.set_meta("team", team)
-	oriented.rotation_degrees.x = -90.0
+	oriented.set_meta("hemtt_axis_corrected", true)
+	oriented.rotation = Vector3(-PI * 0.5, 0.0, 0.0)
 	oriented.add_child(base)
 	return oriented
 
