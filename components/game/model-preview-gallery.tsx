@@ -17,6 +17,7 @@ import { MODEL_CATALOG, MODEL_NAMES, modelCategory, type ModelId } from '@/lib/g
 import { createHemtt, isHemttVariant } from '@/lib/game/hemtt-model'
 import { ModelViewport } from './model-viewport'
 import { MODEL_DIMENSIONS, modelScale, modelDimensionLabel, visibleModelBounds } from '@/lib/game/model-dimensions'
+import { createNativeVehicle, isNativeVehicleId, nativeVehicleAsset, nativeVehicleBounds } from '@/lib/game/native-vehicle-assets'
 import styles from './model-preview-gallery.module.css'
 
 /** All cards share one scene and GPU context. DOM cards provide hit targets and labels. */
@@ -46,20 +47,21 @@ function GalleryStage({ side, paused, onSelect }: { side: Side; paused: boolean;
     const material = new T.MeshStandardMaterial({ vertexColors: true, roughness: .62, metalness: .08, flatShading: false })
     const items = MODEL_CATALOG.map(id => {
       const pivot = new T.Group(), content = new T.Scene()
-      const role: Role = isHemttVariant(id) ? 'TRUCK' : id === 'MOB' || id === 'AIRFIELD' ? 'COMMAND' : id
+      const role: Role = isNativeVehicleId(id) ? nativeVehicleAsset(id)?.gameplayRole ?? 'TRUCK' : isHemttVariant(id) ? 'TRUCK' : id === 'MOB' || id === 'AIRFIELD' ? 'COMMAND' : id
       let object: T.Object3D | undefined, batch: SoldierBatch | undefined
-      if (id === 'MOB' || id === 'AIRFIELD') object = createBase(id, side)
+      if (isNativeVehicleId(id)) object = createNativeVehicle(id, side)
+      else if (id === 'MOB' || id === 'AIRFIELD') object = createBase(id, side)
       else if (isHemttVariant(id)) object = createHemtt(id, side)
-      else if (isAir(id)) object = createAircraft(id, side)
-      else if (isSupportModel(id)) object = createSupportModel(id, side)
-      else if (isVehicle(id)) {
-        object = new T.Mesh(vehicleGeometry(id, side), material); object.userData.unitSurface = true
-        if (['TANK', 'APC', 'IFV', 'CANNON_APC', 'ATTACK_HELI'].includes(id)) {
-          const turret = new T.Mesh(vehicleGeometry(id, side, true), material); turret.name = 'turret'; object.add(turret)
+      else if (isAir(role)) object = createAircraft(role, side)
+      else if (isSupportModel(role)) object = createSupportModel(role, side)
+      else if (isVehicle(role)) {
+        object = new T.Mesh(vehicleGeometry(role, side), material); object.userData.unitSurface = true
+        if (['TANK', 'APC', 'IFV', 'CANNON_APC', 'ATTACK_HELI'].includes(role)) {
+          const turret = new T.Mesh(vehicleGeometry(role, side, true), material); turret.name = 'turret'; object.add(turret)
         }
       } else batch = new SoldierBatch(content, side, material)
       if (object) { if (id === 'TROOP_TRUCK') addCarrierOccupants(object, side, true); content.add(object) }
-      const sourceBounds = object ? visibleModelBounds(object) : new T.Box3(new T.Vector3(-.7, -.7, 0), new T.Vector3(.7, .7, 1.7))
+      const sourceBounds = isNativeVehicleId(id) ? nativeVehicleBounds(id) : object ? visibleModelBounds(object) : new T.Box3(new T.Vector3(-.7, -.7, 0), new T.Vector3(.7, .7, 1.7))
       const factor = modelScale(id, sourceBounds.getSize(new T.Vector3()))
       content.scale.setScalar(factor)
       const bounds = new T.Box3(sourceBounds.min.clone().multiplyScalar(factor), sourceBounds.max.clone().multiplyScalar(factor))
@@ -100,7 +102,7 @@ function GalleryStage({ side, paused, onSelect }: { side: Side; paused: boolean;
         item.motorRoot.position.set(0,0,0);item.motorRoot.rotation.set(0,0,0)
         applyEngineBoil(item.motorRoot,item.motor.sample(motorTime,true,false,true,item.radius*2))
         if (item.batch && item.id !== 'MOB' && item.id !== 'AIRFIELD') {
-          item.content.scale.setScalar(MODEL_DIMENSIONS[item.id].metres / (item.batch.asset === 'ready' ? 1.7 : 2.1))
+          item.content.scale.setScalar(MODEL_DIMENSIONS[item.role].metres / (item.batch.asset === 'ready' ? 1.7 : 2.1))
           item.batch.begin(); item.batch.pose({ id: `gallery:${item.id}`, x: 0, y: 0, status: 'active', stance: 'stand', action: 'idle', heading: 0, aim: 0, since: 0, shotAt: -10 }, item.role, 0, 0, true); item.batch.end(true)
         }
       }
