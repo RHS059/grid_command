@@ -5,7 +5,7 @@ import { isNativeVehicleId, nativeVehicleBounds } from './native-vehicle-assets'
 
 /** One world unit is one metre. The same catalog is read by the native viewer. */
 export const MODEL_DIMENSIONS = dimensions
-function modelDimension(id: ModelId) {
+export function modelDimension(id: ModelId) {
   const authored = MODEL_DIMENSIONS[id as keyof typeof MODEL_DIMENSIONS]
   if (authored) return authored
   const size = isNativeVehicleId(id) ? nativeVehicleBounds(id).getSize(new Vector3()) : new Vector3(1, 1, 1)

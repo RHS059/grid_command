@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { MODEL_CATALOG } from '../lib/game/model-catalog'
-import { MODEL_DIMENSIONS, modelScale, modelGridSpacing, visibleModelBounds } from '../lib/game/model-dimensions'
+import { modelDimension, modelScale, modelGridSpacing, visibleModelBounds } from '../lib/game/model-dimensions'
 import { previewCameraMovement } from '../lib/game/graphics-preview'
 import { Vector3, Group, Mesh, BoxGeometry } from '../lib/game/scene-data'
 
 test('every production model has canonical metre dimensions', () => {
-  for (const id of MODEL_CATALOG) assert.ok(MODEL_DIMENSIONS[id].metres > 0, id)
+  for (const id of MODEL_CATALOG) assert.ok(modelDimension(id).metres > 0, id)
   assert.equal(modelScale('RIFLE', new Vector3(.5, 1, 1.7)), 1.8 / 1.7)
   assert.equal(modelScale('COMMAND', new Vector3(.5, 1.7, .6), 'y'), 1.85 / 1.7)
   assert.equal(modelScale('CARGO_PLANE', new Vector3(20, 30, 10)), 53 / 30)
