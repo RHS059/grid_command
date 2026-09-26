@@ -20,15 +20,19 @@ static func create_hemtt(role: String, team: int = 0) -> Node3D:
 	var base := base_scene.instantiate() as Node3D
 	if base == null:
 		return null
-	base.name = role.to_lower()
-	base.set_meta("pbr_vehicle", true)
-	base.set_meta("team", team)
+	base.name = "GC_ASSET"
 	var module_name: String = MODULES.get(role, "")
 	if not module_name.is_empty():
 		_attach_module(base, module_name)
-	# These Blender-authored GLBs retain +Z up. Godot uses +Y up.
-	base.rotation_degrees.x = -90.0
-	return base
+	# The embedded idle animation drives GC_ASSET's transform, so the axis
+	# correction must live on an unanimated parent or it is reset every frame.
+	var oriented := Node3D.new()
+	oriented.name = role.to_lower()
+	oriented.set_meta("pbr_vehicle", true)
+	oriented.set_meta("team", team)
+	oriented.rotation_degrees.x = -90.0
+	oriented.add_child(base)
+	return oriented
 
 static func _attach_module(base: Node3D, module_name: String) -> void:
 	var path := "res://assets/models/vehicles/hemtt_%s_module_pbr.glb" % module_name
