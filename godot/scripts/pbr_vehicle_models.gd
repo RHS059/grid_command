@@ -26,6 +26,8 @@ static func create_hemtt(role: String, team: int = 0) -> Node3D:
 	var module_name: String = MODULES.get(role, "")
 	if not module_name.is_empty():
 		_attach_module(base, module_name)
+	# These Blender-authored GLBs retain +Z up. Godot uses +Y up.
+	base.rotation_degrees.x = -90.0
 	return base
 
 static func _attach_module(base: Node3D, module_name: String) -> void:
@@ -45,8 +47,7 @@ static func _attach_module(base: Node3D, module_name: String) -> void:
 	if mount == null:
 		mount = Node3D.new()
 		mount.name = "Mount_rear_module"
-		# Blender +Z-up becomes Godot +Y-up during glTF import.
-		mount.position = Vector3(0.0, 1.396894, 1.5)
+		mount.position = Vector3(0.0, -1.5, 1.396894)
 		base.add_child(mount)
 	mount.add_child(module)
 	module.transform = Transform3D.IDENTITY
